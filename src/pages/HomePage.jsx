@@ -65,7 +65,7 @@ function HomePage() {
       {/* Floating Elements - Background decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         {bubblePositions.map((position, i) => (
-          <motion.div
+          <div
             key={i}
             className={`absolute rounded-full bg-gradient-to-b opacity-20 ${
               i % 3 === 0 ? 'from-purple-400 to-pink-300' : 
@@ -77,15 +77,6 @@ function HomePage() {
               top: position.y,
               width: `${Math.random() * 100 + 50}px`,
               height: `${Math.random() * 100 + 50}px`
-            }}
-            animate={{ 
-              y: ['-10px', '10px']
-            }}
-            transition={{ 
-              repeat: Infinity, 
-              repeatType: "reverse",
-              duration: 4 + Math.random() * 3,
-              ease: "easeInOut"
             }}
           />
         ))}
@@ -142,13 +133,13 @@ function HomePage() {
             {/* Character Transformation Showcase */}
             <div className="flex justify-center">
               <motion.div 
-                className="relative w-full max-w-md"
+                className="relative w-full max-w-md h-72 sm:h-80 md:h-96"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.5 }}
               >
                 {/* Real photo frame */}
-                <div className="relative z-10 rounded-lg shadow-xl bg-white p-2 w-48 md:w-64 rotate-3 mx-auto">
+                <div className="absolute left-0 top-0 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 rotate-3">
                   <img 
                     src={toddlerImage}
                     alt="Real child" 
@@ -158,16 +149,14 @@ function HomePage() {
                 </div>
                 
                 {/* Arrow pointing to transformation */}
-                <motion.div 
-                  className="absolute top-1/2 left-[60%] transform -translate-y-1/2 z-20 text-4xl"
-                  animate={{ x: [0, 10, 0] }}
-                  transition={{ repeat: Infinity, duration: 1 }}
+                <div 
+                  className="absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/4 z-20 text-4xl"
                 >
                   ➡️
-                </motion.div>
+                </div>
                 
                 {/* Transformed character frames */}
-                <div className="absolute right-0 md:-right-10 -bottom-10 z-10 rounded-lg shadow-xl bg-white p-2 w-48 md:w-64 -rotate-6">
+                <div className="absolute right-0 top-10 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6">
                   {characterStyles.map((style, index) => (
                     <motion.div
                       key={style.name}
@@ -182,7 +171,7 @@ function HomePage() {
                         <img 
                           src={style.imageUrl} 
                           alt={`${style.name} character`} 
-                          className="rounded w-full h-auto object-contain"
+                          className="rounded w-full h-auto"
                         />
                         <div className="text-center mt-2 text-white font-medium">{style.name} Style</div>
                       </div>
@@ -191,16 +180,8 @@ function HomePage() {
                 </div>
                 
                 {/* Decorative elements */}
-                <motion.div 
+                <div 
                   className="absolute -z-10 w-full h-full bg-gradient-to-r from-purple-200 to-pink-200 rounded-full blur-3xl"
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                    rotate: [0, 5, 0],
-                  }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 5,
-                  }}
                 />
               </motion.div>
             </div>
@@ -208,9 +189,9 @@ function HomePage() {
         </motion.div>
         
         {/* Floating magical elements */}
-        <div className="absolute top-20 left-10 z-0 text-5xl animate-bounce-slow delay-200">✨</div>
-        <div className="absolute bottom-20 right-10 z-0 text-5xl animate-bounce-slow delay-300">🌟</div>
-        <div className="absolute top-1/2 right-1/4 z-0 text-3xl animate-bounce-slow">🌈</div>
+        <div className="absolute top-20 left-10 z-0 text-5xl">✨</div>
+        <div className="absolute bottom-20 right-10 z-0 text-5xl">🌟</div>
+        <div className="absolute top-1/2 right-1/4 z-0 text-3xl">🌈</div>
       </section>
 
       {/* How It Works */}
@@ -372,10 +353,10 @@ function HomePage() {
           >
             {/* Decorative elements */}
             <div className="absolute top-0 left-0 w-full h-full">
-              <div className="absolute top-5 left-5 text-6xl animate-float-slow">✨</div>
-              <div className="absolute bottom-10 right-10 text-6xl animate-float-slow delay-300">🌟</div>
-              <div className="absolute top-1/2 left-1/4 text-5xl animate-float-slow delay-700">🪄</div>
-              <div className="absolute top-1/4 right-1/3 text-5xl animate-spin-slow">💫</div>
+              <div className="absolute top-5 left-5 text-6xl">✨</div>
+              <div className="absolute bottom-10 right-10 text-6xl">🌟</div>
+              <div className="absolute top-1/2 left-1/4 text-5xl">🪄</div>
+              <div className="absolute top-1/4 right-1/3 text-5xl">💫</div>
             </div>
             
             <div className="relative z-10">
