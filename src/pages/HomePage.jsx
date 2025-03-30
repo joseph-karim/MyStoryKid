@@ -161,7 +161,7 @@ function HomePage() {
                 </div>
                 
                 {/* Transformed character frames - Position adjusted slightly */}
-                <div className="absolute right-0 top-16 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6">
+                <div className="absolute right-0 top-16 z-20 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6 aspect-[3/4]">
                   {characterStyles.map((style, index) => (
                     <motion.div
                       key={style.name}
@@ -172,15 +172,17 @@ function HomePage() {
                       }}
                       transition={{ duration: 0.5 }}
                     >
-                      {/* Ensure container takes full height */}
-                      <div className={`bg-gradient-to-r ${style.color} p-3 rounded h-full flex flex-col`}>
+                      {/* Removed flex classes, rely on image sizing */}
+                      <div className={`bg-gradient-to-r ${style.color} p-3 rounded h-full`}>
                         <img 
                           src={style.imageUrl} 
                           alt={`${style.name} character`} 
-                          // Use object-contain to prevent cropping
-                          className="rounded w-full flex-1 object-contain"
+                          // Use object-contain with w-full h-full
+                          className="rounded w-full h-full object-contain"
                         />
-                        <div className="text-center mt-2 text-white font-medium">{style.name} Style</div>
+                        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-white font-medium bg-black/30 rounded-b">
+                          {style.name} Style
+                        </div>
                       </div>
                     </motion.div>
                   ))}
