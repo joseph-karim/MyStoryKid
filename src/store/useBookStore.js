@@ -126,6 +126,7 @@ const useBookStore = create((set, get) => ({
       category: '', // e.g., Adventure, Bedtime Story, etc.
       bookCharacters: [], // Array of characters with roles
       artStyle: '', // Art style shared by all characters
+      customStyleDescription: '', // Description if artStyle is 'custom'
     },
   },
   
@@ -154,6 +155,7 @@ const useBookStore = create((set, get) => ({
         category: '',
         bookCharacters: [],
         artStyle: '',
+        customStyleDescription: '',
       },
     },
   })),
