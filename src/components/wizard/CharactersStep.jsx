@@ -252,7 +252,7 @@ function CharactersStep() {
               {ART_STYLE_CATEGORIES.map((categoryData) => (
                 <div key={categoryData.category}>
                   <h4 className="text-md font-semibold mb-3 border-b pb-1">{categoryData.category}</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
                     {categoryData.styles.map((style) => (
                       <div
                         key={style.id}
@@ -268,8 +268,7 @@ function CharactersStep() {
                           setArtStyle(style.id);
                         }}
                       >
-                        {/* Render image or placeholder SVG */}
-                        <div className="w-full h-24 bg-gray-100 mb-2 rounded flex items-center justify-center text-gray-400 overflow-hidden">
+                        <div className="w-full aspect-[3/4] bg-gray-100 mb-2 rounded flex items-center justify-center text-gray-400 overflow-hidden">
                           {style.imageUrl ? (
                             <img 
                               src={style.imageUrl} 
