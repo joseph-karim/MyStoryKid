@@ -55,12 +55,12 @@ function HomePage() {
               height: `${Math.random() * 100 + 50}px`
             }}
             animate={{ 
-              y: [`${Math.random() * 100}vh`, `${Math.random() * 100}vh`],
-              x: [`${Math.random() * 100}vw`, `${Math.random() * 100}vw`]
+              y: [`${Math.random() * 5 - 2.5}vh`, `${Math.random() * 5 + 2.5}vh`]
             }}
             transition={{ 
               repeat: Infinity, 
-              duration: 20 + Math.random() * 30,
+              repeatType: "reverse",
+              duration: 8 + Math.random() * 4,
               ease: "easeInOut"
             }}
           />
