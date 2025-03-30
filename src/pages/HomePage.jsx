@@ -32,6 +32,25 @@ function HomePage() {
     }
   ];
 
+  // Pre-define fixed positions for background bubbles
+  const bubblePositions = [
+    { x: '10%', y: '10%' },
+    { x: '80%', y: '15%' },
+    { x: '25%', y: '30%' },
+    { x: '70%', y: '40%' },
+    { x: '15%', y: '60%' },
+    { x: '65%', y: '70%' },
+    { x: '35%', y: '85%' },
+    { x: '85%', y: '80%' },
+    { x: '45%', y: '20%' },
+    { x: '90%', y: '40%' },
+    { x: '5%', y: '75%' },
+    { x: '40%', y: '60%' },
+    { x: '60%', y: '30%' },
+    { x: '20%', y: '45%' },
+    { x: '50%', y: '90%' },
+  ];
+
   // Auto-rotate art styles
   useEffect(() => {
     const timer = setInterval(() => {
@@ -45,7 +64,7 @@ function HomePage() {
     <div className="space-y-16 overflow-hidden">
       {/* Floating Elements - Background decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        {[...Array(15)].map((_, i) => (
+        {bubblePositions.map((position, i) => (
           <motion.div
             key={i}
             className={`absolute rounded-full bg-gradient-to-b opacity-20 ${
@@ -53,19 +72,19 @@ function HomePage() {
               i % 3 === 1 ? 'from-blue-400 to-teal-300' : 
               'from-amber-400 to-red-300'
             }`}
-            initial={{ 
-              x: `${Math.random() * 100}vw`, 
-              y: `${Math.random() * 100}vh`,
+            style={{
+              left: position.x,
+              top: position.y,
               width: `${Math.random() * 100 + 50}px`,
               height: `${Math.random() * 100 + 50}px`
             }}
             animate={{ 
-              y: [`${Math.random() * 5 - 2.5}vh`, `${Math.random() * 5 + 2.5}vh`]
+              y: ['-10px', '10px']
             }}
             transition={{ 
               repeat: Infinity, 
               repeatType: "reverse",
-              duration: 8 + Math.random() * 4,
+              duration: 4 + Math.random() * 3,
               ease: "easeInOut"
             }}
           />
@@ -123,13 +142,13 @@ function HomePage() {
             {/* Character Transformation Showcase */}
             <div className="flex justify-center">
               <motion.div 
-                className="relative"
+                className="relative w-full max-w-md"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.5 }}
               >
                 {/* Real photo frame */}
-                <div className="relative z-10 rounded-lg shadow-xl bg-white p-2 w-64 rotate-3 mx-auto">
+                <div className="relative z-10 rounded-lg shadow-xl bg-white p-2 w-48 md:w-64 rotate-3 mx-auto">
                   <img 
                     src={toddlerImage}
                     alt="Real child" 
@@ -140,7 +159,7 @@ function HomePage() {
                 
                 {/* Arrow pointing to transformation */}
                 <motion.div 
-                  className="absolute top-1/2 left-1/2 transform -translate-y-1/2 z-20 text-4xl"
+                  className="absolute top-1/2 left-[60%] transform -translate-y-1/2 z-20 text-4xl"
                   animate={{ x: [0, 10, 0] }}
                   transition={{ repeat: Infinity, duration: 1 }}
                 >
@@ -148,7 +167,7 @@ function HomePage() {
                 </motion.div>
                 
                 {/* Transformed character frames */}
-                <div className="absolute -right-32 -bottom-10 z-10 rounded-lg shadow-xl bg-white p-2 w-72 -rotate-6">
+                <div className="absolute right-0 md:-right-10 -bottom-10 z-10 rounded-lg shadow-xl bg-white p-2 w-48 md:w-64 -rotate-6">
                   {characterStyles.map((style, index) => (
                     <motion.div
                       key={style.name}
@@ -163,7 +182,7 @@ function HomePage() {
                         <img 
                           src={style.imageUrl} 
                           alt={`${style.name} character`} 
-                          className="rounded w-full h-auto"
+                          className="rounded w-full h-auto object-contain"
                         />
                         <div className="text-center mt-2 text-white font-medium">{style.name} Style</div>
                       </div>
