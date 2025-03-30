@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toddlerImage from '../assets/toddler.jpg';
 import toddlerTransformed from '../assets/toddler transformed.png';
+import spaceAdventureCover from '../assets/Space Adventure Cover.png';
+import magicalForestCover from '../assets/Magical Forest Cover.png';
+import underseaQuestCover from '../assets/Undersea Quest Cover.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
@@ -274,7 +277,7 @@ function HomePage() {
               <div className="bg-gradient-to-b from-blue-100 to-blue-200 p-6 rounded-t-xl">
                 <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
                   <img 
-                    src="https://via.placeholder.com/600x800?text=Space+Adventure" 
+                    src={spaceAdventureCover}
                     alt="Space Adventure book" 
                     className="w-full h-full object-cover"
                   />
@@ -298,7 +301,7 @@ function HomePage() {
               <div className="bg-gradient-to-b from-purple-100 to-purple-200 p-6 rounded-t-xl">
                 <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
                   <img 
-                    src="https://via.placeholder.com/600x800?text=Magical+Forest" 
+                    src={magicalForestCover}
                     alt="Magical Forest book" 
                     className="w-full h-full object-cover"
                   />
@@ -322,7 +325,7 @@ function HomePage() {
               <div className="bg-gradient-to-b from-amber-100 to-amber-200 p-6 rounded-t-xl">
                 <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
                   <img 
-                    src="https://via.placeholder.com/600x800?text=Undersea+Quest" 
+                    src={underseaQuestCover}
                     alt="Undersea Quest book" 
                     className="w-full h-full object-cover"
                   />
