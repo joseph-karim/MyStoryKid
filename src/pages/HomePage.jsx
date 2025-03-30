@@ -153,11 +153,11 @@ function HomePage() {
                   <div className="absolute -bottom-2 left-0 right-0 text-center text-sm font-handwriting">Your Child</div>
                 </div>
                 
-                {/* Magical Arrow - Centered, more prominent, magical emoji */}
+                {/* Stylized Arrow */}
                 <div 
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-5xl md:text-6xl text-purple-500 drop-shadow-lg"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-4xl md:text-5xl text-purple-500 drop-shadow-md"
                 >
-                  ✨
+                  ➜
                 </div>
                 
                 {/* Transformed character - Moved further right, removed rotating frame */}
