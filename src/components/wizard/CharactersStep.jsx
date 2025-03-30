@@ -3,6 +3,25 @@ import { motion } from 'framer-motion';
 import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
 
+// Import Art Style Images
+import watercolorImg from '../../assets/water color theme.png';
+import pastelImg from '../../assets/pastel theme.png';
+import pencilWashImg from '../../assets/gentle pencil wash.png';
+import softDigitalImg from '../../assets/Soft Brush Digital.png';
+import pencilInkImg from '../../assets/Pencil Sketch : Ink + Pencil.png';
+import goldenBooksImg from '../../assets/golden books style.png';
+import beatrixPotterImg from '../../assets/Beatrix Potter Style.png';
+import cartoonImg from '../../assets/Cartoon : 2D Animation Style.png';
+import flatVectorImg from '../../assets/Flat Vector Illustration.png';
+import storybookPopImg from '../../assets/Storybook Pop Style.png';
+import papercutImg from '../../assets/Cut-Paper : Collage Style.png';
+import oilPastelImg from '../../assets/Oil Pastel : Gouache Style.png';
+import stylizedRealismImg from '../../assets/Stylized Realism.png';
+import digitalPainterlyImg from '../../assets/Digital Painterly.png';
+import kawaiiImg from '../../assets/Japanese Kawaii.png';
+import scandinavianImg from '../../assets/Scandinavian Folk Art.png';
+import africanPatternImg from '../../assets/African Patterned Illustration.png';
+
 // Character roles
 const CHARACTER_ROLES = [
   { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
@@ -12,54 +31,54 @@ const CHARACTER_ROLES = [
   { id: 'magical', label: 'Magical Friend', description: 'A fairy, creature or magical being' },
 ];
 
-// New Art Styles grouped by category
+// New Art Styles grouped by category with images
 const ART_STYLE_CATEGORIES = [
   {
     category: '🎨 Whimsical & Soft (Ages 0–5)',
     styles: [
-      { id: 'watercolor', title: 'Watercolor', description: 'Soft, expressive, magical. Great for fairy tales.' },
-      { id: 'pastel', title: 'Pastel Illustration', description: 'Soft-edged, calming, chalk/crayon feel. Kid-friendly.' },
-      { id: 'pencil_wash', title: 'Gentle Pencil + Wash', description: 'Subtle, intimate feel. Combines lines and light color.' },
-      { id: 'soft_digital', title: 'Soft Brush Digital', description: 'Painterly but crisp, hand-drawn aesthetic.' },
+      { id: 'watercolor', title: 'Watercolor', description: 'Soft, expressive, magical. Great for fairy tales.', imageUrl: watercolorImg },
+      { id: 'pastel', title: 'Pastel Illustration', description: 'Soft-edged, calming, chalk/crayon feel. Kid-friendly.', imageUrl: pastelImg },
+      { id: 'pencil_wash', title: 'Gentle Pencil + Wash', description: 'Subtle, intimate feel. Combines lines and light color.', imageUrl: pencilWashImg },
+      { id: 'soft_digital', title: 'Soft Brush Digital', description: 'Painterly but crisp, hand-drawn aesthetic.', imageUrl: softDigitalImg },
     ]
   },
   {
     category: '✏️ Classic & Timeless',
     styles: [
-      { id: 'pencil_ink', title: 'Pencil Sketch / Ink', description: 'Monochrome or light ink. Vintage feel.' },
-      { id: 'golden_books', title: 'Golden Books Style', description: 'Mid-century inspired, bright, expressive faces.' },
-      { id: 'beatrix_potter', title: 'Beatrix Potter Style', description: 'Classic watercolor + fine detail. Great for animal tales.' },
+      { id: 'pencil_ink', title: 'Pencil Sketch / Ink', description: 'Monochrome or light ink. Vintage feel.', imageUrl: pencilInkImg },
+      { id: 'golden_books', title: 'Golden Books Style', description: 'Mid-century inspired, bright, expressive faces.', imageUrl: goldenBooksImg },
+      { id: 'beatrix_potter', title: 'Beatrix Potter Style', description: 'Classic watercolor + fine detail. Great for animal tales.', imageUrl: beatrixPotterImg },
     ]
   },
   {
     category: '✨ Modern & Colorful',
     styles: [
-      { id: 'cartoon', title: 'Cartoon / 2D Animation', description: 'Clean lines, bright colors, exaggerated expressions.' },
-      { id: 'flat_vector', title: 'Flat Vector Illustration', description: 'Bold, clean, simple. Modern educational look.' },
-      { id: 'storybook_pop', title: 'Storybook Pop Style', description: 'Bright, slightly surreal, energetic. For wacky themes.' },
-      { id: 'papercut', title: 'Cut-Paper / Collage', description: 'Layered paper/fabric look. Textured and charming.' },
+      { id: 'cartoon', title: 'Cartoon / 2D Animation', description: 'Clean lines, bright colors, exaggerated expressions.', imageUrl: cartoonImg },
+      { id: 'flat_vector', title: 'Flat Vector Illustration', description: 'Bold, clean, simple. Modern educational look.', imageUrl: flatVectorImg },
+      { id: 'storybook_pop', title: 'Storybook Pop Style', description: 'Bright, slightly surreal, energetic. For wacky themes.', imageUrl: storybookPopImg },
+      { id: 'papercut', title: 'Cut-Paper / Collage', description: 'Layered paper/fabric look. Textured and charming.', imageUrl: papercutImg },
     ]
   },
   {
     category: '🖼️ Artistic & Elevated',
     styles: [
-      { id: 'oil_pastel', title: 'Oil Pastel / Gouache', description: 'Thick strokes, vivid color, tactile. For emotional stories.' },
-      { id: 'stylized_realism', title: 'Stylized Realism', description: 'Semi-realistic with artistic lighting. Recognizable child.' },
-      { id: 'digital_painterly', title: 'Digital Painterly', description: 'Mimics classical painting. Dramatic and immersive.' },
+      { id: 'oil_pastel', title: 'Oil Pastel / Gouache', description: 'Thick strokes, vivid color, tactile. For emotional stories.', imageUrl: oilPastelImg },
+      { id: 'stylized_realism', title: 'Stylized Realism', description: 'Semi-realistic with artistic lighting. Recognizable child.', imageUrl: stylizedRealismImg },
+      { id: 'digital_painterly', title: 'Digital Painterly', description: 'Mimics classical painting. Dramatic and immersive.', imageUrl: digitalPainterlyImg },
     ]
   },
   {
     category: '🌍 Cultural or Regional (Optional)',
     styles: [
-      { id: 'kawaii', title: 'Japanese Kawaii', description: 'Ultra-cute, rounded characters, soft palettes.' },
-      { id: 'scandinavian', title: 'Scandinavian Folk Art', description: 'Geometric, bold color, nature-themed.' },
-      { id: 'african_pattern', title: 'African Patterned', description: 'Bright colors, bold patterns, symbolism.' },
+      { id: 'kawaii', title: 'Japanese Kawaii', description: 'Ultra-cute, rounded characters, soft palettes.', imageUrl: kawaiiImg },
+      { id: 'scandinavian', title: 'Scandinavian Folk Art', description: 'Geometric, bold color, nature-themed.', imageUrl: scandinavianImg },
+      { id: 'african_pattern', title: 'African Patterned', description: 'Bright colors, bold patterns, symbolism.', imageUrl: africanPatternImg },
     ]
   },
   {
     category: '💡 Custom Style',
     styles: [
-      { id: 'custom', title: 'Describe Your Own', description: 'Enter details below for a unique style.' },
+      { id: 'custom', title: 'Describe Your Own', description: 'Enter details below for a unique style.' }, // No image for custom
     ]
   },
 ];
@@ -243,15 +262,26 @@ function CharactersStep() {
                             : 'border-gray-200 bg-white hover:border-blue-300'
                         }`}
                         onClick={() => {
+                          if (style.id !== 'custom') { // Don't clear error for custom until text is entered
+                             setError('');
+                          }
                           setArtStyle(style.id);
-                          setError(''); // Clear error when selection changes
                         }}
                       >
-                        {/* Placeholder for style image preview */}
-                        <div className="w-full h-24 bg-gray-200 mb-2 rounded flex items-center justify-center text-gray-400">
-                          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                        {/* Render image or placeholder SVG */}
+                        <div className="w-full h-24 bg-gray-100 mb-2 rounded flex items-center justify-center text-gray-400 overflow-hidden">
+                          {style.imageUrl ? (
+                            <img src={style.imageUrl} alt={style.title} className="w-full h-full object-cover" />
+                          ) : style.id !== 'custom' ? (
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          ) : (
+                             // Placeholder for custom style
+                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                          )}
                         </div>
                         <h5 className="text-sm font-medium leading-tight mb-1">{style.title}</h5>
                         <p className="text-xs text-gray-500 leading-snug">{style.description}</p>
