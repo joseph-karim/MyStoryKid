@@ -3,24 +3,24 @@ import { motion } from 'framer-motion';
 import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
 
-// Import Art Style Images using absolute paths from /src
-import watercolorImg from '/src/assets/water color theme.png';
-import pastelImg from '/src/assets/pastel theme.png';
-import pencilWashImg from '/src/assets/gentle pencil wash.png';
-import softDigitalImg from '/src/assets/Soft Brush Digital.png';
-import pencilInkImg from '/src/assets/Pencil Sketch : Ink + Pencil.png';
-import goldenBooksImg from '/src/assets/golden books style.png';
-import beatrixPotterImg from '/src/assets/Beatrix Potter Style.png';
-import cartoonImg from '/src/assets/Cartoon : 2D Animation Style.png';
-import flatVectorImg from '/src/assets/Flat Vector Illustration.png';
-import storybookPopImg from '/src/assets/Storybook Pop Style.png';
-import papercutImg from '/src/assets/Cut-Paper : Collage Style.png';
-import oilPastelImg from '/src/assets/Oil Pastel : Gouache Style.png';
-import stylizedRealismImg from '/src/assets/Stylized Realism.png';
-import digitalPainterlyImg from '/src/assets/Digital Painterly.png';
-import kawaiiImg from '/src/assets/Japanese Kawaii.png';
-import scandinavianImg from '/src/assets/Scandinavian Folk Art.png';
-import africanPatternImg from '/src/assets/African Patterned Illustration.png';
+// Import Art Style Images using relative paths and new filenames
+import watercolorImg from '../../assets/watercolor-theme.png';
+import pastelImg from '../../assets/pastel-theme.png';
+import pencilWashImg from '../../assets/gentle-pencil-wash.png';
+import softDigitalImg from '../../assets/soft-brush-digital.png';
+import pencilInkImg from '../../assets/pencil-sketch-ink.png';
+import goldenBooksImg from '../../assets/golden-books-style.png';
+import beatrixPotterImg from '../../assets/beatrix-potter-style.png';
+import cartoonImg from '../../assets/cartoon-2d-animation-style.png';
+import flatVectorImg from '../../assets/flat-vector-illustration.png';
+import storybookPopImg from '../../assets/storybook-pop-style.png';
+import papercutImg from '../../assets/cut-paper-collage-style.png';
+import oilPastelImg from '../../assets/oil-pastel-gouache-style.png';
+import stylizedRealismImg from '../../assets/stylized-realism.png';
+import digitalPainterlyImg from '../../assets/digital-painterly.png';
+import kawaiiImg from '../../assets/japanese-kawaii.png';
+import scandinavianImg from '../../assets/scandinavian-folk-art.png';
+import africanPatternImg from '../../assets/african-patterned-illustration.png';
 
 // Character roles
 const CHARACTER_ROLES = [
