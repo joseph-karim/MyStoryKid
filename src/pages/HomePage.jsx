@@ -136,15 +136,15 @@ function HomePage() {
             
             {/* Character Transformation Showcase */}
             <div className="flex justify-center">
-              {/* Increased container height */}
+              {/* Container with adjusted height */}
               <motion.div 
-                className="relative w-full max-w-md h-80 sm:h-96 md:h-[28rem]"
+                className="relative w-full max-w-lg h-80 sm:h-96 md:h-[28rem]"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.5 }}
               >
-                {/* Real photo frame - Position adjusted slightly */}
-                <div className="absolute left-0 top-5 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 rotate-3">
+                {/* Real photo frame - Moved further left */}
+                <div className="absolute left-0 md:left-5 top-5 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 rotate-3">
                   <img 
                     src={toddlerImage}
                     alt="Real child" 
@@ -153,42 +153,26 @@ function HomePage() {
                   <div className="absolute -bottom-2 left-0 right-0 text-center text-sm font-handwriting">Your Child</div>
                 </div>
                 
-                {/* Arrow pointing to transformation */}
+                {/* Magical Arrow - Centered, more prominent, magical emoji */}
                 <div 
-                  className="absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/4 z-20 text-4xl"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-5xl md:text-6xl text-purple-500 drop-shadow-lg"
                 >
-                  ➡️
+                  ✨
                 </div>
                 
-                {/* Transformed character frames - Position adjusted slightly */}
-                <div className="absolute right-0 top-16 z-20 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6 aspect-[3/4]">
-                  {characterStyles.map((style, index) => (
-                    <motion.div
-                      key={style.name}
-                      className="absolute inset-0 rounded overflow-hidden"
-                      initial={{ opacity: 0 }}
-                      animate={{ 
-                        opacity: currentArtStyle === index ? 1 : 0,
-                      }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      {/* Removed flex classes, rely on image sizing */}
-                      <div className={`bg-gradient-to-r ${style.color} p-3 rounded h-full`}>
-                        <img 
-                          src={style.imageUrl} 
-                          alt={`${style.name} character`} 
-                          // Use object-contain with w-full h-full
-                          className="rounded w-full h-full object-contain"
-                        />
-                        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-white font-medium bg-black/30 rounded-b">
-                          {style.name} Style
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                {/* Transformed character - Moved further right, removed rotating frame */}
+                <div className="absolute right-0 md:right-5 top-16 z-10 rounded-lg shadow-xl bg-gradient-to-br from-purple-200 to-pink-200 p-2 w-40 md:w-56 -rotate-6 aspect-[3/4]">
+                  <img 
+                    src={toddlerTransformed} 
+                    alt="Transformed Character" 
+                    className="rounded w-full h-full object-contain"
+                  />
+                  <div className="absolute bottom-1 left-0 right-0 text-center text-xs text-white font-semibold bg-black/40 rounded-b py-0.5">
+                    Storybook Hero
+                  </div>
                 </div>
-                
-                {/* Decorative elements */}
+                                
+                {/* Background blur effect */}
                 <div 
                   className="absolute -z-10 w-full h-full bg-gradient-to-r from-purple-200 to-pink-200 rounded-full blur-3xl"
                 />
@@ -197,7 +181,7 @@ function HomePage() {
           </div>
         </motion.div>
         
-        {/* Floating magical elements */}
+        {/* Static floating magical elements */}
         <div className="absolute top-20 left-10 z-0 text-5xl">✨</div>
         <div className="absolute bottom-20 right-10 z-0 text-5xl">🌟</div>
         <div className="absolute top-1/2 right-1/4 z-0 text-3xl">🌈</div>
