@@ -1,28 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toddlerImage from '../assets/toddler.jpg';
+import toddlerTransformed from '../assets/toddler transformed.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
   const characterStyles = [
     {
       name: 'Whimsical',
-      imageUrl: 'https://via.placeholder.com/400x400?text=Whimsical+Style',
+      imageUrl: toddlerTransformed,
       color: 'from-purple-500 to-pink-500'
     },
     {
       name: 'Adventure',
-      imageUrl: 'https://via.placeholder.com/400x400?text=Adventure+Style',
+      imageUrl: toddlerTransformed,
       color: 'from-blue-500 to-teal-400'
     },
     {
       name: 'Fantasy',
-      imageUrl: 'https://via.placeholder.com/400x400?text=Fantasy+Style',
+      imageUrl: toddlerTransformed,
       color: 'from-amber-500 to-red-500'
     },
     {
       name: 'Cosmic',
-      imageUrl: 'https://via.placeholder.com/400x400?text=Cosmic+Style',
+      imageUrl: toddlerTransformed,
       color: 'from-indigo-600 to-purple-600'
     }
   ];
@@ -126,7 +128,7 @@ function HomePage() {
                 {/* Real photo frame */}
                 <div className="relative z-10 rounded-lg shadow-xl bg-white p-2 w-64 rotate-3 mx-auto">
                   <img 
-                    src="https://via.placeholder.com/300x300?text=Real+Child+Photo" 
+                    src={toddlerImage}
                     alt="Real child" 
                     className="rounded w-full h-auto"
                   />
