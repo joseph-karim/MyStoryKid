@@ -9,6 +9,9 @@ import underseaQuestCover from '../assets/Undersea Quest Cover.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
+  // Store bubble sizes in state to calculate only once
+  const [bubbleSizes, setBubbleSizes] = useState([]);
+
   const characterStyles = [
     {
       name: 'Whimsical',
@@ -34,22 +37,22 @@ function HomePage() {
 
   // Pre-define fixed positions for background bubbles
   const bubblePositions = [
-    { x: '10%', y: '10%' },
-    { x: '80%', y: '15%' },
-    { x: '25%', y: '30%' },
-    { x: '70%', y: '40%' },
-    { x: '15%', y: '60%' },
-    { x: '65%', y: '70%' },
-    { x: '35%', y: '85%' },
-    { x: '85%', y: '80%' },
-    { x: '45%', y: '20%' },
-    { x: '90%', y: '40%' },
-    { x: '5%', y: '75%' },
-    { x: '40%', y: '60%' },
-    { x: '60%', y: '30%' },
-    { x: '20%', y: '45%' },
-    { x: '50%', y: '90%' },
+    { x: '10%', y: '10%' }, { x: '80%', y: '15%' }, { x: '25%', y: '30%' },
+    { x: '70%', y: '40%' }, { x: '15%', y: '60%' }, { x: '65%', y: '70%' },
+    { x: '35%', y: '85%' }, { x: '85%', y: '80%' }, { x: '45%', y: '20%' },
+    { x: '90%', y: '40%' }, { x: '5%', y: '75%' }, { x: '40%', y: '60%' },
+    { x: '60%', y: '30%' }, { x: '20%', y: '45%' }, { x: '50%', y: '90%' },
   ];
+
+  // Calculate bubble sizes once on mount
+  useEffect(() => {
+    setBubbleSizes(
+      bubblePositions.map(() => ({
+        width: `${Math.random() * 100 + 50}px`,
+        height: `${Math.random() * 100 + 50}px`
+      }))
+    );
+  }, []); // Empty dependency array ensures this runs only once
 
   // Auto-rotate art styles
   useEffect(() => {
@@ -62,7 +65,7 @@ function HomePage() {
 
   return (
     <div className="space-y-16 overflow-hidden">
-      {/* Floating Elements - Background decoration */}
+      {/* Static Background Elements */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         {bubblePositions.map((position, i) => (
           <div
@@ -75,8 +78,9 @@ function HomePage() {
             style={{
               left: position.x,
               top: position.y,
-              width: `${Math.random() * 100 + 50}px`,
-              height: `${Math.random() * 100 + 50}px`
+              // Use sizes from state
+              width: bubbleSizes[i]?.width || '50px', 
+              height: bubbleSizes[i]?.height || '50px'
             }}
           />
         ))}
@@ -132,14 +136,15 @@ function HomePage() {
             
             {/* Character Transformation Showcase */}
             <div className="flex justify-center">
+              {/* Increased container height */}
               <motion.div 
-                className="relative w-full max-w-md h-72 sm:h-80 md:h-96"
+                className="relative w-full max-w-md h-80 sm:h-96 md:h-[28rem]"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.5 }}
               >
-                {/* Real photo frame */}
-                <div className="absolute left-0 top-0 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 rotate-3">
+                {/* Real photo frame - Position adjusted slightly */}
+                <div className="absolute left-0 top-5 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 rotate-3">
                   <img 
                     src={toddlerImage}
                     alt="Real child" 
@@ -155,8 +160,8 @@ function HomePage() {
                   ➡️
                 </div>
                 
-                {/* Transformed character frames */}
-                <div className="absolute right-0 top-10 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6">
+                {/* Transformed character frames - Position adjusted slightly */}
+                <div className="absolute right-0 top-16 z-10 rounded-lg shadow-xl bg-white p-2 w-40 md:w-56 -rotate-6">
                   {characterStyles.map((style, index) => (
                     <motion.div
                       key={style.name}
@@ -167,11 +172,13 @@ function HomePage() {
                       }}
                       transition={{ duration: 0.5 }}
                     >
-                      <div className={`bg-gradient-to-r ${style.color} p-3 rounded`}>
+                      {/* Ensure container takes full height */}
+                      <div className={`bg-gradient-to-r ${style.color} p-3 rounded h-full flex flex-col`}>
                         <img 
                           src={style.imageUrl} 
                           alt={`${style.name} character`} 
-                          className="rounded w-full h-auto"
+                          // Use object-contain to prevent cropping
+                          className="rounded w-full flex-1 object-contain"
                         />
                         <div className="text-center mt-2 text-white font-medium">{style.name} Style</div>
                       </div>
