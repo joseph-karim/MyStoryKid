@@ -7,6 +7,23 @@ const mockBooks = [
     title: 'Space Adventure with John',
     status: 'draft',
     childName: 'John',
+    category: 'adventure',
+    artStyle: 'cartoon',
+    characters: [
+      {
+        id: 'char-1',
+        name: 'John',
+        role: 'main',
+        type: 'child',
+        gender: 'Boy',
+        age: '6',
+        traits: ['Curious', 'Kind', 'Adventurous'],
+        interests: ['Space', 'Animals', 'Reading'],
+        stylePreview: 'https://via.placeholder.com/300x400?text=John+in+cartoon+style',
+        artStyle: 'cartoon',
+        photoUrl: ''
+      }
+    ],
     pages: [
       {
         id: 'page-cover',
@@ -47,6 +64,23 @@ const mockBooks = [
     title: 'Emma\'s Jungle Expedition',
     status: 'purchased_digital',
     childName: 'Emma',
+    category: 'adventure',
+    artStyle: 'watercolor',
+    characters: [
+      {
+        id: 'char-2',
+        name: 'Emma',
+        role: 'main',
+        type: 'child',
+        gender: 'Girl',
+        age: '7',
+        traits: ['Brave', 'Energetic', 'Smart'],
+        interests: ['Nature', 'Animals', 'Exploring'],
+        stylePreview: 'https://via.placeholder.com/300x400?text=Emma+in+watercolor+style',
+        artStyle: 'watercolor',
+        photoUrl: ''
+      }
+    ],
     pages: [
       {
         id: 'page-cover',
@@ -90,12 +124,8 @@ const useBookStore = create((set, get) => ({
     step: 1,
     storyData: {
       category: '', // e.g., Adventure, Bedtime Story, etc.
-      childName: '',
-      childAge: '',
-      childGender: '',
-      childTraits: [],
-      childInterests: [],
-      artStyle: '',
+      bookCharacters: [], // Array of characters with roles
+      artStyle: '', // Art style shared by all characters
     },
   },
   
@@ -113,6 +143,17 @@ const useBookStore = create((set, get) => ({
       storyData: {
         ...state.wizardState.storyData,
         ...data,
+      },
+    },
+  })),
+  
+  resetWizard: () => set((state) => ({
+    wizardState: {
+      step: 1,
+      storyData: {
+        category: '',
+        bookCharacters: [],
+        artStyle: '',
       },
     },
   })),
@@ -160,6 +201,23 @@ const useBookStore = create((set, get) => ({
           title: 'Space Adventure with John',
           status: 'draft',
           childName: 'John',
+          category: 'adventure',
+          artStyle: 'cartoon',
+          characters: [
+            {
+              id: 'char-1',
+              name: 'John',
+              role: 'main',
+              type: 'child',
+              gender: 'Boy',
+              age: '6',
+              traits: ['Curious', 'Kind', 'Adventurous'],
+              interests: ['Space', 'Animals', 'Reading'],
+              stylePreview: 'https://via.placeholder.com/300x400?text=John+in+cartoon+style',
+              artStyle: 'cartoon',
+              photoUrl: ''
+            }
+          ],
           pages: [
             {
               id: 'page-cover',
@@ -183,6 +241,23 @@ const useBookStore = create((set, get) => ({
           title: 'Emma\'s Jungle Expedition',
           status: 'purchased_digital',
           childName: 'Emma',
+          category: 'adventure',
+          artStyle: 'watercolor',
+          characters: [
+            {
+              id: 'char-2',
+              name: 'Emma',
+              role: 'main',
+              type: 'child',
+              gender: 'Girl',
+              age: '7',
+              traits: ['Brave', 'Energetic', 'Smart'],
+              interests: ['Nature', 'Animals', 'Exploring'],
+              stylePreview: 'https://via.placeholder.com/300x400?text=Emma+in+watercolor+style',
+              artStyle: 'watercolor',
+              photoUrl: ''
+            }
+          ],
           pages: [
             {
               id: 'page-cover',
@@ -255,81 +330,19 @@ const useBookStore = create((set, get) => ({
     }
   },
   
-  generateImage: async (prompt, style) => {
+  // Generate an image for a page (mocked for now)
+  generatePageImage: async (prompt, style) => {
     set({ isLoading: true });
     
     try {
-      // This would be an API call to DALL-E in a real app
+      // This would be an API call to DALL-E or Stable Diffusion in a real app
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2500));
       
-      // Mock response - in a real app, this would be the URL of the generated image
-      return `https://via.placeholder.com/600x600?text=${encodeURIComponent(prompt.substring(0, 20))}`;
+      // Mock response - just returns a placeholder
+      return `https://via.placeholder.com/600x400?text=${encodeURIComponent(prompt.substring(0, 20))}`;
     } catch (error) {
       console.error('Error generating image:', error);
-      throw error;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  
-  // Order related functions (mocked for now)
-  placeDigitalOrder: async (bookId) => {
-    set({ isLoading: true });
-    
-    try {
-      // This would involve Stripe in a real app
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Update book status
-      set((state) => ({
-        books: state.books.map((book) => 
-          book.id === bookId 
-            ? { ...book, status: 'purchased_digital' } 
-            : book
-        ),
-        currentBook: state.currentBook?.id === bookId 
-          ? { ...state.currentBook, status: 'purchased_digital' }
-          : state.currentBook,
-      }));
-      
-      return { success: true, orderId: `order-${Date.now()}` };
-    } catch (error) {
-      console.error('Error placing digital order:', error);
-      throw error;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  
-  placePrintOrder: async (bookId, shippingInfo) => {
-    set({ isLoading: true });
-    
-    try {
-      // This would involve Stripe and Lulu Direct in a real app
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update book status
-      set((state) => ({
-        books: state.books.map((book) => 
-          book.id === bookId 
-            ? { ...book, status: 'ordered_print' } 
-            : book
-        ),
-        currentBook: state.currentBook?.id === bookId 
-          ? { ...state.currentBook, status: 'ordered_print' }
-          : state.currentBook,
-      }));
-      
-      return { 
-        success: true, 
-        orderId: `print-order-${Date.now()}`,
-        estimatedDelivery: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-    } catch (error) {
-      console.error('Error placing print order:', error);
       throw error;
     } finally {
       set({ isLoading: false });

@@ -1,192 +1,213 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 
 // This component simulates the AI generation process
 // In a real implementation, it would make API calls to OpenAI for text and images
 function GeneratingStep() {
-  const { wizardState, updateStoryData, setCurrentBook } = useBookStore();
+  const { wizardState, addBook } = useBookStore();
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('Preparing your story...');
+  const [status, setStatus] = useState('initializing');
   const navigate = useNavigate();
   
+  // Simulate generating the book
   useEffect(() => {
-    // In a real implementation, this would be replaced with actual API calls
-    // to generate text and images based on the wizard data
+    const steps = [
+      { status: 'initializing', message: 'Setting up your story...', time: 1000 },
+      { status: 'creating-characters', message: 'Creating characters...', time: 3000 },
+      { status: 'building-plot', message: 'Developing the plot...', time: 3000 },
+      { status: 'drawing-illustrations', message: 'Drawing illustrations...', time: 3000 },
+      { status: 'finalizing', message: 'Finalizing your book...', time: 1000 },
+    ];
+
+    let currentStep = 0;
+    const totalSteps = steps.length;
+
+    const interval = setInterval(() => {
+      if (currentStep < totalSteps) {
+        setStatus(steps[currentStep].status);
+        setProgress(Math.floor((currentStep / (totalSteps - 1)) * 100));
+        currentStep++;
+      } else {
+        clearInterval(interval);
+        handleBookCreated();
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleBookCreated = () => {
+    // Get main character name
+    const mainCharacter = wizardState.storyData.bookCharacters.find(
+      character => character.role === 'main'
+    );
     
-    const simulateGeneration = async () => {
-      // Step 1: Generate story text
-      setStatus('Creating the story text...');
-      await simulateProgress(0, 30);
-      
-      // Step 2: Generate character descriptions
-      setStatus('Developing characters...');
-      await simulateProgress(30, 50);
-      
-      // Step 3: Generate images
-      setStatus('Creating illustrations...');
-      await simulateProgress(50, 90);
-      
-      // Step 4: Finalize book
-      setStatus('Finalizing your book...');
-      await simulateProgress(90, 100);
-      
-      // Create a mock book object
-      const mockBook = createMockBook(wizardState.storyData);
-      
-      // Update the store with the new book
-      setCurrentBook(mockBook);
-      
-      // Navigate to the book editor
-      navigate(`/edit/${mockBook.id}`);
-    };
+    const childName = mainCharacter ? mainCharacter.name : 'Child';
     
-    simulateGeneration();
-  }, [wizardState.storyData, setCurrentBook, navigate, updateStoryData]);
-  
-  // Helper function to simulate progress over time
-  const simulateProgress = (from, to) => {
-    return new Promise((resolve) => {
-      const duration = (to - from) * 50; // milliseconds per percentage point
-      const startTime = Date.now();
-      
-      const interval = setInterval(() => {
-        const elapsedTime = Date.now() - startTime;
-        const newProgress = from + (elapsedTime / duration) * (to - from);
-        
-        if (newProgress >= to) {
-          setProgress(to);
-          clearInterval(interval);
-          resolve();
-        } else {
-          setProgress(newProgress);
-        }
-      }, 50);
-    });
-  };
-  
-  // Helper function to create a mock book based on user inputs
-  const createMockBook = (storyData) => {
-    const { category, childName, childAge, childGender, childTraits, childInterests, artStyle } = storyData;
-    
-    const childPronouns = {
-      boy: { subject: 'he', object: 'him', possessive: 'his' },
-      girl: { subject: 'she', object: 'her', possessive: 'her' },
-      neutral: { subject: 'they', object: 'them', possessive: 'their' },
-    }[childGender];
-    
-    // Generate a title based on the selected category and child's name
-    let title;
-    switch (category) {
-      case 'adventure':
-        title = `${childName}'s Epic Adventure`;
-        break;
-      case 'bedtime':
-        title = `${childName}'s Dreamy Night`;
-        break;
-      case 'learning':
-        title = `${childName} Learns the ABCs`;
-        break;
-      case 'birthday':
-        title = `${childName}'s Birthday Surprise`;
-        break;
-      case 'fantasy':
-        title = `${childName} and the Magical Quest`;
-        break;
-      case 'custom':
-        title = `${childName}'s Special Story`;
-        break;
-      default:
-        title = `${childName}'s Storybook`;
-    }
-    
-    // Create mock pages based on the selected category
-    // In a real app, these would be generated by AI
-    const pages = [];
-    
-    // Cover page
-    pages.push({
-      id: 'page-cover',
-      type: 'cover',
-      text: title,
-      imagePrompt: `A ${artStyle} style illustration for a children's book cover showing a child named ${childName} who is ${childTraits.join(', ')} and likes ${childInterests.join(', ')}`,
-      imageUrl: 'https://via.placeholder.com/600x800?text=Cover+Image',
-    });
-    
-    // Title page
-    pages.push({
-      id: 'page-title',
-      type: 'title',
-      text: `${title}\n\nA story about ${childName}`,
-      imagePrompt: '',
-      imageUrl: '',
-    });
-    
-    // Content pages - just placeholders, would be AI-generated in production
-    for (let i = 1; i <= 8; i++) {
-      pages.push({
-        id: `page-${i}`,
-        type: 'content',
-        text: `This is page ${i} of ${childName}'s story. In a real application, this text would be generated by AI based on the child's name, age, traits, interests, and the selected story category.`,
-        imagePrompt: `A ${artStyle} style illustration for page ${i} of a children's book about ${childName}, who is ${childAge} years old and likes ${childInterests[0] || 'adventures'}`,
-        imageUrl: `https://via.placeholder.com/600x400?text=Page+${i}+Illustration`,
-      });
-    }
-    
-    // Back cover
-    pages.push({
-      id: 'page-back',
-      type: 'back-cover',
-      text: `The End\n\nCreated with love for ${childName}`,
-      imagePrompt: '',
-      imageUrl: '',
-    });
-    
-    // Return the mock book object
-    return {
+    // Create a new book
+    const newBook = {
       id: `book-${Date.now()}`,
-      title,
-      pages,
+      title: generateTitle(wizardState.storyData.category, childName),
       status: 'draft',
       childName,
-      childAge,
-      childGender,
-      childPronouns,
-      childTraits,
-      childInterests,
-      category,
-      artStyle,
+      artStyle: wizardState.storyData.artStyle,
+      characters: wizardState.storyData.bookCharacters,
+      category: wizardState.storyData.category,
+      pages: [
+        {
+          id: 'page-cover',
+          type: 'cover',
+          text: generateTitle(wizardState.storyData.category, childName),
+          imageUrl: 'https://via.placeholder.com/600x800?text=Generated+Cover',
+        },
+        {
+          id: 'page-title',
+          type: 'title',
+          text: `${generateTitle(wizardState.storyData.category, childName)}\n\nA story about ${childName}`,
+          imageUrl: '',
+        },
+        {
+          id: 'page-1',
+          type: 'content',
+          text: generateFirstPageText(wizardState.storyData.category, childName),
+          imageUrl: 'https://via.placeholder.com/600x400?text=Page+1+Illustration',
+        },
+        {
+          id: 'page-2',
+          type: 'content',
+          text: 'The adventure continues...',
+          imageUrl: 'https://via.placeholder.com/600x400?text=Page+2+Illustration',
+        },
+        {
+          id: 'page-back',
+          type: 'back-cover',
+          text: 'The End\n\nCreated with love for ' + childName,
+          imageUrl: '',
+        }
+      ],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    
+    // Add the book to the store
+    addBook(newBook);
+    
+    // Navigate to edit page
+    navigate(`/edit/${newBook.id}`);
+  };
+  
+  // Helper to generate a title based on category and child name
+  const generateTitle = (category, name) => {
+    switch (category) {
+      case 'adventure':
+        return `${name}'s Big Adventure`;
+      case 'bedtime':
+        return `${name}'s Sleepy Time Journey`;
+      case 'learning':
+        return `${name} Learns the ABCs`;
+      case 'birthday':
+        return `${name}'s Birthday Surprise`;
+      case 'fantasy':
+        return `${name} and the Magic Forest`;
+      case 'custom':
+        return `${name}'s Special Story`;
+      default:
+        return `${name}'s Storybook`;
+    }
+  };
+  
+  // Helper to generate first page text
+  const generateFirstPageText = (category, name) => {
+    switch (category) {
+      case 'adventure':
+        return `${name} was always looking for adventure. Today was going to be the start of something amazing.`;
+      case 'bedtime':
+        return `As the stars began to twinkle in the night sky, ${name} snuggled into bed, ready for a magical journey through dreamland.`;
+      case 'learning':
+        return `${name} loved learning new things. Today, ${name} was excited to explore the wonderful world of letters.`;
+      case 'birthday':
+        return `It was ${name}'s birthday! The sun seemed to shine extra bright on this special day.`;
+      case 'fantasy':
+        return `${name} discovered a hidden path behind the old oak tree. It sparkled with tiny lights that danced in the air.`;
+      default:
+        return `Once upon a time, there was a child named ${name} who was about to begin an amazing journey.`;
+    }
   };
   
   return (
-    <div className="py-8">
-      <div className="text-center mb-12">
-        <h2 className="text-2xl font-bold">Creating Your Storybook</h2>
-        <p className="text-gray-600 mt-2">
-          Our AI is working its magic based on your inputs
-        </p>
-      </div>
+    <div className="text-center space-y-6 py-8">
+      <h2 className="text-2xl font-bold">Creating Your Story</h2>
       
       <div className="max-w-md mx-auto">
-        <div className="mb-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-sm font-medium text-gray-700">{status}</span>
-            <span className="text-sm font-medium text-gray-700">{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
-            <div 
-              className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-in-out"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
+        <div className="mb-2 flex justify-between text-sm">
+          <span>Progress</span>
+          <span>{progress}%</span>
         </div>
+        <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+      
+      <div className="my-8">
+        {status === 'initializing' && (
+          <div className="flex items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-lg">Setting up your story...</span>
+          </div>
+        )}
         
-        <div className="text-center text-sm text-gray-500 italic mt-4">
-          <p>This could take a minute or two. We're carefully crafting a unique story just for {wizardState.storyData.childName}.</p>
-        </div>
+        {status === 'creating-characters' && (
+          <div className="flex items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-lg">Creating characters based on your selections...</span>
+          </div>
+        )}
+        
+        {status === 'building-plot' && (
+          <div className="flex items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-lg">Crafting a unique storyline for your book...</span>
+          </div>
+        )}
+        
+        {status === 'drawing-illustrations' && (
+          <div className="flex items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-lg">Creating illustrations in {wizardState.storyData.artStyle} style...</span>
+          </div>
+        )}
+        
+        {status === 'finalizing' && (
+          <div className="flex items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-lg">Finalizing your book...</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+        <p className="text-blue-700">
+          We're creating your personalized book. This may take a minute or two...
+        </p>
       </div>
     </div>
   );

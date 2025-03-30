@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useCharacterStore } from '../store';
 
-function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
+function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [currentCharacter, setCurrentCharacter] = useState(null);
@@ -21,7 +21,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
     interests: [],
     photoUrl: '',
     stylePreview: null,
-    artStyle: 'cartoon'
+    artStyle: forcedArtStyle || 'cartoon'
   });
   
   // Character types
@@ -67,10 +67,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
     
     // Simulate API call delay
     setTimeout(() => {
-      const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${characterData.artStyle}+style`;
+      // Use the forced art style if provided, otherwise use the one from character data
+      const styleToUse = forcedArtStyle || characterData.artStyle;
+      const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${styleToUse}+style`;
       
       setCharacterData(prev => ({
         ...prev,
+        artStyle: styleToUse,
         stylePreview: stylePreviewUrl
       }));
       
@@ -83,14 +86,27 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
   const handleSaveCharacter = () => {
     // If we're using an existing character
     if (currentCharacter) {
-      onComplete(currentCharacter);
+      // If we have a forced art style, update the character style
+      if (forcedArtStyle && currentCharacter.artStyle !== forcedArtStyle) {
+        const updatedCharacter = {
+          ...currentCharacter,
+          artStyle: forcedArtStyle,
+          // In a real app, you would regenerate the style preview here
+          stylePreview: `https://via.placeholder.com/300x400?text=${currentCharacter.name}+in+${forcedArtStyle}+style`
+        };
+        onComplete(updatedCharacter);
+      } else {
+        onComplete(currentCharacter);
+      }
       return;
     }
     
     // Otherwise save the new character
     const newCharacter = {
       ...characterData,
-      id: characterData.id || crypto.randomUUID()
+      id: characterData.id || crypto.randomUUID(),
+      // Ensure we use the forced art style if provided
+      artStyle: forcedArtStyle || characterData.artStyle
     };
     
     addCharacter(newCharacter);
@@ -198,11 +214,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
                           name="characterType"
                           value={type.id}
                           checked={characterData.type === type.id}
-                          onChange={() => setCharacterData(prev => ({ ...prev, type: type.id }))}
+                          onChange={() => setCharacterData({...characterData, type: type.id})}
                           className="sr-only"
                         />
-                        <div className="font-medium">{type.name}</div>
-                        <div className="text-sm text-gray-500">{type.description}</div>
+                        <div className="flex items-center">
+                          <span className="font-medium">{type.name}</span>
+                          <span className="ml-2 text-sm text-gray-600">{type.description}</span>
+                        </div>
                       </label>
                     ))}
                   </div>
@@ -211,49 +229,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
               
               <div>
                 <div className="mb-4">
-                  <label htmlFor="name" className="block text-gray-700 font-medium mb-2">Name</label>
-                  <input
-                    id="name"
+                  <label className="block text-gray-700 font-medium mb-2">Name</label>
+                  <input 
                     type="text"
                     value={characterData.name}
-                    onChange={(e) => setCharacterData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setCharacterData({...characterData, name: e.target.value})}
+                    className="w-full border border-gray-300 rounded p-2"
                     placeholder="Enter character name"
                   />
                 </div>
                 
-                <div className="mb-4">
-                  <label htmlFor="age" className="block text-gray-700 font-medium mb-2">Age</label>
-                  <input
-                    id="age"
-                    type="text"
-                    value={characterData.age}
-                    onChange={(e) => setCharacterData(prev => ({ ...prev, age: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="How old is this character?"
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2">Gender</label>
-                  <div className="flex gap-4">
-                    {['Boy', 'Girl', 'Other'].map(gender => (
-                      <label key={gender} className="flex items-center">
-                        <input
-                          type="radio"
-                          checked={characterData.gender === gender}
-                          onChange={() => setCharacterData(prev => ({ ...prev, gender: gender }))}
-                          className="mr-2"
-                        />
-                        {gender}
-                      </label>
-                    ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="mb-4">
+                    <label className="block text-gray-700 font-medium mb-2">Age</label>
+                    <input 
+                      type="text"
+                      value={characterData.age}
+                      onChange={(e) => setCharacterData({...characterData, age: e.target.value})}
+                      className="w-full border border-gray-300 rounded p-2"
+                      placeholder="Age"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-gray-700 font-medium mb-2">Gender</label>
+                    <select
+                      value={characterData.gender}
+                      onChange={(e) => setCharacterData({...characterData, gender: e.target.value})}
+                      className="w-full border border-gray-300 rounded p-2"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Boy">Boy</option>
+                      <option value="Girl">Girl</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="mt-6 flex justify-between">
+            <div className="flex justify-between mt-6">
               <button
                 onClick={() => setCurrentStep(1)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
@@ -261,116 +276,144 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
                 Back
               </button>
               <button
-                onClick={() => setCurrentStep(3)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                disabled={!characterData.name}
+                onClick={() => {
+                  if (characterData.name.trim() === '') {
+                    alert('Please enter a character name');
+                    return;
+                  }
+                  setCurrentStep(3);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Next
+                Continue
               </button>
             </div>
           </div>
         )}
         
-        {/* Step 3: Photo upload and style selection */}
+        {/* Step 3: Photo and style selection */}
         {currentStep === 3 && (
           <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Photo upload */}
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Upload Photo</label>
+            <div className="mb-6">
+              <h3 className="font-medium mb-2">Upload a Photo (Optional)</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This will help generate a character that looks like your child
+              </p>
+              
+              <div className="flex items-center space-x-4">
                 <div 
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
+                  className="h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
+                  onClick={() => fileInputRef.current.click()}
                 >
                   {photoPreview ? (
-                    <div className="mb-2">
-                      <img 
-                        src={photoPreview} 
-                        alt="Character preview" 
-                        className="max-h-48 mx-auto rounded"
-                      />
-                      <button 
-                        className="mt-2 text-sm text-blue-600 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPhotoPreview(null);
-                          setCharacterData(prev => ({ ...prev, photoUrl: '' }));
-                        }}
-                      >
-                        Remove photo
-                      </button>
-                    </div>
+                    <img 
+                      src={photoPreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover rounded-lg"
+                    />
                   ) : (
-                    <div className="py-8">
-                      <svg className="w-12 h-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <div className="text-center p-4">
+                      <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      <p className="mt-2 text-sm text-gray-500">Click to upload a photo</p>
-                      <p className="text-xs text-gray-400">This will help create a personalized character</p>
+                      <span className="block text-xs mt-1">Upload Photo</span>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
+                </div>
+                
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handlePhotoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                <div>
+                  <button
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 mb-2 w-full"
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    Select Photo
+                  </button>
+                  
+                  {photoPreview && (
+                    <button
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 w-full"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setCharacterData({...characterData, photoUrl: ''});
+                      }}
+                    >
+                      Remove Photo
+                    </button>
+                  )}
                 </div>
               </div>
-              
-              {/* Art style selection */}
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Select Art Style</label>
-                <div className="grid grid-cols-2 gap-2">
+            </div>
+            
+            {/* Art Style Selection - only shown if forcedArtStyle is not provided */}
+            {!forcedArtStyle && (
+              <div className="mb-6">
+                <h3 className="font-medium mb-2">Character Style</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {ART_STYLES.map(style => (
                     <div
                       key={style.id}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        characterData.artStyle === style.id
-                          ? 'border-blue-500 bg-blue-50'
+                      onClick={() => setCharacterData({...characterData, artStyle: style.id})}
+                      className={`border rounded-lg p-2 cursor-pointer ${
+                        characterData.artStyle === style.id 
+                          ? 'border-blue-500 ring-2 ring-blue-200' 
                           : 'border-gray-200 hover:border-blue-300'
                       }`}
-                      onClick={() => setCharacterData(prev => ({ ...prev, artStyle: style.id }))}
                     >
-                      <div className="aspect-square mb-2 bg-gray-100 rounded overflow-hidden">
-                        <img
+                      <div className="aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
+                        <img 
                           src={style.previewUrl}
                           alt={style.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="text-center font-medium">{style.name}</div>
+                      <div className="text-center text-sm">{style.name}</div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+            )}
             
-            <div className="mt-6">
-              <button
-                onClick={generateCharacterPreview}
-                disabled={isGenerating}
-                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <div className="flex justify-center items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating Character...
+            {/* If forcedArtStyle is provided, show a message */}
+            {forcedArtStyle && (
+              <div className="mb-6">
+                <h3 className="font-medium mb-2">Character Style</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  All characters in your story will use the same style.
+                </p>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden mr-3">
+                      {/* This would be a preview of the forced style */}
+                    </div>
+                    <div>
+                      <p className="font-medium capitalize">{forcedArtStyle} Style</p>
+                      <p className="text-sm text-gray-600">Selected for all characters in this story</p>
+                    </div>
                   </div>
-                ) : 'Generate Character Preview'}
-              </button>
-            </div>
+                </div>
+              </div>
+            )}
             
-            <div className="mt-6 flex justify-between">
+            <div className="flex justify-between">
               <button
                 onClick={() => setCurrentStep(2)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
               >
                 Back
+              </button>
+              <button
+                onClick={generateCharacterPreview}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                {isGenerating ? 'Generating...' : 'Generate Preview'}
               </button>
             </div>
           </div>
@@ -378,62 +421,45 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [] }) {
         
         {/* Step 4: Character preview */}
         {currentStep === 4 && (
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                {/* Original photo (if available) */}
-                {(photoPreview || currentCharacter?.photoUrl) && (
-                  <div className="absolute -left-4 -top-4 w-24 h-24 rounded-lg overflow-hidden border-2 border-white shadow-lg">
-                    <img 
-                      src={photoPreview || currentCharacter?.photoUrl} 
-                      alt="Original photo" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                
-                {/* Generated/selected character */}
-                <div className="w-64 h-80 rounded-lg overflow-hidden border shadow-xl">
-                  <img 
-                    src={currentCharacter?.stylePreview || characterData.stylePreview} 
-                    alt={currentCharacter?.name || characterData.name} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                {/* Sparkle effects */}
-                <div className="absolute -right-3 -top-3 text-3xl">✨</div>
-                <div className="absolute -left-2 -bottom-1 text-2xl">🌟</div>
+          <div>
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-48 h-64 bg-gray-200 rounded-lg overflow-hidden mb-4">
+                <img 
+                  src={currentCharacter ? currentCharacter.stylePreview : characterData.stylePreview || 'https://via.placeholder.com/192x256'} 
+                  alt="Character Preview"
+                  className="w-full h-full object-cover"
+                />
               </div>
-            </div>
-            
-            <h3 className="text-xl font-bold text-blue-600 mb-1">
-              {currentCharacter?.name || characterData.name}
-            </h3>
-            
-            <p className="text-gray-600 mb-4">
-              {currentCharacter?.age || characterData.age} year old {currentCharacter?.gender || characterData.gender}
-            </p>
-            
-            <div className="mb-6">
-              <p className="text-gray-600">This character will appear in your story!</p>
-            </div>
-            
-            <div className="flex justify-center gap-4">
-              {!currentCharacter && (
-                <button
-                  onClick={() => setCurrentStep(2)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                >
-                  Edit Character
-                </button>
-              )}
               
+              <h3 className="text-xl font-semibold">
+                {currentCharacter ? currentCharacter.name : characterData.name}
+              </h3>
+              <p className="text-gray-600">
+                {currentCharacter 
+                  ? `${currentCharacter.age} year old ${currentCharacter.gender}` 
+                  : `${characterData.age} year old ${characterData.gender}`
+                }
+              </p>
+              <p className="text-sm text-gray-500 capitalize mt-1">
+                {currentCharacter 
+                  ? `${currentCharacter.type} character in ${forcedArtStyle || currentCharacter.artStyle} style` 
+                  : `${characterData.type} character in ${forcedArtStyle || characterData.artStyle} style`
+                }
+              </p>
+            </div>
+            
+            <div className="flex justify-between">
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+              >
+                Back
+              </button>
               <button
                 onClick={handleSaveCharacter}
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full hover:opacity-90"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
-                Add to Story
+                Save Character
               </button>
             </div>
           </div>
