@@ -495,6 +495,22 @@ function CharactersStep() {
     );
   };
 
+  // Make sure the style selection handler is properly defined
+  const handleStyleSelect = (styleCode) => {
+    console.log("Style selected:", styleCode);
+    setArtStyleCode(styleCode);
+    setError(''); // Clear any errors when a style is selected
+    
+    // If it's the custom style, make sure the textarea is enabled
+    if (styleCode === 'custom') {
+      // Focus on the custom style textarea after a brief delay
+      setTimeout(() => {
+        const textarea = document.querySelector('textarea[placeholder*="Vibrant watercolor"]');
+        if (textarea) textarea.focus();
+      }, 100);
+    }
+  };
+
   // --- NEW: Start Image Generation ---
   const handleGeneratePreview = async (characterId) => {
     setError(''); // Clear general errors
@@ -778,8 +794,8 @@ function CharactersStep() {
       ) : (
         <>
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">Add Characters & Choose Style</h2>
-            <p className="text-gray-600">Define who's in the story and the overall illustration style.</p>
+            <h2 className="text-2xl font-bold">Choose Style & Add Characters</h2>
+            <p className="text-gray-600">First select your art style, then add characters to your story.</p>
           </div>
           
           {error && (
@@ -793,9 +809,32 @@ function CharactersStep() {
             </div>
           )}
 
-          {/* Characters List */}
+          {/* Art Style Selection - MOVED TO FIRST POSITION */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold mb-4">1. Choose Art Style</h3>
+            <p className="text-gray-600 mb-4">Select the visual style for all illustrations in your story.</p>
+            
+            {styleFetchError && (
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
+                <p>Error loading art styles. You can continue with a custom style description.</p>
+                <p className="text-xs">{styleFetchError}</p>
+              </div>
+            )}
+            
+            {isLoadingStyles ? (
+              <div className="flex justify-center my-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <>
+                {renderArtStyles()}
+              </>
+            )}
+          </div>
+
+          {/* Characters List - MOVED TO SECOND POSITION */}
           <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">Story Characters</h3>
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">2. Add Story Characters</h3>
               {/* Privacy Notice - Moved to be more prominent */}
                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-start">
                    <span className="text-2xl mr-3">🔒</span> 
@@ -827,40 +866,20 @@ function CharactersStep() {
               ))}
             </div>
           </div>
-          
-          {/* Art Style Selection */}
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4">Art Style</h3>
-            
-            {styleFetchError && (
-              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
-                <p>Error loading art styles. You can continue with a custom style description.</p>
-                <p className="text-xs">{styleFetchError}</p>
-              </div>
-            )}
-            
-            {isLoadingStyles ? (
-              <div className="flex justify-center my-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-              </div>
-            ) : (
-              <>
-                {renderArtStyles()}
-              </>
-            )}
-          </div>
-
+  
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
-            <button onClick={handleBack} className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+          <div className="flex justify-between pt-4 mt-6 border-t border-gray-200">
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-100"
+            >
               Back
             </button>
-            <button 
-              onClick={handleContinue} 
-              disabled={isLoadingStyles}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            <button
+              onClick={handleContinue}
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700"
             >
-              Continue to Story Generation
+              Continue to Story Details
             </button>
           </div>
         </>
