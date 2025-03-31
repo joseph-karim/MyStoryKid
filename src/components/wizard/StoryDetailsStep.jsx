@@ -180,542 +180,368 @@ function StoryDetailsStep() {
   // Initialize formData with default values if not in wizardState
   const [formData, setFormData] = useState({
     ...wizardState.storyData,
-    selectedThemes: wizardState.storyData.selectedThemes || [],
-    customTheme: wizardState.storyData.customTheme || ''
+    title: wizardState.storyData.title || '',
+    storyType: wizardState.storyData.storyType || 'standard',
+    ageRange: wizardState.storyData.ageRange || '4-8',
+    narrativeStyle: wizardState.storyData.narrativeStyle || 'third_person_limited',
+    toneStyle: wizardState.storyData.toneStyle || 'playful',
+    mainChallengePlot: wizardState.storyData.mainChallengePlot || '',
+    customMainChallenge: wizardState.storyData.customMainChallenge || '',
+    desiredEnding: wizardState.storyData.desiredEnding || '',
+    customEnding: wizardState.storyData.customEnding || '',
+    rhymeScheme: wizardState.storyData.rhymeScheme || 'AABB',
+    wordCount: wizardState.storyData.wordCount || 500,
+    specificRequests: wizardState.storyData.specificRequests || '',
   });
   
   const [error, setError] = useState('');
   
   // New state variables for custom inputs
-  const [isCustomTheme, setIsCustomTheme] = useState(!!formData.customTheme);
-  const [isCustomChallenge, setIsCustomChallenge] = useState(formData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === formData.mainChallengePlot));
-  const [isCustomEnding, setIsCustomEnding] = useState(formData.desiredEnding && !endingOptions.some(o => o.value === formData.desiredEnding));
+  const [isCustomChallenge, setIsCustomChallenge] = useState(formData.mainChallengePlot === 'custom' || (formData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === formData.mainChallengePlot)));
+  const [isCustomEnding, setIsCustomEnding] = useState(formData.desiredEnding === 'custom' || (formData.desiredEnding && !endingOptions.some(o => o.value === formData.desiredEnding)));
 
   // Update local state if global state changes (e.g., navigating back)
   useEffect(() => {
     setFormData({
       ...wizardState.storyData,
-      selectedThemes: wizardState.storyData.selectedThemes || [],
-      customTheme: wizardState.storyData.customTheme || ''
+      title: wizardState.storyData.title || '',
+      storyType: wizardState.storyData.storyType || 'standard',
+      ageRange: wizardState.storyData.ageRange || '4-8',
+      narrativeStyle: wizardState.storyData.narrativeStyle || 'third_person_limited',
+      toneStyle: wizardState.storyData.toneStyle || 'playful',
+      mainChallengePlot: wizardState.storyData.mainChallengePlot || '',
+      customMainChallenge: wizardState.storyData.customMainChallenge || '',
+      desiredEnding: wizardState.storyData.desiredEnding || '',
+      customEnding: wizardState.storyData.customEnding || '',
+      rhymeScheme: wizardState.storyData.rhymeScheme || 'AABB',
+      wordCount: wizardState.storyData.wordCount || 500,
+      specificRequests: wizardState.storyData.specificRequests || '',
     });
     
     // Check if we need to set the custom flags based on data
-    setIsCustomTheme(!!wizardState.storyData.customTheme);
-    setIsCustomChallenge(wizardState.storyData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === wizardState.storyData.mainChallengePlot));
-    setIsCustomEnding(wizardState.storyData.desiredEnding && !endingOptions.some(o => o.value === wizardState.storyData.desiredEnding));
+    setIsCustomChallenge(wizardState.storyData.mainChallengePlot === 'custom' || (wizardState.storyData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === wizardState.storyData.mainChallengePlot)));
+    setIsCustomEnding(wizardState.storyData.desiredEnding === 'custom' || (wizardState.storyData.desiredEnding && !endingOptions.some(o => o.value === wizardState.storyData.desiredEnding)));
   }, [wizardState.storyData]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type } = e.target;
     
-    // Handle theme checkboxes
-    if (name.startsWith('theme_')) {
-      const themeValue = name.replace('theme_', '');
-      
-      if (checked) {
-        // Add theme to selectedThemes array
-        setFormData(prev => ({
-          ...prev,
-          selectedThemes: [...prev.selectedThemes, themeValue]
-        }));
-      } else {
-        // Remove theme from selectedThemes array
-        setFormData(prev => ({
-          ...prev,
-          selectedThemes: prev.selectedThemes.filter(theme => theme !== themeValue)
-        }));
-      }
-      return;
-    }
-    
-    // Handle custom theme toggle
-    if (name === 'enableCustomTheme') {
-      setIsCustomTheme(checked);
-      if (!checked) {
-        // If unchecking custom theme, clear the custom theme value
-        setFormData(prev => ({
-          ...prev,
-          customTheme: ''
-        }));
-      }
-      return;
-    }
-    
-    // Handle custom theme text input
-    if (name === 'customTheme') {
-      setFormData(prev => ({
-        ...prev,
-        customTheme: value
-      }));
-      return;
-    }
-    
-    // Handle regular form inputs
-    // Ensure number inputs are stored as numbers
-    const newValue = type === 'checkbox' ? checked : type === 'number' ? parseInt(value, 10) || 0 : value;
-    
-    // Handle dropdown changes that might affect custom fields
+    // Special handling for select inputs that toggle custom fields
     if (name === 'mainChallengePlot') {
       setIsCustomChallenge(value === 'custom');
     } else if (name === 'desiredEnding') {
       setIsCustomEnding(value === 'custom');
     }
     
-    // Update local state only (not global state)
     setFormData(prev => ({
       ...prev,
-      [name]: newValue,
+      [name]: value
     }));
   };
 
   const handleBack = () => {
-    // Update global state before navigating
-    updateStoryData({
-      ...formData,
-      // Generate a combined coreTheme string for backward compatibility
-      coreTheme: formData.selectedThemes.length > 0 
-        ? formData.selectedThemes.join(', ') 
-        : formData.customTheme || ''
-    });
-    
-    setWizardStep(3); // Go back to CharactersStep
+    setWizardStep(3); // Go back to Characters step
   };
 
   const handleContinue = () => {
-    setError(''); // Clear previous errors
-    
-    // Basic validation (can be expanded)
-    if (formData.selectedThemes.length === 0 && !formData.customTheme && formData.storyType !== 'board_book') {
-      setError('Please select at least one theme or enter a custom theme for the story.');
-      return;
-    }
-    
-    if (!formData.mainChallengePlot && formData.storyType !== 'board_book') {
-      setError('Please select or describe the Main Challenge or Plot for the story.');
-      return;
-    }
-    
-    if (formData.storyType === 'board_book' && !formData.coreConcept) {
-      setError('Please specify the Core Concept for the board book (e.g., Colors, Animals).');
-      return;
-    }
-    
-    if (formData.storyType === 'board_book' && !formData.keyObjectsActions) {
-      setError('Please list the Key Objects/Actions for the board book.');
+    // Validate required fields
+    if (!formData.title) {
+      setError('Please enter a title for your story');
       return;
     }
 
-    // Update global state only when continuing to next step
-    updateStoryData({
-      ...formData,
-      // Generate a combined coreTheme string for backward compatibility
-      coreTheme: formData.selectedThemes.length > 0 
-        ? formData.selectedThemes.join(', ') 
-        : formData.customTheme || ''
-    });
+    if (!formData.mainChallengePlot) {
+      setError('Please select a main challenge or plot for your story');
+      return;
+    }
+
+    if (isCustomChallenge && !formData.customMainChallenge) {
+      setError('Please describe your custom challenge');
+      return;
+    }
+
+    if (!formData.desiredEnding) {
+      setError('Please select a desired ending for your story');
+      return;
+    }
+
+    if (isCustomEnding && !formData.customEnding) {
+      setError('Please describe your custom ending');
+      return;
+    }
+
+    // All validation passed, update store with form data
+    updateStoryData(formData);
     
-    setWizardStep(5); // Proceed to SummaryStep
+    // Move to next step (Summary)
+    setWizardStep(5);
   };
 
-  // Helper component for form fields to reduce repetition
-  const FormField = ({ label, name, children, helpText, required }) => (
-    <div className="mb-4">
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      {children}
-      {helpText && <p className="text-xs text-gray-500 mt-1">{helpText}</p>}
-    </div>
-  );
-
-  // Helper to check if a theme is selected
-  const isThemeSelected = (themeValue) => {
-    return formData.selectedThemes.includes(themeValue);
-  };
+  // Show rhyming scheme options only for rhyming story type
+  const showRhymeOptions = formData.storyType === 'rhyming';
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-      className="space-y-6"
-    >
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Story Details</h2>
-        <p className="text-gray-600">Help us craft the perfect narrative by providing more details.</p>
-      </div>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold mb-4">Story Details</h2>
+      <p className="text-gray-600 mb-6">
+        Let's add some details to your story. These will help us generate a story that's just right for you.
+      </p>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+      <div className="space-y-6">
+        {/* Title */}
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            Story Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            placeholder="Enter a title for your story"
+          />
+        </div>
+
         {/* Story Type */}
-        <FormField label="Type of Story" name="storyType" required>
+        <div>
+          <label htmlFor="storyType" className="block text-sm font-medium text-gray-700 mb-1">
+            Story Type
+          </label>
           <select
             id="storyType"
             name="storyType"
             value={formData.storyType}
             onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
           >
             {storyTypeOptions.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
-        </FormField>
+        </div>
 
-        {/* Target Age Range */}
-        <FormField label="Target Age Range" name="targetAgeRange" required>
-           <select
-             id="targetAgeRange"
-             name="targetAgeRange"
-             value={formData.targetAgeRange}
-             onChange={handleChange}
-             className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-           >
-             {ageRangeOptions.map(option => (
-               <option key={option.value} value={option.value}>{option.label}</option>
-             ))}
-           </select>
-         </FormField>
+        {/* Age Range */}
+        <div>
+          <label htmlFor="ageRange" className="block text-sm font-medium text-gray-700 mb-1">
+            Target Age Range
+          </label>
+          <select
+            id="ageRange"
+            name="ageRange"
+            value={formData.ageRange}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            {ageRangeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Narrative Style */}
+        <div>
+          <label htmlFor="narrativeStyle" className="block text-sm font-medium text-gray-700 mb-1">
+            Narrative Style
+          </label>
+          <select
+            id="narrativeStyle"
+            name="narrativeStyle"
+            value={formData.narrativeStyle}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            {narrativeStyleOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tone */}
+        <div>
+          <label htmlFor="toneStyle" className="block text-sm font-medium text-gray-700 mb-1">
+            Story Tone
+          </label>
+          <select
+            id="toneStyle"
+            name="toneStyle"
+            value={formData.toneStyle}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            {toneOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Main Challenge / Plot */}
+        <div>
+          <label htmlFor="mainChallengePlot" className="block text-sm font-medium text-gray-700 mb-1">
+            Main Challenge or Plot
+          </label>
+          <select
+            id="mainChallengePlot"
+            name="mainChallengePlot"
+            value={formData.mainChallengePlot}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            <option value="">Select a challenge or plot...</option>
+            {mainChallengeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Custom challenge input */}
+        {isCustomChallenge && (
+          <div>
+            <label htmlFor="customMainChallenge" className="block text-sm font-medium text-gray-700 mb-1">
+              Describe Your Custom Challenge
+            </label>
+            <textarea
+              id="customMainChallenge"
+              name="customMainChallenge"
+              value={formData.customMainChallenge}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
+              placeholder="Describe the main challenge or plot for your story..."
+            />
+          </div>
+        )}
+
+        {/* Desired Ending */}
+        <div>
+          <label htmlFor="desiredEnding" className="block text-sm font-medium text-gray-700 mb-1">
+            Desired Ending
+          </label>
+          <select
+            id="desiredEnding"
+            name="desiredEnding"
+            value={formData.desiredEnding}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            <option value="">Select an ending style...</option>
+            {endingOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Custom ending input */}
+        {isCustomEnding && (
+          <div>
+            <label htmlFor="customEnding" className="block text-sm font-medium text-gray-700 mb-1">
+              Describe Your Custom Ending
+            </label>
+            <textarea
+              id="customEnding"
+              name="customEnding"
+              value={formData.customEnding}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
+              placeholder="Describe how you would like the story to end..."
+            />
+          </div>
+        )}
+
+        {/* Rhyme Scheme (only for rhyming stories) */}
+        {showRhymeOptions && (
+          <div>
+            <label htmlFor="rhymeScheme" className="block text-sm font-medium text-gray-700 mb-1">
+              Rhyme Scheme
+            </label>
+            <select
+              id="rhymeScheme"
+              name="rhymeScheme"
+              value={formData.rhymeScheme}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              {rhymeSchemeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Story Length */}
+        <div>
+          <label htmlFor="wordCount" className="block text-sm font-medium text-gray-700 mb-1">
+            Story Length
+          </label>
+          <select
+            id="wordCount"
+            name="wordCount"
+            value={formData.wordCount}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+          >
+            {lengthOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label} - Print: {option.printCost} / Digital: {option.digitalCost}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-sm text-gray-500">
+            This affects the detail and complexity of your story.
+          </p>
+        </div>
+
+        {/* Specific Requests / Notes */}
+        <div>
+          <label htmlFor="specificRequests" className="block text-sm font-medium text-gray-700 mb-1">
+            Specific Requests or Notes (Optional)
+          </label>
+          <textarea
+            id="specificRequests"
+            name="specificRequests"
+            value={formData.specificRequests}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
+            placeholder="Any specific elements you'd like to include or exclude from the story..."
+          />
+        </div>
       </div>
 
-      {/* Fields for most story types */}
-      {formData.storyType !== 'board_book' && (
-        <>
-          {/* Rich Theme Selection */}
-          <FormField 
-            label="Story Themes" 
-            name="selectedThemes" 
-            required 
-            helpText="Select one or more themes for your story. Combining themes creates rich, layered narratives."
-          >
-            <div className="space-y-4 mt-2">
-              {themeCategories.map((category, catIndex) => (
-                <div key={catIndex} className="p-4 border border-gray-200 rounded-lg">
-                  <h3 className="font-medium text-lg mb-1">{category.category}</h3>
-                  <p className="text-gray-600 text-sm mb-3">{category.description}</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                    {category.themes.map((theme) => (
-                      <div key={theme.value} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`theme_${theme.value}`}
-                          name={`theme_${theme.value}`}
-                          checked={isThemeSelected(theme.value)}
-                          onChange={handleChange}
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label htmlFor={`theme_${theme.value}`} className="ml-2 text-sm text-gray-700">
-                          {theme.label}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              
-              {/* Custom Theme Option */}
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id="enableCustomTheme"
-                    name="enableCustomTheme"
-                    checked={isCustomTheme}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="enableCustomTheme" className="ml-2 font-medium">
-                    Add Custom Theme
-                  </label>
-                </div>
-                
-                {isCustomTheme && (
-                  <textarea
-                    id="customTheme"
-                    name="customTheme"
-                    value={formData.customTheme}
-                    onChange={handleChange}
-                    rows="3"
-                    className="w-full mt-2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Describe your custom theme or combine elements from multiple themes..."
-                  />
-                )}
-              </div>
-              
-              {/* Selected Themes Summary */}
-              {(formData.selectedThemes.length > 0 || formData.customTheme) && (
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800">Selected Themes:</h4>
-                  <div className="mt-1">
-                    {formData.selectedThemes.map(themeValue => {
-                      // Find the theme details
-                      let themeLabel = '';
-                      themeCategories.forEach(category => {
-                        const found = category.themes.find(t => t.value === themeValue);
-                        if (found) themeLabel = found.label;
-                      });
-                      
-                      return (
-                        <span key={themeValue} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-2 mb-1">
-                          {themeLabel}
-                        </span>
-                      );
-                    })}
-                    
-                    {formData.customTheme && (
-                      <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded mr-2 mb-1">
-                        Custom: {formData.customTheme.substring(0, 30)}{formData.customTheme.length > 30 ? '...' : ''}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </FormField>
-
-          {/* Main Challenge - Changed to dropdown with custom option */}
-          <FormField label="Main Challenge / Plot Summary" name="mainChallengePlot" required helpText="The main problem or sequence of events in the story.">
-            <select
-              id="mainChallengePlot"
-              name="mainChallengePlot"
-              value={isCustomChallenge ? 'custom' : formData.mainChallengePlot}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              {mainChallengeOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            
-            {/* Show textarea input if custom is selected */}
-            {isCustomChallenge && (
-              <textarea
-                id="customMainChallenge"
-                name="mainChallengePlot"
-                rows="3"
-                value={formData.mainChallengePlot}
-                onChange={handleChange}
-                className="w-full mt-2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Describe your custom plot or challenge..."
-              />
-            )}
-          </FormField>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <FormField label="Narrative Style" name="narrativeStyle" required>
-              <select
-                id="narrativeStyle"
-                name="narrativeStyle"
-                value={formData.narrativeStyle}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {narrativeStyleOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </FormField>
-             
-            <FormField label="Tone" name="tone" required>
-              <select
-                id="tone"
-                name="tone"
-                value={formData.tone}
-                onChange={handleChange}
-                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {toneOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </FormField>
-          </div>
-
-          {/* Desired Ending - Changed to dropdown with custom option */}
-          <FormField label="Desired Ending" name="desiredEnding" helpText="How should the story conclude?">
-            <select
-              id="desiredEnding"
-              name="desiredEnding"
-              value={isCustomEnding ? 'custom' : formData.desiredEnding}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">-- Select an ending type --</option>
-              {endingOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            
-            {/* Show textarea input if custom is selected */}
-            {isCustomEnding && (
-              <textarea
-                id="customEnding"
-                name="desiredEnding"
-                rows="2"
-                value={formData.desiredEnding}
-                onChange={handleChange}
-                className="w-full mt-2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Describe your custom ending..."
-              />
-            )}
-          </FormField>
-
-          {/* Length with Cost Indicators */}
-          <FormField 
-            label="Approximate Length" 
-            name="desiredLengthWords" 
-            helpText="Select the desired length for your story. A longer story may affect pricing."
-            required
-          >
-            <div className="w-full p-2 border border-gray-300 rounded-md shadow-sm">
-              {lengthOptions.map(option => (
-                <div key={option.value} className="flex items-center mb-2 last:mb-0">
-                  <input
-                    type="radio"
-                    id={`length-${option.value}`}
-                    name="desiredLengthWords"
-                    value={option.value}
-                    checked={formData.desiredLengthWords === option.value}
-                    onChange={handleChange}
-                    className="mr-2"
-                  />
-                  <label htmlFor={`length-${option.value}`} className="flex-grow">
-                    {option.label}
-                  </label>
-                  <div className="text-right text-xs">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1">
-                      Print: {option.printCost}
-                    </span>
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                      Digital: {option.digitalCost}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Custom length option */}
-              <div className="flex items-center mt-2 pt-2 border-t border-gray-200">
-                <input
-                  type="radio"
-                  id="length-custom"
-                  name="desiredLengthWordsRadio"
-                  checked={!lengthOptions.some(o => o.value === formData.desiredLengthWords)}
-                  onChange={() => {
-                    // If custom is selected but no value, set a default
-                    if (!formData.desiredLengthWords || lengthOptions.some(o => o.value === formData.desiredLengthWords)) {
-                      setFormData({...formData, desiredLengthWords: 600});
-                    }
-                  }}
-                  className="mr-2"
-                />
-                <label htmlFor="length-custom" className="flex-grow">
-                  Custom length:
-                </label>
-                <input
-                  type="number"
-                  id="desiredLengthWords"
-                  name="desiredLengthWords"
-                  value={formData.desiredLengthWords}
-                  onChange={handleChange}
-                  min="50"
-                  max="2000"
-                  step="50"
-                  onClick={() => {
-                    // When clicking directly on the number input, ensure custom radio is selected
-                    if (lengthOptions.some(o => o.value === formData.desiredLengthWords)) {
-                      setFormData({...formData, desiredLengthWords: formData.desiredLengthWords});
-                    }
-                  }}
-                  className="w-24 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <span className="ml-2 text-xs text-gray-500">words</span>
-              </div>
-            </div>
-          </FormField>
-           
-          {/* Rhyming Specific Field */}
-          {formData.storyType === 'rhyming' && (
-            <FormField label="Rhyme Scheme" name="rhymeScheme" required>
-              <select
-                id="rhymeScheme"
-                name="rhymeScheme"
-                value={formData.rhymeScheme}
-                onChange={handleChange}
-                className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {rhymeSchemeOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </FormField>
-          )}
-        </>
-      )}
-
-      {/* Board Book Specific Fields */}
-      {formData.storyType === 'board_book' && (
-        <>
-          <FormField label="Core Concept" name="coreConcept" required helpText="What concept is this board book exploring? (e.g., Colors, Animals, Counting)">
-            <input
-              type="text"
-              id="coreConcept"
-              name="coreConcept"
-              value={formData.coreConcept}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g., Farm Animals, Colors in Nature, Bedtime Routine"
-            />
-          </FormField>
-          
-          <FormField label="Key Objects/Actions" name="keyObjectsActions" required helpText="List the key items or actions to include, separated by commas (these will form the pages)">
-            <textarea
-              id="keyObjectsActions"
-              name="keyObjectsActions"
-              rows="3"
-              value={formData.keyObjectsActions}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g., Red apple, Blue sky, Green frog"
-            />
-          </FormField>
-          
-          <FormField label="Interactive Element (Optional)" name="interactiveElement" helpText="Any interactive aspect you'd like in the book">
-            <input
-              type="text"
-              id="interactiveElement"
-              name="interactiveElement"
-              value={formData.interactiveElement}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g., Questions like 'Can you find the...?', Sound words, Actions"
-            />
-          </FormField>
-        </>
-      )}
-
-      {/* Navigation Buttons */}
-      <div className="flex justify-between">
+      <div className="flex justify-between pt-4 mt-6 border-t border-gray-200">
         <button
           onClick={handleBack}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200"
         >
           Back
         </button>
-        
         <button
           onClick={handleContinue}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
         >
-          Continue
+          Continue to Summary
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
