@@ -77,11 +77,50 @@ export const createImg2ImgTask = async (payload) => {
   }
   
   // Ensure the payload structure matches the API docs
-  // { prompt, style_code, images: [{ base64_data }], style_intensity, structure_match, face_match, ... }
-  return fetchDzine('/create_task_img2img', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  // Required fields according to Dzine API: prompt, style_code, images
+  if (!payload.prompt) {
+    throw new Error('Prompt is required for img2img task');
+  }
+  
+  if (!payload.style_code) {
+    throw new Error('Style code is required for img2img task');
+  }
+  
+  if (!payload.images || !Array.isArray(payload.images) || payload.images.length === 0) {
+    throw new Error('At least one image is required for img2img task');
+  }
+  
+  // Log the raw payload
+  console.log('Creating Dzine img2img task with payload:', JSON.stringify({
+    ...payload,
+    images: payload.images.map(img => ({ 
+      ...img, 
+      base64_data: img.base64_data ? `${img.base64_data.substring(0, 20)}...` : null 
+    }))
+  }, null, 2));
+  
+  // Format the payload according to the API requirements
+  const formattedPayload = {
+    prompt: payload.prompt,
+    style_code: payload.style_code,
+    images: payload.images,
+    // Add default values for optional parameters
+    style_intensity: payload.style_intensity ?? 1.0,
+    structure_match: payload.structure_match ?? 0.5,
+    face_match: payload.face_match ?? 0.9
+  };
+  
+  try {
+    const result = await fetchDzine('/create_task_img2img', {
+      method: 'POST',
+      body: JSON.stringify(formattedPayload),
+    });
+    console.log('Dzine task created successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error creating Dzine task:', error);
+    throw error;
+  }
 };
 
 // 7. Get Task Progress

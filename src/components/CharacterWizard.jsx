@@ -194,12 +194,19 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       return;
     }
     
-    // If we're on the photo step and forcedArtStyle is provided, skip art style step
-    if (step === 2 && forcedArtStyle) {
-      setStep(4);
+    // If moving from step 3 to step 4, generate the preview
+    if (step === 3 || (step === 2 && forcedArtStyle)) {
+      const nextStep = forcedArtStyle ? 4 : step + 1;
+      setStep(nextStep);
+      
+      // If moving to preview step, generate the character preview
+      if (nextStep === 4 && !characterData.stylePreview) {
+        generateCharacterPreview();
+      }
       return;
     }
     
+    // Regular step progression
     setStep(step + 1);
     setError('');
   };
@@ -472,15 +479,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       const styleCode = getSafeStyleCode(styleIdToUse);
       console.log('Using style code for API:', styleCode);
       
-      // Create a payload for the Dzine API
+      // Create a payload for the Dzine API - formatted exactly as required
       const payload = {
-        prompt,
+        prompt: prompt,
         style_code: styleCode,
         images: [{ base64_data: base64Data }],
-        style_intensity: 1.0, // Max style intensity
-        structure_match: 0.5, // Balance between structure and style
-        face_match: 0.9, // High face match to preserve facial features
+        style_intensity: 1.0,
+        structure_match: 0.5,
+        face_match: 0.9
       };
+      
+      console.log('API payload:', JSON.stringify(payload));
       
       // Call the Dzine API to create an img2img task
       const result = await createImg2ImgTask(payload);
@@ -512,7 +521,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               }));
               
               setIsGenerating(false);
-              setStep(4); // Move to preview step
             } else {
               throw new Error('No images returned from generation');
             }
@@ -537,7 +545,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           setError(`Failed to generate preview: ${pollError.message}. Using placeholder instead.`);
           setIsGenerating(false);
-          setStep(4); // Still move to preview step with the placeholder
         }
       }, 2000); // Poll every 2 seconds
       
@@ -559,7 +566,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             
             setError('Generation timed out. Using placeholder instead.');
             setIsGenerating(false);
-            setStep(4); // Still move to preview step with the placeholder
           }
         }
       }, 60000); // 60 second timeout
@@ -579,7 +585,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       setError(`Failed to generate character: ${error.message}. Using placeholder instead.`);
       setIsGenerating(false);
-      setStep(4); // Still move to preview step with the placeholder
     }
   };
   
@@ -692,6 +697,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         return null;
     }
   };
+  
+  // Also modify the conditional render to always generate preview when step 4 is mounted
+  useEffect(() => {
+    // Auto-generate preview when entering step 4 (preview step)
+    if (step === 4 && !characterData.stylePreview && !isGenerating) {
+      generateCharacterPreview();
+    }
+  }, [step]);
   
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
