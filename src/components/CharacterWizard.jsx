@@ -398,7 +398,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setTimeout(() => {
       // Always use the forced art style if provided, otherwise use the one from character data
       const styleToUse = forcedArtStyle || characterData.artStyle;
-      const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${styleToUse}+style`;
+      
+      // Use a data URL instead of an external service that might not resolve
+      // This creates a simple colored square as a placeholder
+      const bgColor = stringToColor(characterData.name + styleToUse);
+      const stylePreviewUrl = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
         ...prev,
@@ -408,7 +412,86 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       setIsGenerating(false);
       setStep(4); // Move to preview
-    }, 1500);
+    }, 1000);
+  };
+  
+  // Helper function to create a colored placeholder image as a data URL
+  const createColorPlaceholder = (bgColor, text) => {
+    // Create a simple canvas-based placeholder
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    
+    // Fill background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add text
+    ctx.fillStyle = getContrastColor(bgColor);
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Wrap text
+    const words = text.split(' ');
+    let line = '';
+    let y = 100;
+    const lineHeight = 24;
+    const maxLines = 3;
+    let lines = [];
+    
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      if (ctx.measureText(testLine).width < 180) {
+        line = testLine;
+      } else {
+        lines.push(line);
+        line = words[i] + ' ';
+      }
+    }
+    lines.push(line);
+    
+    // Only show up to maxLines
+    lines = lines.slice(0, maxLines);
+    
+    // Center the lines vertically
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    
+    // Draw each line
+    lines.forEach((line, i) => {
+      ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+    });
+    
+    return canvas.toDataURL('image/png');
+  };
+  
+  // Helper to generate a color from a string
+  const stringToColor = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let color = '#';
+    for (let i = 0; i < 3; i++) {
+      const value = (hash >> (i * 8)) & 0xFF;
+      color += ('00' + value.toString(16)).substr(-2);
+    }
+    return color;
+  };
+  
+  // Helper to get contrasting text color (black or white) based on background
+  const getContrastColor = (hexColor) => {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.substr(1, 2), 16);
+    const g = parseInt(hexColor.substr(3, 2), 16);
+    const b = parseInt(hexColor.substr(5, 2), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black or white based on luminance
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
   };
   
   // Modify the step rendering to skip the art style selection if there's a forced style
@@ -469,7 +552,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
           <div 
             className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-            style={{ width: `${((step - 1) / (forcedArtStyle ? 2 : 3)) * 100}%` }}
+            style={{ 
+              width: `${Math.min(100, ((step - 1) / (forcedArtStyle ? 2 : 3)) * 100)}%` 
+            }}
           ></div>
         </div>
       </div>
@@ -488,7 +573,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {/* Navigation */}
       <div className="flex justify-between">
         <button
-          onClick={handleBack}
+          onClick={() => {
+            if (step > 1) {
+              // Special case for forced art style - skip style selection step
+              if (forcedArtStyle && step === 4) {
+                setStep(2); // Go back to photo upload
+              } else {
+                setStep(step - 1);
+              }
+            }
+          }}
           className={`px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 ${
             step === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
           }`}
