@@ -304,27 +304,17 @@ function CharactersStep() {
     setWizardStep(3);
   };
 
-  // Use a reliable fallback style code (we know 'cartoon' usually works)
-  const SAFE_STYLE_CODE = "Style-0000000080"; // Common working style code for cartoon
-  
-  // Helper to get a safe style code for API use
-  const getSafeStyleCode = (selectedStyleCode) => {
-    // If no valid style code is available, use a known working default
-    if (!selectedStyleCode || selectedStyleCode === 'undefined' || selectedStyleCode === 'custom') {
-      console.log("Using default safe style code:", SAFE_STYLE_CODE);
-      return SAFE_STYLE_CODE;
+  // Find any SAFE_STYLE_CODE constant and update it with the correct style code
+  const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+
+  // Update any getSafeStyleCode function if it exists
+  const getSafeStyleCode = (styleId) => {
+    // Check if the styleId is already a full style code (starts with "Style-")
+    if (styleId && styleId.startsWith('Style-')) {
+      return styleId;
     }
     
-    // Check if the style code is already in the proper format
-    if (selectedStyleCode.startsWith('Style-') && selectedStyleCode.length >= 10) {
-      return selectedStyleCode;
-    }
-    
-    // If it's a short numeric code, convert to proper format
-    if (/^\d+$/.test(selectedStyleCode)) {
-      return `Style-${'0'.repeat(10-selectedStyleCode.length)}${selectedStyleCode}`;
-    }
-    
+    // Simple fallback
     return SAFE_STYLE_CODE;
   };
   

@@ -4,39 +4,44 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress } from '../services/dzineService';
 
-// Style ID to code map (copy from ArtStyleStep.jsx)
-// Updated with longer style codes per Dzine API requirement (min 10 characters)
+// Style ID to code map - using REAL Dzine API style codes from the API response
 const styleIdToCodeMap = {
-  watercolor: 'Style-0000000033',    // Watercolor styles
-  pastel: 'Style-0000000032',        // Pastel style
-  pencil_wash: 'Style-0000000024',   // Pencil wash
-  soft_digital: 'Style-0000000073',  // Soft digital
-  pencil_ink: 'Style-0000000022',    // Pencil and ink
-  golden_books: 'Style-0000000070',  // Golden books style
-  beatrix_potter: 'Style-0000000034', // Potter-like
-  cartoon: 'Style-0000000080',       // Cartoon
-  flat_vector: 'Style-0000000081',   // Flat vector
-  storybook_pop: 'Style-0000000082', // Storybook
-  papercut: 'Style-0000000083',      // Papercut style
-  oil_pastel: 'Style-0000000035',    // Oil pastel
-  stylized_realism: 'Style-0000000044', // Stylized realism
-  digital_painterly: 'Style-0000000045', // Digital painterly
-  kawaii: 'Style-0000000086',        // Kawaii style
-  scandinavian: 'Style-0000000087',  // Scandinavian
-  african_pattern: 'Style-0000000088', // African patterns
-  custom: 'Style-0000000080'     // Custom style (fallback to cartoon)
+  // Common styles with their proper Dzine API style codes
+  watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823', // Classic Watercolor
+  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',     // Whimsical Coloring
+  pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
+  soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
+  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',  // Sketch Elegance
+  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512', // Golden Era Illustrations
+  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Warm Fables
+  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',    // Cartoon Anime
+  flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280', // Simple Icon
+  storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
+  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',   // Paper Cutout
+  oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a', // Vibrant Impasto
+  stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Structured Serenity
+  digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
+  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',     // Everything Kawaii
+  scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60', // Scandi
+  african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // Bold Collage
+  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2'      // No Style v2 (default)
 };
 
-// Fallback style code for when mapping fails
-const SAFE_STYLE_CODE = "Style-0000000080"; // Common working style code for cartoon
+// Fallback style code for when mapping fails - use "No Style v2" as fallback
+const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; 
 
 // Helper to get a safe style code for API use
 const getSafeStyleCode = (styleId) => {
-  // Get the numeric code from the map
+  // Check if the styleId is already a full style code (starts with "Style-")
+  if (styleId && styleId.startsWith('Style-')) {
+    return styleId;
+  }
+  
+  // Get the style code from the map
   const styleCode = styleIdToCodeMap[styleId];
   
-  // If no valid style code is available, use a known working default
-  if (!styleCode || styleCode === 'undefined' || styleCode === 'custom') {
+  // If no valid style code is available, use the default "No Style"
+  if (!styleCode) {
     console.log("Using default safe style code:", SAFE_STYLE_CODE);
     return SAFE_STYLE_CODE;
   }
