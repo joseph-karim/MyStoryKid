@@ -184,6 +184,233 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     reader.readAsDataURL(file);
   };
   
+  // Render functions for each step
+  const renderExistingCharactersStep = () => {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold mb-4">Character Details</h3>
+        
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            Character Name*
+          </label>
+          <input
+            type="text"
+            id="name"
+            value={characterData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+            placeholder="Enter character name"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+            Character Type
+          </label>
+          <select
+            id="type"
+            value={characterData.type}
+            onChange={(e) => handleChange('type', e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          >
+            {CHARACTER_TYPES.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name} - {type.description}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+              Age
+            </label>
+            <input
+              type="text"
+              id="age"
+              value={characterData.age}
+              onChange={(e) => handleChange('age', e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Age"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+              Gender
+            </label>
+            <select
+              id="gender"
+              value={characterData.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select...</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  const renderCharacterDetailsStep = () => {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold mb-4">Upload Character Photo</h3>
+        
+        <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg">
+          {photoPreview ? (
+            <div className="space-y-4">
+              <img 
+                src={photoPreview} 
+                alt="Character preview" 
+                className="w-32 h-32 object-cover mx-auto rounded-lg"
+              />
+              <button
+                onClick={() => {
+                  setPhotoPreview(null);
+                  setCharacterData(prev => ({ ...prev, photoUrl: null }));
+                }}
+                className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
+              >
+                Remove Photo
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                className="hidden"
+                accept="image/*"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100"
+              >
+                Upload Photo
+              </button>
+              <p className="text-sm text-gray-500 mt-2">
+                Upload a photo to be transformed into your character's style
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
+  const renderAppearanceStep = () => {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold mb-4">Choose Art Style</h3>
+        
+        <div className="space-y-6">
+          {ART_STYLE_CATEGORIES.map((category, index) => (
+            <div key={index} className="space-y-2">
+              <h4 className="font-medium text-gray-700">{category.category}</h4>
+              <p className="text-sm text-gray-500">{category.description}</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {category.styles.map(style => (
+                  <div
+                    key={style.id}
+                    className={`p-3 border rounded-lg cursor-pointer ${
+                      characterData.artStyle === style.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-200'
+                    }`}
+                    onClick={() => handleChange('artStyle', style.id)}
+                  >
+                    <div className="font-medium">{style.name}</div>
+                    <div className="text-xs text-gray-500">{style.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+  
+  const renderPreviewStep = () => {
+    return (
+      <div className="space-y-4 text-center">
+        <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
+        
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          {photoPreview && (
+            <div className="text-center">
+              <p className="text-sm text-gray-500 mb-2">Original Photo</p>
+              <img 
+                src={photoPreview} 
+                alt="Original" 
+                className="w-32 h-32 object-cover rounded-lg border border-gray-300" 
+              />
+            </div>
+          )}
+          
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-2">Character Preview</p>
+            {isGenerating ? (
+              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : characterData.stylePreview ? (
+              <img 
+                src={characterData.stylePreview} 
+                alt="Style preview" 
+                className="w-32 h-32 object-cover rounded-lg border border-blue-300" 
+              />
+            ) : (
+              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg text-sm text-gray-400">
+                No preview yet
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-medium">{characterData.name}</h4>
+          <p className="text-sm text-gray-600">
+            {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || 'Character'} 
+            {characterData.age && `, ${characterData.age} years old`}
+            {characterData.gender && `, ${characterData.gender}`}
+          </p>
+        </div>
+      </div>
+    );
+  };
+  
+  // Generate character preview - updated to always use forced style if provided
+  const generateCharacterPreview = () => {
+    setIsGenerating(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      // Always use the forced art style if provided, otherwise use the one from character data
+      const styleToUse = forcedArtStyle || characterData.artStyle;
+      const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${styleToUse}+style`;
+      
+      setCharacterData(prev => ({
+        ...prev,
+        artStyle: styleToUse,
+        stylePreview: stylePreviewUrl
+      }));
+      
+      setIsGenerating(false);
+      setStep(4); // Move to preview
+    }, 1500);
+  };
+  
   // Modify the step rendering to skip the art style selection if there's a forced style
   const renderStep = () => {
     // If we have a forced art style, skip step 3 (art style selection)
@@ -213,27 +440,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       default:
         return null;
     }
-  };
-  
-  // Generate character preview - updated to always use forced style if provided
-  const generateCharacterPreview = () => {
-    setIsGenerating(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Always use the forced art style if provided, otherwise use the one from character data
-      const styleToUse = forcedArtStyle || characterData.artStyle;
-      const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${styleToUse}+style`;
-      
-      setCharacterData(prev => ({
-        ...prev,
-        artStyle: styleToUse,
-        stylePreview: stylePreviewUrl
-      }));
-      
-      setIsGenerating(false);
-      setStep(4); // Move to preview
-    }, 1500);
   };
   
   return (
