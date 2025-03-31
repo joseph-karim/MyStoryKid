@@ -451,14 +451,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         throw new Error('Please upload a photo first');
       }
       
-      // Per the Dzine API documentation, style_code must be a string (not a number)
-      const styleCode = getSafeStyleCode(styleIdToUse);
-      console.log("Using style code (as string):", styleCode);
-      
       // Extract the base64 data correctly
       let base64Data = '';
       if (characterData.photoUrl.startsWith('data:image')) {
-        // According to the documentation, we should keep the full data URL
+        // According to the documentation, we should use the full data URL
         base64Data = characterData.photoUrl;
       } else {
         throw new Error('Invalid image format. Please upload a photo.');
@@ -469,13 +465,56 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (characterData.age) prompt += `, ${characterData.age} years old`;
       if (characterData.gender) prompt += `, ${characterData.gender}`;
       
-      // Create a payload that exactly matches the format in the documentation
+      // Try to get actual API styles first
+      let styleCode = "";
+      
+      try {
+        // If styleIdToUse looks like a valid Dzine API style code (contains UUID-like string)
+        if (styleIdToUse && (styleIdToUse.includes('-') && styleIdToUse.length > 10)) {
+          // It might be a direct style code from the API, use it as is
+          styleCode = styleIdToUse;
+          console.log("Using direct style code from API:", styleCode);
+        } else {
+          // Fall back to a safe style - we'll use whatever we can get from the API
+          // This might fail, we'll handle the error and use a fallback
+          console.log("Attempting to fetch style list from API...");
+          const stylesData = await getDzineStyles();
+          
+          if (stylesData?.list?.length > 0) {
+            // Find a default style - prefer "cartoon" style or similar
+            const defaultStyle = stylesData.list.find(s => 
+              s.name.toLowerCase().includes('cartoon') || 
+              s.name.toLowerCase().includes('2d') ||
+              s.name.toLowerCase().includes('basic')
+            );
+            
+            if (defaultStyle) {
+              styleCode = defaultStyle.style_code;
+              console.log("Using API style:", defaultStyle.name, styleCode);
+            } else {
+              // Just use the first available style
+              styleCode = stylesData.list[0].style_code;
+              console.log("Using first available API style:", stylesData.list[0].name, styleCode);
+            }
+          } else {
+            // If no API styles available, use our best guess
+            styleCode = "Style-00000001"; // This will likely fail but we'll handle the error
+            console.log("No styles available from API, using fallback:", styleCode);
+          }
+        }
+      } catch (styleError) {
+        console.error("Error getting styles from API:", styleError);
+        // Just use a placeholder, we'll handle the error if generation fails
+        styleCode = "Style-00000001";
+      }
+      
+      // Create the payload for the API
       const payload = {
         prompt: prompt,
-        style_code: styleCode, // Keep as string, not converted to number
+        style_code: styleCode,
         images: [
           {
-            base64_data: base64Data // Use full data URL
+            base64_data: base64Data
           }
         ],
         style_intensity: 0.9,

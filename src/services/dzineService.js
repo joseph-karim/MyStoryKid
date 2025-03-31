@@ -46,19 +46,95 @@ const fetchDzine = async (endpoint, options = {}) => {
   }
 };
 
-// 1. Load Dzine Style List
-export const getDzineStyles = async (pageNo = 0, pageSize = 200) => {
+// Fetch all styles from Dzine API
+export const getDzineStyles = async () => {
   try {
-    // Fetch a large number to likely get all styles at once
-    const params = new URLSearchParams({ page_no: pageNo, page_size: pageSize }).toString();
-    return fetchDzine(`/style/list?${params}`, { method: 'GET' });
+    const response = await fetch(`${API_BASE_URL}/styles`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': process.env.REACT_APP_DZINE_API_KEY || ''
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error fetching Dzine styles:', errorData);
+      throw new Error(`Failed to fetch styles: ${errorData.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Log available styles for debugging
+    console.log('Available Dzine styles:', data.list ? data.list.map(style => ({
+      name: style.name, 
+      style_code: style.style_code
+    })) : 'No styles available');
+    
+    // Store styles in local cache for reuse
+    if (data.list) {
+      localStorage.setItem('dzine_styles', JSON.stringify(data.list));
+    }
+    
+    return data;
   } catch (error) {
-    console.warn('Could not load styles from Dzine API:', error.message);
-    // Return a minimal structure to prevent UI breakage
-    return { 
-      list: [],
-      total: 0
-    };
+    console.error('Error in getDzineStyles:', error);
+    
+    // Try to use cached styles if available
+    const cachedStyles = localStorage.getItem('dzine_styles');
+    if (cachedStyles) {
+      console.log('Using cached styles');
+      return { list: JSON.parse(cachedStyles) };
+    }
+    
+    throw error;
+  }
+};
+
+// Helper function to get a style by name (case insensitive)
+export const getStyleByName = async (styleName) => {
+  try {
+    // Try to get from cache first
+    const cachedStyles = localStorage.getItem('dzine_styles');
+    let styles = [];
+    
+    if (cachedStyles) {
+      styles = JSON.parse(cachedStyles);
+    } else {
+      // If not in cache, fetch from API
+      const data = await getDzineStyles();
+      styles = data.list || [];
+    }
+    
+    // Find style by name (case insensitive)
+    const style = styles.find(s => 
+      s.name.toLowerCase() === styleName.toLowerCase() ||
+      s.name.toLowerCase().includes(styleName.toLowerCase())
+    );
+    
+    return style ? style.style_code : null;
+  } catch (error) {
+    console.error('Error getting style by name:', error);
+    return null;
+  }
+};
+
+// Helper function to get all available styles
+export const getAvailableStyles = async () => {
+  try {
+    // Try to get from cache first
+    const cachedStyles = localStorage.getItem('dzine_styles');
+    
+    if (cachedStyles) {
+      return JSON.parse(cachedStyles);
+    }
+    
+    // If not in cache, fetch from API
+    const data = await getDzineStyles();
+    return data.list || [];
+  } catch (error) {
+    console.error('Error getting available styles:', error);
+    return [];
   }
 };
 
