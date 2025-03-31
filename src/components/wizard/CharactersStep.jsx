@@ -504,29 +504,58 @@ function CharactersStep() {
       return;
     }
     
-    // Ensure a style is selected
-    const currentArtStyleCode = artStyleCode === 'custom' ? noStyleCode : artStyleCode;
-    if (!currentArtStyleCode && !customStyleDescription) {
-         setError('Please select or describe an art style before generating previews.');
-         return;
-    }
-
+    // Get the selected style ID and description
+    const selectedStyleId = Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode) || 'cartoon';
+    const selectedStyleDescription = styleDescriptions[selectedStyleId] || '';
+    
     updateGenStatus(characterId, { status: 'generating', taskId: null, previewUrl: null, errorMessage: null });
 
     try {
+      // Build a rich prompt that describes the character AND the style
       let prompt = `${character.age || 'a'} year old ${character.gender || 'child'} named ${character.name}`;
+      
+      // Add style description based on selection
       if (artStyleCode === 'custom' && customStyleDescription) {
+        // Use custom style description directly
         prompt += `, ${customStyleDescription}`;
+      } else {
+        // Use our rich style descriptions instead of relying solely on the style code
+        prompt += `, ${selectedStyleDescription}`;
+        
+        // Add specific style cues based on the category
+        if (selectedStyleId === 'watercolor') {
+          prompt += `, soft watercolor painting with gentle brush strokes and dreamy quality`;
+        } else if (selectedStyleId === 'pastel') {
+          prompt += `, soft pastel illustration with gentle colors and soothing tones`;
+        } else if (selectedStyleId === 'cartoon') {
+          prompt += `, vibrant cartoon style with clean lines and expressive features`;
+        } else if (selectedStyleId === 'pencil_ink') {
+          prompt += `, classic pencil and ink drawing with fine linework`;
+        } else if (selectedStyleId === 'beatrix_potter') {
+          prompt += `, classic storybook illustration in the style of Beatrix Potter`;
+        } else if (selectedStyleId === 'digital_painterly') {
+          prompt += `, digital painting with rich textures and detailed lighting`;
+        }
+        
+        // If there's additional custom description, append it for further refinement
+        if (customStyleDescription) {
+          prompt += `, ${customStyleDescription}`;
+        }
       }
-      // If a non-custom style is selected AND there's a custom description, maybe append it?
-      // else if (artStyleCode !== 'custom' && customStyleDescription) {
-      //    prompt += `, ${customStyleDescription}`; // Or decide how to handle this combo
-      // }
+      
+      // Use a consistent style code that works well (cartoon or no_style) 
+      // and let the prompt do the heavy lifting for style details
+      const safeStyleCode = artStyleCode === 'custom' ? 
+        (noStyleCode || 'no_style') : 
+        (styleIdToCodeMap[selectedStyleId] || styleIdToCodeMap['cartoon'] || 'cartoon');
+      
+      console.log("Generating with prompt:", prompt);
+      console.log("Using style code:", safeStyleCode);
 
       const payload = {
-        prompt: prompt.substring(0, 800),
-        style_code: currentArtStyleCode, // Use the actual API code
-        style_intensity: 0.9,
+        prompt: prompt.substring(0, 800),  // Limit prompt length
+        style_code: safeStyleCode,
+        style_intensity: 0.8,  // Slightly reduced to let prompt have more influence
         structure_match: 0.7,
         face_match: 1,
         color_match: 0,
