@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
 import { getDzineStyles, getAvailableStyles } from '../../services/dzineService';
 import { useQueryClient } from '@tanstack/react-query';
-import { Box, Button, Grid, Paper, Typography, CircularProgress, TextField } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 // Import art style images - Updated paths to match the existing assets
 import watercolorImg from '../../assets/watercolor-theme.png';
