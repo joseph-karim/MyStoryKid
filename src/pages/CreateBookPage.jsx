@@ -4,25 +4,21 @@ import { useAuthStore, useBookStore } from '../store';
 
 // Step components
 import CategoryStep from '../components/wizard/CategoryStep';
+import StoryDetailsStep from '../components/wizard/StoryDetailsStep';
 import CharactersStep from '../components/wizard/CharactersStep';
 import GeneratingStep from '../components/wizard/GeneratingStep';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
-  const { wizardState, setWizardStep, updateStoryData } = useBookStore();
+  const { wizardState, resetWizard } = useBookStore();
   const navigate = useNavigate();
   
   // Authentication check removed for testing
   
   // Reset wizard state when component mounts
   useEffect(() => {
-    setWizardStep(1);
-    updateStoryData({
-      category: '',
-      bookCharacters: [],
-      artStyle: '',
-    });
-  }, [setWizardStep, updateStoryData]);
+    resetWizard();
+  }, [resetWizard]);
   
   // Render current step based on wizardState.step
   const renderStep = () => {
@@ -30,12 +26,29 @@ function CreateBookPage() {
       case 1:
         return <CategoryStep />;
       case 2:
+        return <StoryDetailsStep />;
+      case 3:
         return <CharactersStep />;
       case 4:
         return <GeneratingStep />;
       default:
+        console.warn(`Unknown wizard step: ${wizardState.step}, returning to step 1.`);
         return <CategoryStep />;
     }
+  };
+  
+  // Calculate current step number for display (adjusting for generating step being #4)
+  const displayStepNumber = wizardState.step === 4 ? 4 : wizardState.step;
+  const totalDisplaySteps = 4; // Total steps including Generating
+  
+  const getStepName = (step) => {
+     switch (step) {
+         case 1: return 'Choose Story Foundation';
+         case 2: return 'Add Story Details';
+         case 3: return 'Add Characters & Style';
+         case 4: return 'Generating Story';
+         default: return '';
+     }
   };
   
   return (
@@ -48,22 +61,20 @@ function CreateBookPage() {
         </p>
       </div>
       
-      {/* Progress Bar */}
+      {/* Progress Bar - Updated for 4 steps */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
-            Step {wizardState.step === 3 ? '2' : wizardState.step} of 3
+            Step {displayStepNumber} of {totalDisplaySteps}
           </span>
           <span className="text-sm font-medium">
-            {wizardState.step === 1 ? 'Choose Story Foundation' : 
-             wizardState.step === 2 ? 'Add Characters' : 
-             wizardState.step === 4 ? 'Generating Story' : ''}
+            {getStepName(wizardState.step)}
           </span>
         </div>
         <div className="w-full bg-gray-200 h-2 rounded-full">
           <div 
-            className="bg-blue-600 h-2 rounded-full" 
-            style={{ width: `${(wizardState.step === 4 ? 3 : wizardState.step) / 3 * 100}%` }}
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out" 
+            style={{ width: `${(displayStepNumber / totalDisplaySteps) * 100}%` }}
           />
         </div>
       </div>

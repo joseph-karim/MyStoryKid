@@ -123,10 +123,29 @@ const useBookStore = create((set, get) => ({
   wizardState: {
     step: 1,
     storyData: {
-      category: '', // e.g., Adventure, Bedtime Story, etc.
+      category: '', // e.g., Adventure, Bedtime Story, etc. - May become redundant if storyType is primary?
       bookCharacters: [], // Array of characters with roles
       artStyleCode: '', // API style_code or 'custom'
       customStyleDescription: '', // Description if artStyleCode is 'custom'
+
+      // --- NEW Detailed Story Fields --- 
+      storyType: 'standard', // e.g., standard, rhyming, early_reader, lesson, board_book
+      targetAgeRange: '3-8', // e.g., '0-3', '3-6', '6-9' (can be string or array)
+      coreTheme: '', // e.g., Friendship, Courage, Sharing
+      mainChallengePlot: '', // User-provided summary of the main conflict/plot
+      narrativeStyle: 'third_person_limited', // e.g., third_person_limited, third_person_omniscient, first_person
+      tone: 'gentle', // e.g., gentle, adventurous, humorous, reassuring, playful, didactic
+      desiredEnding: '', // User-provided description of how the story should end
+      desiredLengthWords: 500, // Approximate target word count (e.g., 50, 400, 800)
+
+      // Specific to Rhyming
+      rhymeScheme: 'AABB', // e.g., 'AABB', 'ABCB', 'Free Verse'
+
+      // Specific to Board Book
+      coreConcept: '', // e.g., Bedtime Routine, Animal Sounds, Colors
+      keyObjectsActions: '', // Comma-separated list: Bath, Pajamas, Toothbrush...
+      interactiveElement: '', // e.g., Sound words, Simple question
+      // --- END NEW Fields --- 
     },
   },
   
@@ -148,17 +167,45 @@ const useBookStore = create((set, get) => ({
     },
   })),
   
+  // Reset wizard needs to clear the new fields too
   resetWizard: () => set((state) => ({
     wizardState: {
       step: 1,
       storyData: {
-        category: '',
+        category: '', 
         bookCharacters: [],
-        artStyleCode: '', // Reset artStyleCode
+        artStyleCode: '', 
         customStyleDescription: '',
+        // Reset NEW fields to defaults
+        storyType: 'standard',
+        targetAgeRange: '3-8',
+        coreTheme: '',
+        mainChallengePlot: '',
+        narrativeStyle: 'third_person_limited',
+        tone: 'gentle',
+        desiredEnding: '',
+        desiredLengthWords: 500,
+        rhymeScheme: 'AABB',
+        coreConcept: '',
+        keyObjectsActions: '',
+        interactiveElement: '',
       },
     },
   })),
+  
+  // --- NEW: Update a specific character within the wizard state ---
+  updateCharacter: (characterId, updates) => set((state) => ({
+    wizardState: {
+      ...state.wizardState,
+      storyData: {
+        ...state.wizardState.storyData,
+        bookCharacters: state.wizardState.storyData.bookCharacters.map(char =>
+          char.id === characterId ? { ...char, ...updates } : char
+        ),
+      },
+    },
+  })),
+  // --- END NEW ---
   
   // Book actions
   setCurrentBook: (book) => set({

@@ -78,7 +78,6 @@ function HomePage() {
             style={{
               left: position.x,
               top: position.y,
-              // Use sizes from state
               width: bubbleSizes[i]?.width || '50px', 
               height: bubbleSizes[i]?.height || '50px'
             }}
@@ -111,7 +110,7 @@ function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.4 }}
               >
-                Create magical personalized storybooks featuring your child's name, traits, and interests, brought to life with AI-generated illustrations and engaging storylines.
+                 Create magical, personalized storybooks in minutes! Answer a few simple questions or dive deep into customization. Our AI generates unique stories and illustrations, starring your child. Choose digital or print!
               </motion.p>
               <motion.div
                 className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
@@ -187,8 +186,78 @@ function HomePage() {
         <div className="absolute top-1/2 right-1/4 z-0 text-3xl">🌈</div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-16 bg-gradient-to-b from-white to-purple-50">
+      {/* Features / How to Create Section */}
+      <section className="py-16 bg-white">
+         <div className="container mx-auto px-4">
+             <motion.div
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.7 }}
+               viewport={{ once: true, margin: "-100px" }}
+               className="text-center mb-16"
+             >
+               <h2 className="text-4xl font-bold mb-4">Your Story, Your Way</h2>
+               <p className="text-xl text-gray-600 max-w-3xl mx-auto">Choose the creation path that works best for you.</p>
+             </motion.div>
+
+             <div className="grid md:grid-cols-2 gap-10">
+                 {/* Quick Wizard */}
+                 <motion.div
+                   initial={{ opacity: 0, x: -20 }}
+                   whileInView={{ opacity: 1, x: 0 }}
+                   transition={{ duration: 0.7, delay: 0.1 }}
+                   viewport={{ once: true, margin: "-100px" }}
+                   className="border border-purple-200 rounded-xl shadow-lg p-8 bg-purple-50"
+                 >
+                    <div className="flex items-center mb-4">
+                        <span className="text-4xl mr-4">🚀</span>
+                        <h3 className="text-2xl font-bold text-purple-800">Quick & Easy Wizard</h3>
+                    </div>
+                    <p className="text-gray-700 mb-4">Answer a few simple questions about your child, choose a theme, and let our AI work its magic! Get a beautiful, personalized story in minutes.</p>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1 mb-4">
+                        <li>Fastest way to create</li>
+                        <li>Great for gifts and quick reads</li>
+                        <li>AI handles the details</li>
+                    </ul>
+                     <Link 
+                       to="/create" // Link to start the wizard
+                       className="inline-block mt-2 px-6 py-2 bg-purple-600 text-white font-semibold rounded-full shadow transform transition duration-300 hover:bg-purple-700 hover:scale-105"
+                     >
+                       Start Quick Wizard
+                     </Link>
+                 </motion.div>
+
+                 {/* Full Customization */}
+                 <motion.div
+                   initial={{ opacity: 0, x: 20 }}
+                   whileInView={{ opacity: 1, x: 0 }}
+                   transition={{ duration: 0.7, delay: 0.2 }}
+                   viewport={{ once: true, margin: "-100px" }}
+                    className="border border-blue-200 rounded-xl shadow-lg p-8 bg-blue-50"
+                 >
+                     <div className="flex items-center mb-4">
+                         <span className="text-4xl mr-4">🎨</span>
+                         <h3 className="text-2xl font-bold text-blue-800">Detailed Customization</h3>
+                     </div>
+                     <p className="text-gray-700 mb-4">Take full control! Define the story type, plot points, characters, art style, narrative voice, and more. Perfect for crafting a truly unique tale.</p>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1 mb-4">
+                        <li>Fine-tune every aspect</li>
+                        <li>Ideal for specific lessons or ideas</li>
+                        <li>Maximum creative freedom</li>
+                    </ul>
+                     <Link 
+                       to="/create" // Link to start the wizard (which now includes detailed path)
+                       className="inline-block mt-2 px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow transform transition duration-300 hover:bg-blue-700 hover:scale-105"
+                     >
+                       Customize Your Story
+                     </Link>
+                 </motion.div>
+             </div>
+         </div>
+      </section>
+
+      {/* How It Works (Simplified & Refocused) */}
+      <section className="py-16 bg-gradient-to-b from-purple-50 to-white">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -197,12 +266,11 @@ function HomePage() {
             viewport={{ once: true, margin: "-100px" }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold mb-4">How It Works</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Create a personalized storybook in just a few easy steps</p>
+            <h2 className="text-4xl font-bold mb-4">From Idea to Keepsake</h2>
           </motion.div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 */}
+            {/* Step 1: Personalize */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -211,11 +279,11 @@ function HomePage() {
               className="bg-white rounded-xl shadow-xl p-6 transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
             >
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-teal-400 text-white flex items-center justify-center text-2xl font-bold mb-6 mx-auto">1</div>
-              <h3 className="text-2xl font-bold mb-4 text-center">Personalize</h3>
-              <p className="text-gray-600 text-center">Tell us about your child's name, age, interests, and personality traits to create a truly personal story.</p>
+              <h3 className="text-2xl font-bold mb-4 text-center">Tell Us Your Vision</h3>
+              <p className="text-gray-600 text-center">Use our simple wizard to provide details about your child, the story theme, desired style, and more.</p>
             </motion.div>
             
-            {/* Step 2 */}
+            {/* Step 2: AI Creates */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -224,11 +292,11 @@ function HomePage() {
               className="bg-white rounded-xl shadow-xl p-6 transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
             >
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-2xl font-bold mb-6 mx-auto">2</div>
-              <h3 className="text-2xl font-bold mb-4 text-center">AI Creates</h3>
-              <p className="text-gray-600 text-center">Our AI generates a unique story and beautiful illustrations featuring your child as the main character.</p>
+              <h3 className="text-2xl font-bold mb-4 text-center">Watch the Magic Happen</h3>
+              <p className="text-gray-600 text-center">Our advanced AI crafts a unique story and generates beautiful, consistent illustrations based on your input.</p>
             </motion.div>
             
-            {/* Step 3 */}
+            {/* Step 3: Choose Format */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -237,11 +305,37 @@ function HomePage() {
               className="bg-white rounded-xl shadow-xl p-6 transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
             >
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-amber-500 to-red-500 text-white flex items-center justify-center text-2xl font-bold mb-6 mx-auto">3</div>
-              <h3 className="text-2xl font-bold mb-4 text-center">Enjoy & Share</h3>
-              <p className="text-gray-600 text-center">Get your book as a digital download instantly or order a premium printed hardcover delivered to your door.</p>
+              <h3 className="text-2xl font-bold mb-4 text-center">Digital or Print</h3>
+              <p className="text-gray-600 text-center">Preview your creation instantly. Choose a digital download or order a premium printed hardcover book delivered to your door.</p>
             </motion.div>
           </div>
         </div>
+      </section>
+
+      {/* Privacy Section */}
+      <section className="py-16 bg-blue-50">
+         <div className="container mx-auto px-4">
+             <motion.div
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.7 }}
+               viewport={{ once: true, margin: "-100px" }}
+               className="flex flex-col md:flex-row items-center bg-white rounded-lg shadow-lg p-8 border border-blue-200"
+             >
+                  <div className="text-blue-500 text-6xl mr-8 mb-4 md:mb-0">🔒</div>
+                  <div>
+                     <h2 className="text-3xl font-bold mb-3 text-blue-800">Your Privacy Matters</h2>
+                     <p className="text-lg text-gray-700 mb-2">
+                         We take your child's privacy seriously. If you choose to upload a photo for character styling:
+                     </p>
+                     <ul className="list-disc list-inside text-gray-600 space-y-1">
+                         <li>Photos are used <strong className='font-semibold'>only once</strong> during the AI generation process to create a unique artistic representation.</li>
+                         <li>Your original photo is <strong className='font-semibold'>never stored</strong> on our servers after the style is confirmed.</li>
+                         <li>We are committed to protecting your data and ensuring a safe experience.</li>
+                     </ul>
+                  </div>
+             </motion.div>
+         </div>
       </section>
 
       {/* Sample Books */}
@@ -254,137 +348,90 @@ function HomePage() {
             viewport={{ once: true, margin: "-100px" }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold mb-4">Magical Stories</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Discover the enchanting world of personalized storybooks</p>
+            <h2 className="text-4xl font-bold mb-4">Inspiring Adventures Await</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Explore some of the magical stories created with MyStoryKid</p>
           </motion.div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Book 1 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="group"
-            >
-              <div className="bg-gradient-to-b from-blue-100 to-blue-200 p-6 rounded-t-xl">
-                <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
-                  <img 
-                    src={spaceAdventureCover}
-                    alt="Space Adventure book" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-b-xl shadow-xl">
-                <h3 className="text-xl font-bold mb-2">Space Adventure</h3>
-                <p className="text-gray-600 mb-4">A thrilling journey through the cosmos where your child gets to save an alien planet.</p>
-                <Link to="/create" className="text-blue-600 font-medium hover:text-blue-700 transition">Create this story →</Link>
-              </div>
-            </motion.div>
-            
-            {/* Book 2 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="group"
-            >
-              <div className="bg-gradient-to-b from-purple-100 to-purple-200 p-6 rounded-t-xl">
-                <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
-                  <img 
-                    src={magicalForestCover}
-                    alt="Magical Forest book" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-b-xl shadow-xl">
-                <h3 className="text-xl font-bold mb-2">Magical Forest</h3>
-                <p className="text-gray-600 mb-4">An enchanting tale where your child discovers magical creatures and hidden treasures.</p>
-                <Link to="/create" className="text-purple-600 font-medium hover:text-purple-700 transition">Create this story →</Link>
-              </div>
-            </motion.div>
-            
-            {/* Book 3 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="group"
-            >
-              <div className="bg-gradient-to-b from-amber-100 to-amber-200 p-6 rounded-t-xl">
-                <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-lg transform group-hover:scale-105 transition duration-300">
-                  <img 
-                    src={underseaQuestCover}
-                    alt="Undersea Quest book" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-b-xl shadow-xl">
-                <h3 className="text-xl font-bold mb-2">Undersea Quest</h3>
-                <p className="text-gray-600 mb-4">A beautiful underwater adventure where your child helps sea creatures and discovers sunken treasures.</p>
-                <Link to="/create" className="text-amber-600 font-medium hover:text-amber-700 transition">Create this story →</Link>
-              </div>
-            </motion.div>
+             {/* Sample Book 1 */}
+             <motion.div
+               initial={{ opacity: 0, scale: 0.9 }}
+               whileInView={{ opacity: 1, scale: 1 }}
+               transition={{ duration: 0.5, delay: 0.1 }}
+               viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-lg shadow-lg overflow-hidden group"
+             >
+               <img src={spaceAdventureCover} alt="Space Adventure Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
+               <div className="p-4">
+                 <h3 className="font-bold text-lg mb-2">Leo's Cosmic Quest</h3>
+                 <p className="text-sm text-gray-600">A journey through the stars to find a friendly alien.</p>
+               </div>
+             </motion.div>
+             {/* Sample Book 2 */}
+             <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-lg shadow-lg overflow-hidden group"
+             >
+               <img src={magicalForestCover} alt="Magical Forest Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
+               <div className="p-4">
+                 <h3 className="font-bold text-lg mb-2">Maya and the Whispering Woods</h3>
+                 <p className="text-sm text-gray-600">Discovering secrets with magical forest creatures.</p>
+               </div>
+             </motion.div>
+             {/* Sample Book 3 */}
+             <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: true, margin: "-100px" }}
+                className="bg-white rounded-lg shadow-lg overflow-hidden group"
+             >
+               <img src={underseaQuestCover} alt="Undersea Quest Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
+               <div className="p-4">
+                 <h3 className="font-bold text-lg mb-2">Sammy's Submarine Surprise</h3>
+                 <p className="text-sm text-gray-600">Exploring coral reefs and meeting colorful fish.</p>
+               </div>
+             </motion.div>
           </div>
         </div>
       </section>
 
       {/* Call to Action */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+      <section className="py-20 bg-gradient-to-r from-purple-600 to-blue-500 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <motion.h2 
+            className="text-4xl font-bold mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            viewport={{ once: true, margin: "-100px" }}
-            className="bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 rounded-3xl p-10 md:p-16 text-center text-white relative overflow-hidden"
+            viewport={{ once: true, margin: "-50px" }}
           >
-            {/* Decorative elements */}
-            <div className="absolute top-0 left-0 w-full h-full">
-              <div className="absolute top-5 left-5 text-6xl">✨</div>
-              <div className="absolute bottom-10 right-10 text-6xl">🌟</div>
-              <div className="absolute top-1/2 left-1/4 text-5xl">🪄</div>
-              <div className="absolute top-1/4 right-1/3 text-5xl">💫</div>
-            </div>
-            
-            <div className="relative z-10">
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1 }}
-                viewport={{ once: true }}
-                className="text-4xl md:text-5xl font-bold mb-6"
-              >
-                Ready to Create Magical Memories?
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto"
-              >
-                Join thousands of families creating personalized storybooks that inspire a love of reading and capture childhood imagination.
-              </motion.p>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.3 }}
-                viewport={{ once: true }}
-              >
-                <Link 
-                  to="/create" 
-                  className="inline-block px-8 py-4 bg-white text-purple-600 font-bold rounded-full shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-                >
-                  Create Your First Book
-                </Link>
-              </motion.div>
-            </div>
+            Ready to Create Magic?
+          </motion.h2>
+          <motion.p 
+            className="text-xl mb-8 max-w-xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            viewport={{ once: true, margin: "-50px" }}
+          >
+            Start crafting a unique storybook today and give a gift that lasts a lifetime.
+          </motion.p>
+          <motion.div
+             initial={{ opacity: 0, scale: 0.8 }}
+             whileInView={{ opacity: 1, scale: 1 }}
+             transition={{ duration: 0.5, delay: 0.2 }}
+             viewport={{ once: true, margin: "-50px" }}
+          >
+             <Link 
+              to="/create" 
+              className="px-10 py-4 bg-white text-purple-600 font-bold rounded-full shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
+            >
+              Start Creating Now
+            </Link>
           </motion.div>
         </div>
       </section>
