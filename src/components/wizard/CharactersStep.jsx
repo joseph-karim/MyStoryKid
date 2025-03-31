@@ -266,55 +266,52 @@ function CharactersStep() {
   };
 
   const handleContinue = () => {
-    if (isLoadingStyles) {
-      setError('Styles are still loading, please wait.');
-      return;
-    }
+    // Validation
     if (bookCharacters.length === 0) {
-      setError('Please add at least one character');
+      setError('Please add at least one character to your story.');
       return;
     }
-    const hasMainCharacter = bookCharacters.some(char => char.role === 'main');
-    if (!hasMainCharacter) {
-      setError('Please add a main character');
+    
+    if (!artStyleCode) {
+      setError('Please select an art style for your storybook.');
       return;
     }
-    // Use artStyleCode for validation
-    if (!artStyleCode && customStyleDescription === '') { 
-        setError('Please select an art style or describe a custom one.');
-        return;
-    }
-    if (artStyleCode === 'custom' && !customStyleDescription.trim()) {
-      setError('Please describe your custom art style');
+    
+    const mainChar = bookCharacters.find(char => char.role === 'main');
+    if (!mainChar) {
+      setError('Please add a main character to your story.');
       return;
     }
-
-    // --- NEW VALIDATION ---
-    // Check if any characters with original photos are still pending generation/confirmation
-    const pendingCharacters = bookCharacters.filter(char => {
-        const charStatus = generationStatus[char.id]?.status;
-        // A character needs confirmation if they had an original photo (which is now cleared on confirm)
-        // OR if they currently have a photoUrl and aren't confirmed yet.
-        // We check the generation status directly. If it's not 'confirmed' AND it's not 'idle' (meaning generation was attempted or is needed because photoUrl exists)
-        const needsConfirmation = isBase64DataUrl(char.photoUrl) && charStatus !== 'confirmed'; 
-        // Also catch cases where generation is in progress
-        const isGenerating = ['generating', 'polling'].includes(charStatus);
-
-        return needsConfirmation || isGenerating;
+   
+    // Check if any characters don't have style preview confirmations
+    const unconfirmedCharacters = bookCharacters.filter(char => {
+        const status = generationStatus[char.id]?.status;
+        // Only flag if it's not in a confirmed state and has a photo (needs a preview)
+        return isBase64DataUrl(char.photoUrl) && status !== 'confirmed';
     });
-
-    if (pendingCharacters.length > 0) {
-        setError(`Please generate and confirm the style for: ${pendingCharacters.map(c => c.name).join(', ')}.`);
+   
+    if (unconfirmedCharacters.length > 0) {
+        const characterNames = unconfirmedCharacters.map(c => c.name).join(', ');
+        setError(`Please generate and confirm the art style for these characters: ${characterNames}`);
         return;
     }
-    // --- END NEW VALIDATION ---
 
+    // Update the store with final data
     updateStoryData({ 
       bookCharacters,
-      artStyleCode: artStyleCode === 'custom' ? noStyleCode : artStyleCode, // Use noStyleCode for custom
+      artStyleCode,
       customStyleDescription: artStyleCode === 'custom' ? customStyleDescription : ''
     });
-    setWizardStep(4); // Skip to generating step
+    
+    // Clear any running polls before navigating away
+    Object.values(generationStatus).forEach(status => {
+        if (status.pollIntervalId) {
+            clearInterval(status.pollIntervalId);
+        }
+    });
+    
+    // Continue to next step - Changed from step 4 to step 3
+    setWizardStep(3);
   };
 
   // Helper to get style details from fetched list based on ID

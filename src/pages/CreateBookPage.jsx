@@ -26,9 +26,9 @@ function CreateBookPage() {
       case 1:
         return <CategoryStep />;
       case 2:
-        return <StoryDetailsStep />;
-      case 3:
         return <CharactersStep />;
+      case 3:
+        return <StoryDetailsStep />;
       case 4:
         return <GeneratingStep />;
       default:
@@ -44,8 +44,8 @@ function CreateBookPage() {
   const getStepName = (step) => {
      switch (step) {
          case 1: return 'Choose Story Foundation';
-         case 2: return 'Add Story Details';
-         case 3: return 'Add Characters & Style';
+         case 2: return 'Add Characters & Style';
+         case 3: return 'Add Story Details';
          case 4: return 'Generating Story';
          default: return '';
      }
