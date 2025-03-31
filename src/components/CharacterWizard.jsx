@@ -473,23 +473,31 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         prompt += ` in ${styleInfo.name} style`;
       }
       
-      console.log('Creating Dzine task with prompt:', prompt, 'style ID:', styleIdToUse);
+      // Get the proper style code from the ID - convert to a number
+      const styleCodeString = getSafeStyleCode(styleIdToUse);
+      const styleCode = parseInt(styleCodeString, 10); // Convert to number
       
-      // Get the proper style code from the ID
-      const styleCode = getSafeStyleCode(styleIdToUse);
-      console.log('Using style code for API:', styleCode);
+      console.log('Creating Dzine task with prompt:', prompt);
+      console.log('Using style code for API (numeric):', styleCode);
       
-      // Create a payload for the Dzine API - formatted exactly as required
+      // Create a payload EXACTLY matching what Dzine API expects (based on their docs)
       const payload = {
-        prompt: prompt,
-        style_code: styleCode,
-        images: [{ base64_data: base64Data }],
-        style_intensity: 1.0,
+        prompt,
+        style_code: styleCode, // Use numeric style code
+        images: [
+          {
+            base64_data: base64Data
+          }
+        ],
+        style_intensity: 1,
         structure_match: 0.5,
         face_match: 0.9
       };
       
-      console.log('API payload:', JSON.stringify(payload));
+      console.log('API payload structure:', JSON.stringify({
+        ...payload,
+        images: [{ base64_data: "..." }]
+      }, null, 2));
       
       // Call the Dzine API to create an img2img task
       const result = await createImg2ImgTask(payload);
