@@ -23,6 +23,28 @@ import kawaiiImg from '../../assets/japanese-kawaii.png';
 import scandinavianImg from '../../assets/scandinavian-folk-art.png';
 import africanPatternImg from '../../assets/african-patterned-illustration.png';
 
+// A fallback map for API-to-internal style mapping
+const styleIdToCodeMap = {
+  watercolor: '33',    // Watercolor styles
+  pastel: '32',        // Pastel style
+  pencil_wash: '24',   // Pencil wash
+  soft_digital: '73',  // Soft digital
+  pencil_ink: '22',    // Pencil and ink
+  golden_books: '70',  // Golden books style
+  beatrix_potter: '34', // Potter-like
+  cartoon: '80',       // Cartoon
+  flat_vector: '81',   // Flat vector
+  storybook_pop: '82', // Storybook
+  papercut: '83',      // Papercut style
+  oil_pastel: '35',    // Oil pastel
+  stylized_realism: '44', // Stylized realism
+  digital_painterly: '45', // Digital painterly
+  kawaii: '86',        // Kawaii style
+  scandinavian: '87',  // Scandinavian
+  african_pattern: '88', // African patterns
+  custom: 'custom'     // Custom style
+};
+
 // Character roles
 const CHARACTER_ROLES = [
   { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
