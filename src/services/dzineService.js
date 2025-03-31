@@ -76,45 +76,60 @@ export const createImg2ImgTask = async (payload) => {
     throw new Error('Dzine API Key not configured. Please check your environment variables.');
   }
   
-  // Basic validation
-  if (!payload.prompt || payload.style_code === undefined || !payload.images) {
+  // Basic validation per API documentation
+  if (!payload.prompt || !payload.style_code || !payload.images) {
     throw new Error('Missing required fields: prompt, style_code, or images');
   }
   
-  // Create a minimal valid payload structure with only required fields
-  // Using raw objects rather than deep copies to avoid any format issues
-  const minimalPayload = {
-    prompt: payload.prompt,
-    style_code: payload.style_code,
-    images: payload.images
+  // Ensure style_code is a string as per documentation
+  const cleanPayload = {
+    ...payload,
+    style_code: String(payload.style_code) // Ensure it's a string
   };
-
-  console.log(`Creating img2img task with minimal payload: prompt="${minimalPayload.prompt}", style_code=${minimalPayload.style_code}`);
+  
+  // Log what we're sending (without the full base64 data)
+  const logPayload = {
+    ...cleanPayload,
+    images: cleanPayload.images.map(img => ({
+      ...img,
+      base64_data: img.base64_data ? (
+        img.base64_data.substring(0, 30) + '...'
+      ) : undefined
+    }))
+  };
+  
+  console.log('Sending to Dzine API:', JSON.stringify(logPayload, null, 2));
   
   try {
-    // Make the API call with the minimal payload
+    // Make the API call with proper headers
     const response = await fetch(`${API_BASE_URL}/create_task_img2img`, {
       method: 'POST',
       headers: {
         'Authorization': API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(minimalPayload)
+      body: JSON.stringify(cleanPayload)
     });
 
-    // Parse and check the response
+    // Handle non-OK response
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Dzine API HTTP error:', response.status, errorText);
+      throw new Error(`HTTP error ${response.status}: ${errorText}`);
+    }
+
+    // Parse the response
     const data = await response.json();
+    console.log('Full Dzine API response:', data);
     
-    // Log the response for debugging
-    console.log('Dzine API response:', data);
-    
+    // Check response code
     if (data.code !== 200) {
       throw new Error(`Dzine API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
     }
     
     return data.data;
   } catch (error) {
-    console.error('Error creating Dzine task:', error);
+    console.error('Error calling Dzine API:', error);
     throw error;
   }
 };

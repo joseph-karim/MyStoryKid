@@ -450,42 +450,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         throw new Error('Please upload a photo first');
       }
       
-      // If the image is a data URL, convert base64 string from the data URL
+      // Per the Dzine API documentation, style_code must be a string (not a number)
+      const styleCode = getSafeStyleCode(styleIdToUse);
+      console.log("Using style code (as string):", styleCode);
+      
+      // Extract the base64 data correctly
       let base64Data = '';
       if (characterData.photoUrl.startsWith('data:image')) {
-        base64Data = characterData.photoUrl.split(',')[1];
-        // Make sure it's properly trimmed with no whitespace
-        base64Data = base64Data.trim();
+        // According to the documentation, we should keep the full data URL
+        base64Data = characterData.photoUrl;
       } else {
         throw new Error('Invalid image format. Please upload a photo.');
       }
       
-      // Build a simple prompt based on character details - keep it short and clean
+      // Build a simple prompt based on character details
       let prompt = `${characterData.name}`;
+      if (characterData.age) prompt += `, ${characterData.age} years old`;
+      if (characterData.gender) prompt += `, ${characterData.gender}`;
       
-      // Get the proper style code - MUST be a number, not a string
-      const styleCodeString = getSafeStyleCode(styleIdToUse);
-      const styleCode = parseInt(styleCodeString, 10);
-      
-      console.log("Using default safe style code:", styleCode);
-      
-      // Create a minimal payload - only include exactly what's needed
+      // Create a payload that exactly matches the format in the documentation
       const payload = {
         prompt: prompt,
-        style_code: styleCode,
-        images: [{
-          base64_data: base64Data
-        }]
+        style_code: styleCode, // Keep as string, not converted to number
+        images: [
+          {
+            base64_data: base64Data // Use full data URL
+          }
+        ],
+        style_intensity: 0.9,
+        structure_match: 0.8,
+        face_match: 1,
+        quality_mode: 0,
+        generate_slots: [1, 0, 0, 0]
       };
       
-      // Log the structure but not the data
-      console.log('API payload structure:', {
-        prompt: payload.prompt, 
-        style_code: payload.style_code,
-        images: "[array with base64 data]"
+      // Log the payload structure (without the full base64 data)
+      console.log('Sending payload with structure:', {
+        ...payload,
+        images: [{ base64_data: "data:image/*;base64,..." }]
       });
       
-      // Fallback to placeholder if API generation fails again
       try {
         // Call the Dzine API to create an img2img task
         const result = await createImg2ImgTask(payload);
@@ -503,31 +507,35 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             const progress = await getTaskProgress(taskId);
             console.log('Task progress:', progress);
             
-            if (progress.status === 'done') {
+            if (progress.status === 'succeeded') { // Note: API returns "succeeded" not "done"
               clearInterval(pollInterval);
               
-              if (progress.images && progress.images.length > 0) {
-                // Successfully generated the image
-                const imageUrl = progress.images[0].url;
+              if (progress.generate_result_slots && progress.generate_result_slots.length > 0) {
+                // Get the first non-empty URL from the slots
+                const imageUrl = progress.generate_result_slots.find(url => url);
                 
-                setCharacterData(prev => ({
-                  ...prev,
-                  artStyle: styleIdToUse,
-                  stylePreview: imageUrl
-                }));
-                
-                setIsGenerating(false);
+                if (imageUrl) {
+                  setCharacterData(prev => ({
+                    ...prev,
+                    artStyle: styleIdToUse,
+                    stylePreview: imageUrl
+                  }));
+                  
+                  setIsGenerating(false);
+                } else {
+                  throw new Error('No valid image URL returned from generation');
+                }
               } else {
                 throw new Error('No images returned from generation');
               }
             } else if (progress.status === 'failed') {
               clearInterval(pollInterval);
-              throw new Error(`Generation failed: ${progress.reason || 'Unknown error'}`);
+              throw new Error(`Generation failed: ${progress.error_reason || 'Unknown error'}`);
             }
-            // Continue polling for 'running' status
+            // Continue polling for other status values
           } catch (pollError) {
             clearInterval(pollInterval);
-            // Fall through to placeholder below
+            // Fall through to placeholder
             throw pollError;
           }
         }, 2000); // Poll every 2 seconds
