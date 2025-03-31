@@ -128,15 +128,10 @@ function CharactersStep() {
   const [showCharacterWizard, setShowCharacterWizard] = useState(false);
   const [selectedRole, setSelectedRole] = useState('');
   const [error, setError] = useState('');
-  const [artStyleCode, setArtStyleCode] = useState(wizardState.storyData.artStyleCode || '');
-  const [customStyleDescription, setCustomStyleDescription] = useState(wizardState.storyData.customStyleDescription || '');
-
-  // State for fetched styles and mapping
-  const [dzineStyles, setDzineStyles] = useState([]);
-  const [styleIdToCodeMap, setStyleIdToCodeMap] = useState({});
-  const [noStyleCode, setNoStyleCode] = useState(null); // For custom style
-  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
-  const [styleFetchError, setStyleFetchError] = useState(null);
+  
+  // Art style is now set in the ArtStyleStep
+  const artStyleCode = wizardState.storyData.artStyleCode || '';
+  const customStyleDescription = wizardState.storyData.customStyleDescription || '';
 
   // NEW: State to manage generation status per character
   // Format: { [characterId]: { status: 'idle' | 'generating' | 'polling' | 'previewReady' | 'confirmed' | 'error', taskId: null, previewUrl: null, errorMessage: null, pollIntervalId: null } }
@@ -179,102 +174,10 @@ function CharactersStep() {
     }));
   }, []);
 
-  // UPDATED: Create a hard-coded style map for internal testing
-  // This guarantees styles will display even if API is unavailable
-  const FALLBACK_STYLE_MAP = {
-    watercolor: 'watercolor',
-    pastel: 'pastel',
-    pencil_wash: 'pencil_wash',
-    soft_digital: 'soft_digital',
-    pencil_ink: 'pencil_ink',
-    golden_books: 'golden_books',
-    beatrix_potter: 'beatrix_potter',
-    cartoon: 'cartoon',
-    flat_vector: 'flat_vector',
-    storybook_pop: 'storybook_pop',
-    papercut: 'papercut',
-    oil_pastel: 'oil_pastel',
-    stylized_realism: 'stylized_realism',
-    digital_painterly: 'digital_painterly',
-    kawaii: 'kawaii',
-    scandinavian: 'scandinavian',
-    african_pattern: 'african_pattern',
-    custom: 'custom'
-  };
-
-  // Fetch styles from Dzine API on mount
-  useEffect(() => {
-    const fetchStyles = async () => {
-      setIsLoadingStyles(true);
-      setStyleFetchError(null);
-      try {
-        const data = await getDzineStyles();
-        setDzineStyles(data.list || []);
-        
-        // Create a map from name (or a generated ID) to style_code
-        const map = { ...FALLBACK_STYLE_MAP }; // Start with fallback map
-        let foundNoStyle = null;
-        
-        // If we got actual styles from the API, enhance our mapping
-        if (data.list && data.list.length > 0) {
-          data.list.forEach(style => {
-            // Generate a simple ID from the name for mapping
-            const simpleId = style.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_v\d+$/, ''); 
-            map[simpleId] = style.style_code;
-            
-            if (style.name === 'No Style v2') {
-               foundNoStyle = style.style_code;
-            }
-          });
-        } else {
-          // If API returned no styles, we'll use our fallback mapping for UI
-          // But mark them as unavailable in the UI
-          console.warn('No styles returned from Dzine API - using fallback mapping');
-        }
-        
-        setStyleIdToCodeMap(map);
-        setNoStyleCode(foundNoStyle || 'nostyle');
-
-        // Set initial artStyleCode if not already set
-        if (!wizardState.storyData.artStyleCode) {
-           // Auto-suggest style based on category (can be refined)
-           const category = wizardState.storyData.category;
-           let suggestedStyleId = 'cartoon'; // Default ID
-           if (category === 'adventure') suggestedStyleId = 'cartoon';
-           else if (category === 'fantasy') suggestedStyleId = 'watercolor';
-           else if (category === 'bedtime') suggestedStyleId = 'pastel';
-           else if (category === 'learning') suggestedStyleId = 'flat_vector';
-           else if (category === 'birthday') suggestedStyleId = 'storybook_pop';
-         
-           const suggestedCode = map[suggestedStyleId] || foundNoStyle || 'cartoon'; // Fallback
-           setArtStyleCode(suggestedCode);
-        }
-
-      } catch (err) {
-        console.error("Failed to fetch Dzine styles:", err);
-        setStyleFetchError(err.message || 'Could not load art styles.');
-        
-        // Use fallback map even in error case
-        setStyleIdToCodeMap(FALLBACK_STYLE_MAP);
-        setNoStyleCode('nostyle');
-        
-        // Set a default style code
-        if (!wizardState.storyData.artStyleCode) {
-          setArtStyleCode('cartoon');
-        }
-      } finally {
-        setIsLoadingStyles(false);
-      }
-    };
-
-    fetchStyles();
-  }, []); // Fetch only once
-  
   // Load wizard state when it changes (e.g., navigating back)
   useEffect(() => {
     setBookCharacters(wizardState.storyData.bookCharacters || []);
-    setArtStyleCode(wizardState.storyData.artStyleCode || '');
-    setCustomStyleDescription(wizardState.storyData.customStyleDescription || '');
+    
     // Re-initialize generation status if book characters reset/change significantly
     const initialStatus = {};
     (wizardState.storyData.bookCharacters || []).forEach(char => {
@@ -284,7 +187,6 @@ function CharactersStep() {
       };
     });
     setGenerationStatus(initialStatus);
-
   }, [wizardState.storyData]);
 
   const handleAddCharacter = (role) => {
@@ -336,18 +238,14 @@ function CharactersStep() {
   };
 
   const handleBack = () => {
-    setWizardStep(1);
+    // Go back to the Art Style selection step
+    setWizardStep(2);
   };
 
   const handleContinue = () => {
     // Validation
     if (bookCharacters.length === 0) {
       setError('Please add at least one character to your story.');
-      return;
-    }
-    
-    if (!artStyleCode) {
-      setError('Please select an art style for your storybook.');
       return;
     }
     
@@ -370,12 +268,8 @@ function CharactersStep() {
         return;
     }
 
-    // Update the store with final data
-    updateStoryData({ 
-      bookCharacters,
-      artStyleCode,
-      customStyleDescription: artStyleCode === 'custom' ? customStyleDescription : ''
-    });
+    // Update the store with final data (characters were updated as we went)
+    updateStoryData({ bookCharacters });
     
     // Clear any running polls before navigating away
     Object.values(generationStatus).forEach(status => {
@@ -384,131 +278,8 @@ function CharactersStep() {
         }
     });
     
-    // Continue to next step - Changed from step 4 to step 3
+    // Continue to Story Details step
     setWizardStep(3);
-  };
-
-  // Helper to get style details from fetched list based on ID
-  const getStyleDetails = (id) => {
-      return dzineStyles.find(s => s.style_code === id);
-  };
-
-  // Instead of actually checking the availability from the API (which might fail),
-  // we'll now determine availability based on if the style exists in our predefined list
-  const isStyleAvailable = (styleId) => {
-    // If we have actual API data, check if this style exists there
-    if (dzineStyles.length > 0) {
-      const styleCode = styleIdToCodeMap[styleId];
-      return !!styleCode && styleCode !== 'unavailable';
-    }
-    
-    // Always show styles as available for better UX when API isn't working
-    return true;
-  };
-
-  // UPDATED: renderArtStyles to show all styles even if API unavailable
-  const renderArtStyles = () => {
-    return (
-      <div className="space-y-8 mt-6 mb-4">
-        {ART_STYLE_CATEGORIES_STRUCTURE.map((category, idx) => (
-          <div key={idx} className="space-y-3">
-            <h3 className="text-lg font-medium mb-1">{category.category}</h3>
-            <p className="text-sm text-gray-600 mb-3">{category.description}</p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {category.styleIds.map((styleId) => {
-                const isAvailable = isStyleAvailable(styleId);
-                const styleCode = styleIdToCodeMap[styleId] || styleId;
-                
-                return (
-                  <div 
-                    key={styleId}
-                    onClick={() => isAvailable && handleStyleSelect(styleCode)}
-                    className={`border rounded-lg overflow-hidden transition-all hover:shadow-md ${
-                      artStyleCode === styleCode 
-                        ? 'ring-2 ring-blue-500 border-blue-500' 
-                        : 'border-gray-200 hover:border-blue-300'
-                    } ${isAvailable ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
-                  >
-                    <div className={`aspect-[4/3] bg-gray-100 relative`}>
-                      <img 
-                        src={styleImageMap[styleId]} 
-                        alt={styleId}
-                        className="w-full h-full object-cover"
-                      />
-                      {artStyleCode === styleCode && (
-                        <div className="absolute top-2 right-2 bg-blue-500 text-white p-1 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h4 className="font-medium mb-1">{styleDescriptions[styleId]?.title || styleId}</h4>
-                      <p className="text-sm text-gray-600">{styleDescriptions[styleId]?.description}</p>
-                      {!isAvailable && (
-                        <div className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-md inline-block">
-                          Currently unavailable
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        
-        {/* Custom style option */}
-        <div className="mt-6">
-          <div 
-            onClick={() => handleStyleSelect("custom")}
-            className={`border rounded-lg overflow-hidden transition-all p-4 ${
-              artStyleCode === "custom" 
-                ? 'ring-2 ring-blue-500 border-blue-500' 
-                : 'border-gray-200 hover:border-blue-300'
-            } cursor-pointer`}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full"></div>
-              <h4 className="font-medium">Custom Style Description</h4>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-3">
-              Describe a specific art style not listed above, or combine elements from multiple styles.
-            </p>
-            
-            <textarea
-              value={customStyleDescription}
-              onChange={(e) => setCustomStyleDescription(e.target.value)}
-              placeholder="Example: Vibrant watercolor with fine ink details, dreamy pastel colors, and a slight glow effect around characters."
-              className={`w-full border rounded-md p-3 text-sm ${
-                artStyleCode === "custom" ? 'border-blue-400' : 'border-gray-300'
-              }`}
-              rows={3}
-              disabled={artStyleCode !== "custom"}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Make sure the style selection handler is properly defined
-  const handleStyleSelect = (styleCode) => {
-    console.log("Style selected:", styleCode);
-    setArtStyleCode(styleCode);
-    setError(''); // Clear any errors when a style is selected
-    
-    // If it's the custom style, make sure the textarea is enabled
-    if (styleCode === 'custom') {
-      // Focus on the custom style textarea after a brief delay
-      setTimeout(() => {
-        const textarea = document.querySelector('textarea[placeholder*="Vibrant watercolor"]');
-        if (textarea) textarea.focus();
-      }, 100);
-    }
   };
 
   // Use a reliable fallback style code (we know 'cartoon' usually works)
@@ -528,7 +299,7 @@ function CharactersStep() {
   // New function to generate previews for all characters at once
   const handleGenerateAllPreviews = () => {
     if (!artStyleCode) {
-      setError('Please select an art style first.');
+      setError('No art style is selected. Please go back and select an art style.');
       return;
     }
     
@@ -557,7 +328,7 @@ function CharactersStep() {
       return;
     }
     
-    // Get the selected style ID and description
+    // Get the selected style ID and description from the store
     const selectedStyleId = Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode) || 'cartoon';
     const selectedStyleDescription = styleDescriptions[selectedStyleId] || '';
     
@@ -776,7 +547,7 @@ function CharactersStep() {
               {status.status === 'idle' && (
                 <button 
                   onClick={() => handleGeneratePreview(character.id)}
-                  disabled={isLoadingStyles || !artStyleCode}
+                  disabled={!artStyleCode}
                   className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
                 >
                   Generate Style Preview
@@ -832,8 +603,13 @@ function CharactersStep() {
       ) : (
         <>
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">Choose Style & Add Characters</h2>
-            <p className="text-gray-600">First select your art style, then add characters to your story.</p>
+            <h2 className="text-2xl font-bold">Add Your Story Characters</h2>
+            <p className="text-gray-600">Create the characters that will appear in your story</p>
+            {artStyleCode && (
+              <div className="mt-2 inline-block px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm">
+                Using art style: {artStyleCode === 'custom' ? 'Custom Style' : Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode)?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+              </div>
+            )}
           </div>
           
           {error && (
@@ -841,38 +617,10 @@ function CharactersStep() {
               {error}
             </div>
           )}
-          {styleFetchError && (
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-              Warning: {styleFetchError} You can continue without Dzine styles, but previews won't work.
-            </div>
-          )}
 
-          {/* Art Style Selection - MOVED TO FIRST POSITION */}
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4">1. Choose Art Style</h3>
-            <p className="text-gray-600 mb-4">Select the visual style for all illustrations in your story.</p>
-            
-            {styleFetchError && (
-              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
-                <p>Error loading art styles. You can continue with a custom style description.</p>
-                <p className="text-xs">{styleFetchError}</p>
-              </div>
-            )}
-            
-            {isLoadingStyles ? (
-              <div className="flex justify-center my-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-              </div>
-            ) : (
-              <>
-                {renderArtStyles()}
-              </>
-            )}
-          </div>
-
-          {/* Characters List - MOVED TO SECOND POSITION */}
+          {/* Characters List */}
           <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">2. Add Story Characters</h3>
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">Story Characters</h3>
               {/* Privacy Notice - Moved to be more prominent */}
                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-start">
                    <span className="text-2xl mr-3">🔒</span> 
@@ -926,7 +674,7 @@ function CharactersStep() {
               onClick={handleBack}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-100"
             >
-              Back
+              Back to Art Style
             </button>
             <button
               onClick={handleContinue}

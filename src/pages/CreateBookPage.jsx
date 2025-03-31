@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
 
 // Step components
-import CategoryStep from '../components/wizard/CategoryStep';
+import IntroStep from '../components/wizard/IntroStep';
 import StoryDetailsStep from '../components/wizard/StoryDetailsStep';
 import CharactersStep from '../components/wizard/CharactersStep';
-import GeneratingStep from '../components/wizard/GeneratingStep';
+import ArtStyleStep from '../components/wizard/ArtStyleStep';
+import SummaryStep from '../components/wizard/SummaryStep';
+import ProgressTracker from '../components/wizard/ProgressTracker';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
-  const { wizardState, resetWizard } = useBookStore();
+  const { wizardState, resetWizard, updateStoryData } = useBookStore();
   const navigate = useNavigate();
   
   // Authentication check removed for testing
@@ -20,20 +22,31 @@ function CreateBookPage() {
     resetWizard();
   }, [resetWizard]);
   
-  // Render current step based on wizardState.step
+  // Define wizard steps
+  const steps = [
+    { id: 1, name: 'Introduction' },
+    { id: 2, name: 'Art Style' },  // Add Art Style as a separate step
+    { id: 3, name: 'Characters' },
+    { id: 4, name: 'Story Details' },
+    { id: 5, name: 'Summary & Generate' }
+  ];
+  
+  // Render the current wizard step
   const renderStep = () => {
     switch (wizardState.step) {
       case 1:
-        return <CategoryStep />;
+        return <IntroStep />;
       case 2:
-        return <CharactersStep />;
+        return <ArtStyleStep />;  // New Art Style step
       case 3:
-        return <StoryDetailsStep />;
+        return <CharactersStep />;
       case 4:
-        return <GeneratingStep />;
+        return <StoryDetailsStep />;
+      case 5:
+        return <SummaryStep />;
       default:
         console.warn(`Unknown wizard step: ${wizardState.step}, returning to step 1.`);
-        return <CategoryStep />;
+        return <IntroStep />;
     }
   };
   
@@ -43,10 +56,11 @@ function CreateBookPage() {
   
   const getStepName = (step) => {
      switch (step) {
-         case 1: return 'Choose Story Foundation';
-         case 2: return 'Add Characters & Style';
-         case 3: return 'Add Story Details';
-         case 4: return 'Generating Story';
+         case 1: return 'Introduction';
+         case 2: return 'Art Style';
+         case 3: return 'Characters';
+         case 4: return 'Story Details';
+         case 5: return 'Summary & Generate';
          default: return '';
      }
   };
