@@ -145,7 +145,25 @@ function SummaryStep() {
             
             <p><span className="font-medium">Setting:</span> {storyData.setting || 'Not specified'}</p>
             
-            <p><span className="font-medium">Core Theme:</span> {storyData.theme || 'Not specified'}</p>
+            {/* Core Theme */}
+            <p className="mt-2">
+              <span className="font-medium">Core Themes:</span> 
+              {storyData.selectedThemes && storyData.selectedThemes.length > 0 ? (
+                <span className="flex flex-wrap gap-1 mt-1">
+                  {storyData.selectedThemes.map(theme => (
+                    <span key={theme} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 text-xs rounded">
+                      {theme.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
+                  ))}
+                </span>
+              ) : storyData.customTheme ? (
+                <span className="italic">{storyData.customTheme}</span>
+              ) : storyData.coreTheme ? (
+                <span>{storyData.coreTheme}</span>
+              ) : (
+                <span className="text-gray-500">Not specified</span>
+              )}
+            </p>
             
             <p><span className="font-medium">Challenge:</span> {storyData.challenge || 'Not specified'}</p>
             

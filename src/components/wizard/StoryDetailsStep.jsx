@@ -40,20 +40,103 @@ const rhymeSchemeOptions = [
   { value: 'Free Verse', label: 'Free Verse (No strict rhyme)' },
 ];
 
-// New dropdown options for Core Theme
-const coreThemeOptions = [
-  { value: 'friendship', label: 'Friendship' },
-  { value: 'courage', label: 'Courage / Bravery' },
-  { value: 'kindness', label: 'Kindness / Empathy' },
-  { value: 'curiosity', label: 'Curiosity / Exploration' },
-  { value: 'sharing', label: 'Sharing / Generosity' },
-  { value: 'perseverance', label: 'Perseverance / Never Give Up' },
-  { value: 'teamwork', label: 'Teamwork / Cooperation' },
-  { value: 'self_confidence', label: 'Self-Confidence / Self-Worth' },
-  { value: 'respect', label: 'Respect / Acceptance of Differences' },
-  { value: 'imagination', label: 'Imagination / Creativity' },
-  { value: 'responsibility', label: 'Responsibility / Taking Care' },
-  { value: 'custom', label: '✏️ Custom Theme (Write Your Own)' },
+// Rich Theme Categories
+const themeCategories = [
+  {
+    category: 'Social & Emotional Learning',
+    description: 'Focuses on developing social skills, emotional awareness, and interpersonal relationships',
+    themes: [
+      { value: 'friendship', label: 'Friendship' },
+      { value: 'empathy_kindness', label: 'Empathy & Kindness' },
+      { value: 'managing_emotions', label: 'Managing Emotions' },
+      { value: 'cooperation_teamwork', label: 'Cooperation & Teamwork' },
+      { value: 'conflict_resolution', label: 'Conflict Resolution' },
+      { value: 'resilience_perseverance', label: 'Resilience & Perseverance' },
+    ]
+  },
+  {
+    category: 'Identity & Self-Discovery',
+    description: 'Focuses on understanding oneself, building confidence, and discovering personal strengths',
+    themes: [
+      { value: 'individuality_uniqueness', label: 'Individuality & Uniqueness' },
+      { value: 'self_esteem_confidence', label: 'Self-Esteem & Confidence' },
+      { value: 'finding_your_voice', label: 'Finding Your Voice' },
+      { value: 'personal_growth', label: 'Personal Growth' },
+      { value: 'cultural_identity', label: 'Cultural Identity & Heritage' },
+    ]
+  },
+  {
+    category: 'Family & Relationships',
+    description: 'Explores family bonds, different family structures, and navigating relationships',
+    themes: [
+      { value: 'parent_child_bonds', label: 'Parent/Caregiver-Child Bonds' },
+      { value: 'sibling_dynamics', label: 'Sibling Dynamics' },
+      { value: 'extended_family', label: 'Extended Family Connections' },
+      { value: 'diverse_family_structures', label: 'Diverse Family Structures' },
+      { value: 'family_traditions', label: 'Family Traditions & Routines' },
+      { value: 'family_change', label: 'Dealing with Family Change' },
+    ]
+  },
+  {
+    category: 'Adventure & Exploration',
+    description: 'Features journeys, discoveries, and facing challenges in new environments',
+    themes: [
+      { value: 'call_to_adventure', label: 'The Call to Adventure' },
+      { value: 'journeys_quests', label: 'Journeys & Quests' },
+      { value: 'overcoming_obstacles', label: 'Overcoming Obstacles' },
+      { value: 'discovery', label: 'Discovery & Hidden Treasures' },
+      { value: 'problem_solving', label: 'Problem-Solving on the Go' },
+      { value: 'exploration', label: 'Exploration of New Environments' },
+    ]
+  },
+  {
+    category: 'Fantasy & Magic',
+    description: 'Incorporates magical elements, enchanted worlds, and fantastical possibilities',
+    themes: [
+      { value: 'magical_creatures', label: 'Magical Creatures' },
+      { value: 'enchanted_objects', label: 'Enchanted Objects/Places' },
+      { value: 'learning_magic', label: 'Learning Magic/Special Abilities' },
+      { value: 'power_of_belief', label: 'The Power of Belief/Imagination' },
+      { value: 'good_vs_evil', label: 'Good vs. Evil (Simplified)' },
+      { value: 'wishes_consequences', label: 'Wishes & Consequences' },
+    ]
+  },
+  {
+    category: 'Educational & Informational',
+    description: 'Teaches concepts or facts in an engaging narrative format',
+    themes: [
+      { value: 'basic_concepts', label: 'Basic Concepts (Letters, Numbers, etc.)' },
+      { value: 'stem_concepts', label: 'STEM Concepts' },
+      { value: 'nature_science', label: 'Nature & Science' },
+      { value: 'history_culture', label: 'History & Culture' },
+      { value: 'arts', label: 'Arts & Creativity' },
+      { value: 'life_skills', label: 'Life Skills & Routines' },
+    ]
+  },
+  {
+    category: 'Nature & Environment',
+    description: 'Focuses on the natural world and our relationship with it',
+    themes: [
+      { value: 'natural_beauty', label: 'Appreciation of Natural Beauty' },
+      { value: 'animals_plants', label: 'Understanding Animals & Plants' },
+      { value: 'conservation', label: 'Conservation & Responsibility' },
+      { value: 'ecosystems', label: 'Interconnectedness of Ecosystems' },
+      { value: 'outdoor_play', label: 'Outdoor Play & Connection with Nature' },
+      { value: 'respect_living_things', label: 'Respect for All Living Things' },
+    ]
+  },
+  {
+    category: 'Humor & Playfulness',
+    description: 'Emphasizes fun, silliness, and the joy of laughter',
+    themes: [
+      { value: 'absurdity_nonsense', label: 'Absurdity & Nonsense' },
+      { value: 'wordplay', label: 'Wordplay & Puns' },
+      { value: 'situational_comedy', label: 'Situational Comedy' },
+      { value: 'character_humor', label: 'Character-Driven Humor' },
+      { value: 'imagination_play', label: 'Joy of Imagination & Pretend Play' },
+      { value: 'lighthearted_mischief', label: 'Lighthearted Mischief' },
+    ]
+  },
 ];
 
 // New dropdown options for Main Challenge / Plot
@@ -93,33 +176,86 @@ const lengthOptions = [
 
 function StoryDetailsStep() {
   const { wizardState, updateStoryData, setWizardStep } = useBookStore();
-  const [formData, setFormData] = useState(wizardState.storyData);
+  
+  // Initialize formData with default values if not in wizardState
+  const [formData, setFormData] = useState({
+    ...wizardState.storyData,
+    selectedThemes: wizardState.storyData.selectedThemes || [],
+    customTheme: wizardState.storyData.customTheme || ''
+  });
+  
   const [error, setError] = useState('');
   
   // New state variables for custom inputs
-  const [isCustomTheme, setIsCustomTheme] = useState(formData.coreTheme && !coreThemeOptions.some(o => o.value === formData.coreTheme));
+  const [isCustomTheme, setIsCustomTheme] = useState(!!formData.customTheme);
   const [isCustomChallenge, setIsCustomChallenge] = useState(formData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === formData.mainChallengePlot));
   const [isCustomEnding, setIsCustomEnding] = useState(formData.desiredEnding && !endingOptions.some(o => o.value === formData.desiredEnding));
 
   // Update local state if global state changes (e.g., navigating back)
   useEffect(() => {
-    setFormData(wizardState.storyData);
+    setFormData({
+      ...wizardState.storyData,
+      selectedThemes: wizardState.storyData.selectedThemes || [],
+      customTheme: wizardState.storyData.customTheme || ''
+    });
     
     // Check if we need to set the custom flags based on data
-    setIsCustomTheme(formData.coreTheme && !coreThemeOptions.some(o => o.value === formData.coreTheme));
-    setIsCustomChallenge(formData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === formData.mainChallengePlot));
-    setIsCustomEnding(formData.desiredEnding && !endingOptions.some(o => o.value === formData.desiredEnding));
+    setIsCustomTheme(!!wizardState.storyData.customTheme);
+    setIsCustomChallenge(wizardState.storyData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === wizardState.storyData.mainChallengePlot));
+    setIsCustomEnding(wizardState.storyData.desiredEnding && !endingOptions.some(o => o.value === wizardState.storyData.desiredEnding));
   }, [wizardState.storyData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Handle theme checkboxes
+    if (name.startsWith('theme_')) {
+      const themeValue = name.replace('theme_', '');
+      
+      if (checked) {
+        // Add theme to selectedThemes array
+        setFormData(prev => ({
+          ...prev,
+          selectedThemes: [...prev.selectedThemes, themeValue]
+        }));
+      } else {
+        // Remove theme from selectedThemes array
+        setFormData(prev => ({
+          ...prev,
+          selectedThemes: prev.selectedThemes.filter(theme => theme !== themeValue)
+        }));
+      }
+      return;
+    }
+    
+    // Handle custom theme toggle
+    if (name === 'enableCustomTheme') {
+      setIsCustomTheme(checked);
+      if (!checked) {
+        // If unchecking custom theme, clear the custom theme value
+        setFormData(prev => ({
+          ...prev,
+          customTheme: ''
+        }));
+      }
+      return;
+    }
+    
+    // Handle custom theme text input
+    if (name === 'customTheme') {
+      setFormData(prev => ({
+        ...prev,
+        customTheme: value
+      }));
+      return;
+    }
+    
+    // Handle regular form inputs
     // Ensure number inputs are stored as numbers
     const newValue = type === 'checkbox' ? checked : type === 'number' ? parseInt(value, 10) || 0 : value;
     
     // Handle dropdown changes that might affect custom fields
-    if (name === 'coreTheme') {
-      setIsCustomTheme(value === 'custom');
-    } else if (name === 'mainChallengePlot') {
+    if (name === 'mainChallengePlot') {
       setIsCustomChallenge(value === 'custom');
     } else if (name === 'desiredEnding') {
       setIsCustomEnding(value === 'custom');
@@ -134,35 +270,51 @@ function StoryDetailsStep() {
 
   const handleBack = () => {
     // Update global state before navigating
-    updateStoryData(formData);
-    setWizardStep(2); // Go back to CharactersStep (step 2 in the new order)
+    updateStoryData({
+      ...formData,
+      // Generate a combined coreTheme string for backward compatibility
+      coreTheme: formData.selectedThemes.length > 0 
+        ? formData.selectedThemes.join(', ') 
+        : formData.customTheme || ''
+    });
+    
+    setWizardStep(3); // Go back to CharactersStep
   };
 
   const handleContinue = () => {
     setError(''); // Clear previous errors
     
     // Basic validation (can be expanded)
-    if (!formData.coreTheme && formData.storyType !== 'board_book') {
-      setError('Please select or enter a Core Theme for the story.');
+    if (formData.selectedThemes.length === 0 && !formData.customTheme && formData.storyType !== 'board_book') {
+      setError('Please select at least one theme or enter a custom theme for the story.');
       return;
     }
+    
     if (!formData.mainChallengePlot && formData.storyType !== 'board_book') {
       setError('Please select or describe the Main Challenge or Plot for the story.');
       return;
     }
+    
     if (formData.storyType === 'board_book' && !formData.coreConcept) {
       setError('Please specify the Core Concept for the board book (e.g., Colors, Animals).');
       return;
     }
+    
     if (formData.storyType === 'board_book' && !formData.keyObjectsActions) {
       setError('Please list the Key Objects/Actions for the board book.');
       return;
     }
 
     // Update global state only when continuing to next step
-    updateStoryData(formData);
+    updateStoryData({
+      ...formData,
+      // Generate a combined coreTheme string for backward compatibility
+      coreTheme: formData.selectedThemes.length > 0 
+        ? formData.selectedThemes.join(', ') 
+        : formData.customTheme || ''
+    });
     
-    setWizardStep(4); // Proceed to GeneratingStep (step 4 in the new order)
+    setWizardStep(5); // Proceed to SummaryStep
   };
 
   // Helper component for form fields to reduce repetition
@@ -175,6 +327,11 @@ function StoryDetailsStep() {
       {helpText && <p className="text-xs text-gray-500 mt-1">{helpText}</p>}
     </div>
   );
+
+  // Helper to check if a theme is selected
+  const isThemeSelected = (themeValue) => {
+    return formData.selectedThemes.includes(themeValue);
+  };
 
   return (
     <motion.div 
@@ -229,32 +386,97 @@ function StoryDetailsStep() {
       {/* Fields for most story types */}
       {formData.storyType !== 'board_book' && (
         <>
-          {/* Core Theme - Changed to dropdown with custom option */}
-          <FormField label="Core Theme" name="coreTheme" required helpText="What is the main message or lesson of the story?">
-            <select
-              id="coreTheme"
-              name="coreTheme"
-              value={isCustomTheme ? 'custom' : formData.coreTheme}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              {coreThemeOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+          {/* Rich Theme Selection */}
+          <FormField 
+            label="Story Themes" 
+            name="selectedThemes" 
+            required 
+            helpText="Select one or more themes for your story. Combining themes creates rich, layered narratives."
+          >
+            <div className="space-y-4 mt-2">
+              {themeCategories.map((category, catIndex) => (
+                <div key={catIndex} className="p-4 border border-gray-200 rounded-lg">
+                  <h3 className="font-medium text-lg mb-1">{category.category}</h3>
+                  <p className="text-gray-600 text-sm mb-3">{category.description}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                    {category.themes.map((theme) => (
+                      <div key={theme.value} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`theme_${theme.value}`}
+                          name={`theme_${theme.value}`}
+                          checked={isThemeSelected(theme.value)}
+                          onChange={handleChange}
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor={`theme_${theme.value}`} className="ml-2 text-sm text-gray-700">
+                          {theme.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </select>
-            
-            {/* Show text input if custom is selected */}
-            {isCustomTheme && (
-              <input
-                type="text"
-                id="customCoreTheme"
-                name="coreTheme"
-                value={formData.coreTheme}
-                onChange={handleChange}
-                className="w-full mt-2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Describe your custom theme..."
-              />
-            )}
+              
+              {/* Custom Theme Option */}
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="enableCustomTheme"
+                    name="enableCustomTheme"
+                    checked={isCustomTheme}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="enableCustomTheme" className="ml-2 font-medium">
+                    Add Custom Theme
+                  </label>
+                </div>
+                
+                {isCustomTheme && (
+                  <textarea
+                    id="customTheme"
+                    name="customTheme"
+                    value={formData.customTheme}
+                    onChange={handleChange}
+                    rows="3"
+                    className="w-full mt-2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Describe your custom theme or combine elements from multiple themes..."
+                  />
+                )}
+              </div>
+              
+              {/* Selected Themes Summary */}
+              {(formData.selectedThemes.length > 0 || formData.customTheme) && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-800">Selected Themes:</h4>
+                  <div className="mt-1">
+                    {formData.selectedThemes.map(themeValue => {
+                      // Find the theme details
+                      let themeLabel = '';
+                      themeCategories.forEach(category => {
+                        const found = category.themes.find(t => t.value === themeValue);
+                        if (found) themeLabel = found.label;
+                      });
+                      
+                      return (
+                        <span key={themeValue} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-2 mb-1">
+                          {themeLabel}
+                        </span>
+                      );
+                    })}
+                    
+                    {formData.customTheme && (
+                      <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded mr-2 mb-1">
+                        Custom: {formData.customTheme.substring(0, 30)}{formData.customTheme.length > 30 ? '...' : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </FormField>
 
           {/* Main Challenge - Changed to dropdown with custom option */}
