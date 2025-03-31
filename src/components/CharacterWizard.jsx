@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
+import { createImg2ImgTask, getTaskProgress } from '../services/dzineService';
 
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
@@ -390,29 +391,149 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  // Generate character preview - updated to always use forced style if provided
-  const generateCharacterPreview = () => {
+  // Generate character preview - updated to use Dzine API
+  const generateCharacterPreview = async () => {
     setIsGenerating(true);
+    setError('');
     
-    // Simulate API call delay
-    setTimeout(() => {
-      // Always use the forced art style if provided, otherwise use the one from character data
-      const styleToUse = forcedArtStyle || characterData.artStyle;
+    // Always use the forced art style if provided, otherwise use the one from character data
+    const styleToUse = forcedArtStyle || characterData.artStyle;
+    
+    try {
+      if (!characterData.photoUrl) {
+        throw new Error('Please upload a photo first');
+      }
       
-      // Use a data URL instead of an external service that might not resolve
-      // This creates a simple colored square as a placeholder
+      // If the image is a data URL, convert base64 string from the data URL
+      let base64Data = '';
+      if (characterData.photoUrl.startsWith('data:image')) {
+        base64Data = characterData.photoUrl.split(',')[1];
+      } else {
+        throw new Error('Invalid image format. Please upload a photo.');
+      }
+      
+      // Build a rich prompt based on character details
+      let prompt = `${characterData.name}`;
+      if (characterData.age) prompt += `, ${characterData.age} years old`;
+      if (characterData.gender) prompt += `, ${characterData.gender}`;
+      if (characterData.type) {
+        const charType = CHARACTER_TYPES.find(t => t.id === characterData.type);
+        if (charType) prompt += `, ${charType.name}`;
+      }
+      
+      // Use artStyle style name in prompt for better results
+      const styleInfo = ALL_ART_STYLES.find(s => s.id === styleToUse);
+      if (styleInfo) {
+        prompt += ` in ${styleInfo.name} style`;
+      }
+      
+      console.log('Creating Dzine task with prompt:', prompt, 'style:', styleToUse);
+      
+      // Create a payload for the Dzine API
+      const payload = {
+        prompt,
+        style_code: styleToUse,
+        images: [{ base64_data: base64Data }],
+        style_intensity: 1.0, // Max style intensity
+        structure_match: 0.5, // Balance between structure and style
+        face_match: 0.9, // High face match to preserve facial features
+      };
+      
+      // Call the Dzine API to create an img2img task
+      const result = await createImg2ImgTask(payload);
+      console.log('Dzine task created:', result);
+      
+      if (!result || !result.task_id) {
+        throw new Error('Failed to create image generation task');
+      }
+      
+      const taskId = result.task_id;
+      
+      // Set up polling to check task progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const progress = await getTaskProgress(taskId);
+          console.log('Task progress:', progress);
+          
+          if (progress.status === 'done') {
+            clearInterval(pollInterval);
+            
+            if (progress.images && progress.images.length > 0) {
+              // Successfully generated the image
+              const imageUrl = progress.images[0].url;
+              
+              setCharacterData(prev => ({
+                ...prev,
+                artStyle: styleToUse,
+                stylePreview: imageUrl
+              }));
+              
+              setIsGenerating(false);
+            } else {
+              throw new Error('No images returned from generation');
+            }
+          } else if (progress.status === 'failed') {
+            clearInterval(pollInterval);
+            throw new Error(`Generation failed: ${progress.reason || 'Unknown error'}`);
+          }
+          // Continue polling for 'running' status
+        } catch (pollError) {
+          clearInterval(pollInterval);
+          console.error('Error polling task progress:', pollError);
+          
+          // Fallback to placeholder if API generation fails
+          const bgColor = stringToColor(characterData.name + styleToUse);
+          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+          
+          setCharacterData(prev => ({
+            ...prev,
+            artStyle: styleToUse,
+            stylePreview: fallbackPreview
+          }));
+          
+          setError(`Failed to generate preview: ${pollError.message}. Using placeholder instead.`);
+          setIsGenerating(false);
+        }
+      }, 2000); // Poll every 2 seconds
+      
+      // Set a timeout to stop polling after 60 seconds
+      setTimeout(() => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          
+          // Check if we're still generating (didn't get a result)
+          if (isGenerating) {
+            const bgColor = stringToColor(characterData.name + styleToUse);
+            const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+            
+            setCharacterData(prev => ({
+              ...prev,
+              artStyle: styleToUse,
+              stylePreview: fallbackPreview
+            }));
+            
+            setError('Generation timed out. Using placeholder instead.');
+            setIsGenerating(false);
+          }
+        }
+      }, 60000); // 60 second timeout
+      
+    } catch (error) {
+      console.error('Error creating Dzine task:', error);
+      
+      // Fallback to placeholder on error
       const bgColor = stringToColor(characterData.name + styleToUse);
-      const stylePreviewUrl = createColorPlaceholder(bgColor, characterData.name);
+      const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
         ...prev,
         artStyle: styleToUse,
-        stylePreview: stylePreviewUrl
+        stylePreview: fallbackPreview
       }));
       
+      setError(`Failed to generate character: ${error.message}. Using placeholder instead.`);
       setIsGenerating(false);
-      setStep(4); // Move to preview
-    }, 1000);
+    }
   };
   
   // Helper function to create a colored placeholder image as a data URL
