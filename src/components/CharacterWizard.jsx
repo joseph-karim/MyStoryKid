@@ -454,134 +454,103 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       let base64Data = '';
       if (characterData.photoUrl.startsWith('data:image')) {
         base64Data = characterData.photoUrl.split(',')[1];
+        // Make sure it's properly trimmed with no whitespace
+        base64Data = base64Data.trim();
       } else {
         throw new Error('Invalid image format. Please upload a photo.');
       }
       
-      // Build a rich prompt based on character details
+      // Build a simple prompt based on character details - keep it short and clean
       let prompt = `${characterData.name}`;
-      if (characterData.age) prompt += `, ${characterData.age} years old`;
-      if (characterData.gender) prompt += `, ${characterData.gender}`;
-      if (characterData.type) {
-        const charType = CHARACTER_TYPES.find(t => t.id === characterData.type);
-        if (charType) prompt += `, ${charType.name}`;
-      }
       
-      // Use artStyle style name in prompt for better results
-      const styleInfo = ALL_ART_STYLES.find(s => s.id === styleIdToUse);
-      if (styleInfo) {
-        prompt += ` in ${styleInfo.name} style`;
-      }
-      
-      // Get the proper style code from the ID - convert to a number
+      // Get the proper style code - MUST be a number, not a string
       const styleCodeString = getSafeStyleCode(styleIdToUse);
-      const styleCode = parseInt(styleCodeString, 10); // Convert to number
+      const styleCode = parseInt(styleCodeString, 10);
       
-      console.log('Creating Dzine task with prompt:', prompt);
-      console.log('Using style code for API (numeric):', styleCode);
+      console.log("Using default safe style code:", styleCode);
       
-      // Create a payload EXACTLY matching what Dzine API expects (based on their docs)
+      // Create a minimal payload - only include exactly what's needed
       const payload = {
-        prompt,
-        style_code: styleCode, // Use numeric style code
-        images: [
-          {
-            base64_data: base64Data
-          }
-        ],
-        style_intensity: 1,
-        structure_match: 0.5,
-        face_match: 0.9
+        prompt: prompt,
+        style_code: styleCode,
+        images: [{
+          base64_data: base64Data
+        }]
       };
       
-      console.log('API payload structure:', JSON.stringify({
-        ...payload,
-        images: [{ base64_data: "..." }]
-      }, null, 2));
+      // Log the structure but not the data
+      console.log('API payload structure:', {
+        prompt: payload.prompt, 
+        style_code: payload.style_code,
+        images: "[array with base64 data]"
+      });
       
-      // Call the Dzine API to create an img2img task
-      const result = await createImg2ImgTask(payload);
-      console.log('Dzine task created:', result);
-      
-      if (!result || !result.task_id) {
-        throw new Error('Failed to create image generation task');
-      }
-      
-      const taskId = result.task_id;
-      
-      // Set up polling to check task progress
-      const pollInterval = setInterval(async () => {
-        try {
-          const progress = await getTaskProgress(taskId);
-          console.log('Task progress:', progress);
-          
-          if (progress.status === 'done') {
-            clearInterval(pollInterval);
+      // Fallback to placeholder if API generation fails again
+      try {
+        // Call the Dzine API to create an img2img task
+        const result = await createImg2ImgTask(payload);
+        console.log('Dzine task created:', result);
+        
+        if (!result || !result.task_id) {
+          throw new Error('Failed to create image generation task');
+        }
+        
+        const taskId = result.task_id;
+        
+        // Set up polling to check task progress
+        const pollInterval = setInterval(async () => {
+          try {
+            const progress = await getTaskProgress(taskId);
+            console.log('Task progress:', progress);
             
-            if (progress.images && progress.images.length > 0) {
-              // Successfully generated the image
-              const imageUrl = progress.images[0].url;
+            if (progress.status === 'done') {
+              clearInterval(pollInterval);
               
-              setCharacterData(prev => ({
-                ...prev,
-                artStyle: styleIdToUse,
-                stylePreview: imageUrl
-              }));
-              
-              setIsGenerating(false);
-            } else {
-              throw new Error('No images returned from generation');
+              if (progress.images && progress.images.length > 0) {
+                // Successfully generated the image
+                const imageUrl = progress.images[0].url;
+                
+                setCharacterData(prev => ({
+                  ...prev,
+                  artStyle: styleIdToUse,
+                  stylePreview: imageUrl
+                }));
+                
+                setIsGenerating(false);
+              } else {
+                throw new Error('No images returned from generation');
+              }
+            } else if (progress.status === 'failed') {
+              clearInterval(pollInterval);
+              throw new Error(`Generation failed: ${progress.reason || 'Unknown error'}`);
             }
-          } else if (progress.status === 'failed') {
+            // Continue polling for 'running' status
+          } catch (pollError) {
             clearInterval(pollInterval);
-            throw new Error(`Generation failed: ${progress.reason || 'Unknown error'}`);
+            // Fall through to placeholder below
+            throw pollError;
           }
-          // Continue polling for 'running' status
-        } catch (pollError) {
-          clearInterval(pollInterval);
-          console.error('Error polling task progress:', pollError);
-          
-          // Fallback to placeholder if API generation fails
-          const bgColor = stringToColor(characterData.name + styleIdToUse);
-          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-          
-          setCharacterData(prev => ({
-            ...prev,
-            artStyle: styleIdToUse,
-            stylePreview: fallbackPreview
-          }));
-          
-          setError(`Failed to generate preview: ${pollError.message}. Using placeholder instead.`);
-          setIsGenerating(false);
-        }
-      }, 2000); // Poll every 2 seconds
-      
-      // Set a timeout to stop polling after 60 seconds
-      setTimeout(() => {
-        if (pollInterval) {
-          clearInterval(pollInterval);
-          
-          // Check if we're still generating (didn't get a result)
-          if (isGenerating) {
-            const bgColor = stringToColor(characterData.name + styleIdToUse);
-            const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+        }, 2000); // Poll every 2 seconds
+        
+        // Set a timeout to stop polling after 30 seconds
+        setTimeout(() => {
+          if (pollInterval) {
+            clearInterval(pollInterval);
             
-            setCharacterData(prev => ({
-              ...prev,
-              artStyle: styleIdToUse,
-              stylePreview: fallbackPreview
-            }));
-            
-            setError('Generation timed out. Using placeholder instead.');
-            setIsGenerating(false);
+            // Check if we're still generating (didn't get a result)
+            if (isGenerating) {
+              throw new Error('Generation timed out');
+            }
           }
-        }
-      }, 60000); // 60 second timeout
-      
+        }, 30000); // 30 second timeout
+      } catch (apiError) {
+        console.error('API Error:', apiError);
+        throw new Error(`Dzine API error: ${apiError.message}`);
+      }
     } catch (error) {
       console.error('Error creating Dzine task:', error);
       
-      // Fallback to placeholder on error
+      // Always fall back to placeholder on error
       const bgColor = stringToColor(characterData.name + styleIdToUse);
       const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       

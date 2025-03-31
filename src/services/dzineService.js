@@ -76,53 +76,43 @@ export const createImg2ImgTask = async (payload) => {
     throw new Error('Dzine API Key not configured. Please check your environment variables.');
   }
   
-  // Ensure the payload structure matches the API docs
-  // Required fields according to Dzine API: prompt, style_code, images
-  if (!payload.prompt) {
-    throw new Error('Prompt is required for img2img task');
+  // Basic validation
+  if (!payload.prompt || payload.style_code === undefined || !payload.images) {
+    throw new Error('Missing required fields: prompt, style_code, or images');
   }
   
-  if (payload.style_code === undefined || payload.style_code === null) {
-    throw new Error('Style code is required for img2img task');
-  }
-  
-  if (!payload.images || !Array.isArray(payload.images) || payload.images.length === 0) {
-    throw new Error('At least one image is required for img2img task');
-  }
-  
-  // Log the raw payload
-  console.log('Creating Dzine img2img task with payload structure:', JSON.stringify({
+  // Create a minimal valid payload structure with only required fields
+  // Using raw objects rather than deep copies to avoid any format issues
+  const minimalPayload = {
     prompt: payload.prompt,
     style_code: payload.style_code,
-    images: '[base64 data omitted]',
-    style_intensity: payload.style_intensity,
-    structure_match: payload.structure_match,
-    face_match: payload.face_match
-  }, null, 2));
-  
-  // Format the payload EXACTLY as expected by Dzine API
-  // Based on console logs, the API is expecting a very specific structure
-  const formattedPayload = {
-    prompt: payload.prompt,
-    style_code: payload.style_code, // Use as-is (number)
-    images: payload.images,
-    style_intensity: payload.style_intensity ?? 1,
-    structure_match: payload.structure_match ?? 0.5,
-    face_match: payload.face_match ?? 0.9
+    images: payload.images
   };
-  
-  // Convert the payload to a clean JSON string without extra escaping
-  const jsonPayload = JSON.stringify(formattedPayload);
-  console.log('Final API payload JSON:', jsonPayload.substring(0, 200) + '...');
+
+  console.log(`Creating img2img task with minimal payload: prompt="${minimalPayload.prompt}", style_code=${minimalPayload.style_code}`);
   
   try {
-    // Make the API call with clean JSON
-    const result = await fetchDzine('/create_task_img2img', {
+    // Make the API call with the minimal payload
+    const response = await fetch(`${API_BASE_URL}/create_task_img2img`, {
       method: 'POST',
-      body: jsonPayload,
+      headers: {
+        'Authorization': API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(minimalPayload)
     });
-    console.log('Dzine task created successfully:', result);
-    return result;
+
+    // Parse and check the response
+    const data = await response.json();
+    
+    // Log the response for debugging
+    console.log('Dzine API response:', data);
+    
+    if (data.code !== 200) {
+      throw new Error(`Dzine API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
+    }
+    
+    return data.data;
   } catch (error) {
     console.error('Error creating Dzine task:', error);
     throw error;
