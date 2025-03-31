@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import useBookStore from '../../stores/bookStore';
+import { useBookStore } from '../../store';
 import { getDzineStyles } from '../../services/dzineService';
 import { useQueryClient } from '@tanstack/react-query';
 

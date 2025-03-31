@@ -397,6 +397,111 @@ const useBookStore = create((set, get) => ({
       set({ isLoading: false });
     }
   },
+  
+  // Generate the complete book based on wizard data
+  generateBook: async () => {
+    set({ isLoading: true });
+    
+    try {
+      const { storyData } = get().wizardState;
+      
+      // Validate required data
+      if (!storyData.category) {
+        throw new Error('Story category is required');
+      }
+      
+      if (!storyData.artStyleCode) {
+        throw new Error('Art style is required');
+      }
+      
+      if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) {
+        throw new Error('At least one character is required');
+      }
+      
+      if (!storyData.bookCharacters.find(char => char.role === 'main')) {
+        throw new Error('A main character is required');
+      }
+      
+      // Find the main character to use as the book title
+      const mainCharacter = storyData.bookCharacters.find(char => char.role === 'main');
+      
+      // Generate a title based on category and main character name
+      const title = storyData.title || 
+        (storyData.category === 'adventure' ? `${mainCharacter.name}'s Space Adventure` :
+        storyData.category === 'fantasy' ? `${mainCharacter.name} and the Magic Forest` :
+        storyData.category === 'bedtime' ? `${mainCharacter.name}'s Bedtime Story` :
+        storyData.category === 'learning' ? `${mainCharacter.name} Learns the ABCs` :
+        storyData.category === 'birthday' ? `${mainCharacter.name}'s Birthday Surprise` :
+        `${mainCharacter.name}'s Story`);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Create a mock book
+      const newBook = {
+        id: `book-${Date.now()}`,
+        title,
+        status: 'draft',
+        childName: mainCharacter.name,
+        category: storyData.category,
+        artStyle: storyData.artStyleCode,
+        customStyleDescription: storyData.customStyleDescription,
+        characters: storyData.bookCharacters.map(char => ({
+          ...char,
+          // Ensure each character has style preview
+          stylePreview: char.stylePreview || 'https://via.placeholder.com/300x400?text=Character+Preview'
+        })),
+        // Create placeholder pages
+        pages: [
+          {
+            id: 'page-cover',
+            type: 'cover',
+            text: title,
+            imageUrl: `https://via.placeholder.com/600x800?text=${encodeURIComponent(title)}`,
+          },
+          {
+            id: 'page-title',
+            type: 'title',
+            text: `${title}\n\nA story about ${mainCharacter.name}`,
+            imageUrl: '',
+          },
+          {
+            id: 'page-1',
+            type: 'content',
+            text: `${mainCharacter.name} was excited for a new adventure.`,
+            imageUrl: `https://via.placeholder.com/600x400?text=Page+1+Illustration`,
+          },
+          {
+            id: 'page-2',
+            type: 'content',
+            text: `Today was going to be special.`,
+            imageUrl: `https://via.placeholder.com/600x400?text=Page+2+Illustration`,
+          },
+          {
+            id: 'page-back',
+            type: 'back-cover',
+            text: `The End\n\nCreated with love for ${mainCharacter.name}`,
+            imageUrl: '',
+          }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      // Add the book to the store
+      get().addBook(newBook);
+      
+      // Set as current book
+      get().setCurrentBook(newBook);
+      
+      return newBook;
+    } catch (error) {
+      console.error('Error generating book:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 }));
 
 export default useBookStore; 

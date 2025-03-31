@@ -4,24 +4,24 @@ import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
 import { getDzineStyles, createImg2ImgTask, getTaskProgress } from '../../services/dzineService.js';
 
-// Import Art Style Images using relative paths and new filenames
-import watercolorImg from '../../assets/watercolor-theme.png';
-import pastelImg from '../../assets/pastel-theme.png';
-import pencilWashImg from '../../assets/gentle-pencil-wash.png';
-import softDigitalImg from '../../assets/soft-brush-digital.png';
-import pencilInkImg from '../../assets/pencil-sketch-ink.png';
-import goldenBooksImg from '../../assets/golden-books-style.png';
-import beatrixPotterImg from '../../assets/beatrix-potter-style.png';
-import cartoonImg from '../../assets/cartoon-2d-animation-style.png';
-import flatVectorImg from '../../assets/flat-vector-illustration.png';
-import storybookPopImg from '../../assets/storybook-pop-style.png';
-import papercutImg from '../../assets/cut-paper-collage-style.png';
-import oilPastelImg from '../../assets/oil-pastel-gouache-style.png';
-import stylizedRealismImg from '../../assets/stylized-realism.png';
-import digitalPainterlyImg from '../../assets/digital-painterly.png';
-import kawaiiImg from '../../assets/japanese-kawaii.png';
-import scandinavianImg from '../../assets/scandinavian-folk-art.png';
-import africanPatternImg from '../../assets/african-patterned-illustration.png';
+// Import art style images
+import watercolorImg from '../../assets/styles/watercolor.jpg';
+import pastelImg from '../../assets/styles/pastel.jpg';
+import pencilWashImg from '../../assets/styles/pencil_wash.jpg';
+import softDigitalImg from '../../assets/styles/soft_digital.jpg';
+import pencilInkImg from '../../assets/styles/pencil_ink.jpg';
+import goldenBooksImg from '../../assets/styles/golden_books.jpg';
+import beatrixPotterImg from '../../assets/styles/beatrix_potter.jpg';
+import cartoonImg from '../../assets/styles/cartoon.jpg';
+import flatVectorImg from '../../assets/styles/flat_vector.jpg';
+import storybookPopImg from '../../assets/styles/storybook_pop.jpg';
+import papercutImg from '../../assets/styles/papercut.jpg';
+import oilPastelImg from '../../assets/styles/oil_pastel.jpg';
+import stylizedRealismImg from '../../assets/styles/stylized_realism.jpg';
+import digitalPainterlyImg from '../../assets/styles/digital_painterly.jpg';
+import kawaiiImg from '../../assets/styles/kawaii.jpg';
+import scandinavianImg from '../../assets/styles/scandinavian.jpg';
+import africanPatternImg from '../../assets/styles/african_pattern.jpg';
 
 // Character roles
 const CHARACTER_ROLES = [
