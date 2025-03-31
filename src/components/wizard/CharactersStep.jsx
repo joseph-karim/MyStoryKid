@@ -53,33 +53,66 @@ const styleImageMap = {
   african_pattern: africanPatternImg,
 };
 
-// Base structure for UI grouping
+// Enhance ART_STYLE_CATEGORIES_STRUCTURE with rich descriptions
 const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
     category: '🎨 Whimsical & Soft (Ages 0–5)',
+    description: 'These styles are warm, comforting, and often have a dreamy quality. Ideal for bedtime stories or gentle adventures.',
     styleIds: ['watercolor', 'pastel', 'pencil_wash', 'soft_digital'] // Use IDs for matching later
   },
   {
     category: '✏️ Classic & Timeless',
+    description: 'These styles evoke nostalgia and timelessness — ideal if you want something that feels like a classic.',
     styleIds: ['pencil_ink', 'golden_books', 'beatrix_potter']
   },
   {
     category: '✨ Modern & Colorful',
+    description: 'These styles pop and tend to work well for high-energy, imaginative adventures.',
     styleIds: ['cartoon', 'flat_vector', 'storybook_pop', 'papercut']
   },
   {
     category: '🖼️ Artistic & Elevated',
+    description: 'More sophisticated, painterly styles that could double as fine art.',
     styleIds: ['oil_pastel', 'stylized_realism', 'digital_painterly']
   },
   {
     category: '🌍 Cultural or Regional (Optional)',
+    description: 'Stylistic approaches inspired by different traditions and cultural aesthetics.',
     styleIds: ['kawaii', 'scandinavian', 'african_pattern']
   },
   {
     category: '💡 Custom Style',
+    description: 'Describe your own unique art style with specific details about colors, textures, and references.',
     styleIds: ['custom']
   },
 ];
+
+// Add style descriptions to enrich the presentation
+const styleDescriptions = {
+  watercolor: 'Soft, expressive, and magical. Great for fairy tales and heartwarming journeys.',
+  pastel: 'Soft-edged and calming, like chalk or crayon textures. Very kid-friendly and light.',
+  pencil_wash: 'Combines pencil lines with light color washes. A subtle and intimate feel, often found in timeless books.',
+  soft_digital: 'Digital painting with a hand-drawn aesthetic. Looks painterly, but crisp enough for printing.',
+  
+  pencil_ink: 'Monochrome or light inked outlines with shading. Great for a vintage feel.',
+  golden_books: 'Inspired by mid-century illustrations (like Little Golden Books). Bright, detailed, with expressive faces.',
+  beatrix_potter: 'Classic English watercolor + fine detail. Excellent for animal tales and nature-based themes.',
+  
+  cartoon: 'Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories.',
+  flat_vector: 'Bold, clean, and simple. Often used in modern educational books.',
+  storybook_pop: 'Bright, slightly surreal, and energetic — think "Adventure Time" meets classic books. Ideal for space, monsters, and wacky themes.',
+  papercut: 'Looks like it was made with layers of paper or fabric. Textured and tactile feel, very charming.',
+  
+  oil_pastel: 'Thick brush strokes, vivid color, tactile textures. Great for magical realism or emotional storytelling.',
+  stylized_realism: 'Semi-realistic faces and proportions with artistic lighting. Ideal if you want to "recognize" the child in the art.',
+  digital_painterly: 'Mimics classical painting but created digitally. For dramatic lighting, beautiful spreads, and immersive scenes.',
+  
+  kawaii: 'Ultra-cute, rounded characters, soft palettes. Great for emotional and nurturing stories.',
+  scandinavian: 'Geometric shapes, bold color, often nature-themed. Feels minimalist but magical.',
+  african_pattern: 'Bright colors, bold patterns, and symbolism. Vibrant and culturally rich visuals.',
+  
+  custom: 'Your own unique style description. Be specific about colors, techniques, and references you like.'
+};
 
 // Function to check if a string is a Base64 data URL (useful for identifying uploads)
 const isBase64DataUrl = (str) => {
@@ -624,67 +657,121 @@ function CharactersStep() {
           </div>
           
           {/* Art Style Selection */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Choose Illustration Style</h3>
-           
-            {isLoadingStyles && <p className='text-gray-500'>Loading art styles...</p>}
-            {!isLoadingStyles && !styleFetchError && (
-              <div className="space-y-4">
-                  {ART_STYLE_CATEGORIES_STRUCTURE.map((categoryGroup) => (
-                      <div key={categoryGroup.category}>
-                         <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">{categoryGroup.category}</h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                            {categoryGroup.styleIds.map(styleId => {
-                              const apiCode = styleId === 'custom' ? 'custom' : styleIdToCodeMap[styleId];
-                              if (styleId !== 'custom' && !apiCode) return null; // Skip if mapping failed for API styles
-                              
-                              const isSelected = artStyleCode === apiCode || (styleId === 'custom' && artStyleCode === 'custom');
-                              const imageSrc = styleId === 'custom' ? null : styleImageMap[styleId]; // Handle custom potentially
-                              const displayName = styleId === 'custom' ? "Describe Your Own" : (dzineStyles.find(s => s.style_code === apiCode)?.name || styleId.replace(/_/g, ' '));
-
-                              return (
-                                <button 
-                                  key={styleId}
-                                  onClick={() => setArtStyleCode(apiCode)} // Set the API code or 'custom'
-                                  className={`relative block border-2 rounded-lg overflow-hidden focus:outline-none ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-gray-300 hover:border-indigo-400'}`}
-                                  disabled={styleId !== 'custom' && !apiCode} // Disable if API code missing
-                                >
-                                  {imageSrc ? (
-                                      <img src={imageSrc} alt={displayName} className="w-full h-24 object-cover" />
-                                  ) : (
-                                       <div className="w-full h-24 bg-gray-200 flex items-center justify-center text-gray-500 text-xs p-2">
-                                          {displayName}
-                                       </div>
-                                  )}
-                                  <span className={`absolute bottom-0 left-0 right-0 px-2 py-1 text-xs font-medium text-center ${isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-600 bg-opacity-75 text-white'}`}>
-                                      {displayName}
-                                  </span>
-                                  {styleId !== 'custom' && !apiCode && (
-                                      <span className="absolute top-1 right-1 text-xs bg-red-500 text-white px-1 rounded">N/A</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                      </div>
-                  ))}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold mb-4">Art Style</h3>
+            
+            {styleFetchError && (
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
+                <p>Error loading art styles. You can continue with a custom style description.</p>
+                <p className="text-xs">{styleFetchError}</p>
               </div>
             )}
+            
+            {isLoadingStyles ? (
+              <div className="flex justify-center my-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <>
+                {ART_STYLE_CATEGORIES_STRUCTURE.map((category, idx) => (
+                  <div key={idx} className="mb-8">
+                    <div className="mb-3">
+                      <h4 className="font-medium text-lg">{category.category}</h4>
+                      <p className="text-gray-600 text-sm mb-4">{category.description}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {category.styleIds.map(styleId => {
+                        // Special case for 'custom' style which doesn't use the API
+                        if (styleId === 'custom') {
+                          return (
+                            <div key={styleId} className="relative">
+                              <div
+                                onClick={() => setArtStyleCode('custom')}
+                                className={`border rounded-lg p-4 h-auto flex flex-col cursor-pointer transition duration-200 hover:border-purple-500 hover:shadow-md ${
+                                  artStyleCode === 'custom' ? 'border-2 border-purple-600 shadow-md' : ''
+                                }`}
+                              >
+                                <div className="text-3xl mb-2 text-center">💭</div>
+                                <h5 className="text-base font-medium mb-2">Custom Style</h5>
+                                <p className="text-sm text-gray-600">{styleDescriptions[styleId]}</p>
+                              </div>
+                              {artStyleCode === 'custom' && (
+                                <div className="absolute -top-2 -right-2 bg-purple-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs shadow">
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
 
-            {/* Custom Style Description Input */}
-            {artStyleCode === 'custom' && (
-                <div className="mt-4">
-                    <label htmlFor="customStyle" className="block text-sm font-medium text-gray-700 mb-1">Describe your custom style:</label>
+                        // Regular style from API
+                        const styleCode = styleIdToCodeMap[styleId] || null;
+                        // Even if the API doesn't have a match, still show our style for UI consistency
+                        return (
+                          <div key={styleId} className="relative">
+                            <div
+                              onClick={() => styleCode && setArtStyleCode(styleCode)}
+                              className={`border rounded-lg p-4 h-auto flex flex-col cursor-pointer transition duration-200 hover:border-purple-500 hover:shadow-md ${
+                                styleCode && artStyleCode === styleCode ? 'border-2 border-purple-600 shadow-md' : 
+                                !styleCode ? 'opacity-60 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              <div className="w-full h-40 bg-gray-100 rounded mb-3 overflow-hidden">
+                                {styleImageMap[styleId] ? (
+                                  <img 
+                                    src={styleImageMap[styleId]} 
+                                    alt={styleId.replace(/_/g, ' ')} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
+                                    🖼️
+                                  </div>
+                                )}
+                              </div>
+                              <h5 className="text-base font-medium mb-2">
+                                {styleId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                              </h5>
+                              <p className="text-sm text-gray-600">{styleDescriptions[styleId]}</p>
+                              {!styleCode && (
+                                <div className="mt-2 text-xs text-amber-700 bg-amber-50 p-1 rounded">
+                                  Currently unavailable
+                                </div>
+                              )}
+                            </div>
+                            {styleCode && artStyleCode === styleCode && (
+                              <div className="absolute -top-2 -right-2 bg-purple-600 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs shadow">
+                                ✓
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Custom Style Description (shown only when 'custom' is selected) */}
+                {artStyleCode === 'custom' && (
+                  <div className="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+                    <label htmlFor="customStyleDescription" className="block text-sm font-medium text-gray-700 mb-2">
+                      Describe Your Custom Art Style
+                    </label>
                     <textarea
-                        id="customStyle"
-                        rows="2"
-                        value={customStyleDescription}
-                        onChange={(e) => setCustomStyleDescription(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="e.g., vibrant crayon drawing, dark moody watercolor, simple line art with splashes of color"
+                      id="customStyleDescription"
+                      value={customStyleDescription}
+                      onChange={(e) => setCustomStyleDescription(e.target.value)}
+                      placeholder="E.g., 'A whimsical watercolor style with pastel colors and soft brushstrokes, similar to classic children's books from the 1960s.'"
+                      className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                      rows="3"
                     />
-                    <p className="text-xs text-gray-500 mt-1">This description will be used to guide the AI. Be specific!</p>
-                </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Be specific about colors, textures, and any reference styles that would help guide the AI.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

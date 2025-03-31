@@ -33,13 +33,59 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     { id: 'animal', name: 'Animal', description: 'A pet or wild animal companion' },
   ];
   
-  // Art styles
-  const ART_STYLES = [
-    { id: 'cartoon', name: 'Cartoon', previewUrl: 'https://via.placeholder.com/150?text=Cartoon' },
-    { id: 'watercolor', name: 'Watercolor', previewUrl: 'https://via.placeholder.com/150?text=Watercolor' },
-    { id: 'realistic', name: 'Realistic', previewUrl: 'https://via.placeholder.com/150?text=Realistic' },
-    { id: 'pixel', name: 'Pixel Art', previewUrl: 'https://via.placeholder.com/150?text=Pixel' },
+  // Art styles with categories and descriptions to match CharactersStep component
+  const ART_STYLE_CATEGORIES = [
+    {
+      category: '🎨 Whimsical & Soft',
+      description: 'Warm, comforting styles with a dreamy quality',
+      styles: [
+        { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, and magical. Great for fairy tales.' },
+        { id: 'pastel', name: 'Pastel', description: 'Soft-edged and calming, like chalk or crayon textures.' },
+        { id: 'pencil_wash', name: 'Gentle Pencil + Wash', description: 'Pencil lines with light color washes. Subtle and intimate.' },
+        { id: 'soft_digital', name: 'Soft Digital', description: 'Digital painting with a hand-drawn aesthetic.' }
+      ]
+    },
+    {
+      category: '✏️ Classic & Timeless',
+      description: 'Styles that evoke nostalgia and timelessness',
+      styles: [
+        { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Monochrome or light inked outlines with shading.' },
+        { id: 'golden_books', name: 'Golden Books', description: 'Inspired by mid-century illustrations. Bright and detailed.' },
+        { id: 'beatrix_potter', name: 'Beatrix Potter', description: 'Classic English watercolor with fine detail.' }
+      ]
+    },
+    {
+      category: '✨ Modern & Colorful',
+      description: 'Bold styles that pop with energy and imagination',
+      styles: [
+        { id: 'cartoon', name: 'Cartoon', description: 'Clean lines, bright colors, and exaggerated expressions.' },
+        { id: 'flat_vector', name: 'Flat Vector', description: 'Bold, clean, and simple. Modern and educational.' },
+        { id: 'storybook_pop', name: 'Storybook Pop', description: 'Bright, slightly surreal, and energetic. Great for adventures.' },
+        { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper or fabric.' }
+      ]
+    },
+    {
+      category: '🖼️ Artistic & Elevated',
+      description: 'More sophisticated, painterly styles',
+      styles: [
+        { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes, vivid colors, tactile textures.' },
+        { id: 'stylized_realism', name: 'Stylized Realism', description: 'Semi-realistic with artistic lighting. Recognizable features.' },
+        { id: 'digital_painterly', name: 'Digital Painterly', description: 'Mimics classical painting with digital precision.' }
+      ]
+    },
+    {
+      category: '🌍 Cultural Styles',
+      description: 'Styles inspired by different traditions',
+      styles: [
+        { id: 'kawaii', name: 'Japanese Kawaii', description: 'Ultra-cute, rounded characters, soft palettes.' },
+        { id: 'scandinavian', name: 'Scandinavian Folk', description: 'Geometric shapes, bold colors, often nature-themed.' },
+        { id: 'african_pattern', name: 'African Pattern', description: 'Bright colors, bold patterns, and rich symbolism.' }
+      ]
+    }
   ];
+
+  // Flatten for easy lookup
+  const ALL_ART_STYLES = ART_STYLE_CATEGORIES.flatMap(category => category.styles);
   
   // Handle selecting an existing character
   const handleSelectExistingCharacter = (character) => {
@@ -291,129 +337,116 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </div>
         )}
         
-        {/* Step 3: Photo and style selection */}
+        {/* Step 3: Appearance with rich art style selection */}
         {currentStep === 3 && (
           <div>
             <div className="mb-6">
-              <h3 className="font-medium mb-2">Upload a Photo (Optional)</h3>
+              <h3 className="font-medium mb-2">Upload Photo (Optional)</h3>
               <p className="text-sm text-gray-600 mb-4">
-                This will help generate a character that looks like your child
+                A photo will help create a character that resembles the real person.
+                <span className="block mt-1 text-xs text-blue-600">Photos are used only once for generation and are not stored.</span>
               </p>
               
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
                 <div 
-                  className="h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 w-40 h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   {photoPreview ? (
-                    <img 
-                      src={photoPreview} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover rounded-lg"
-                    />
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="text-center p-4">
-                      <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <>
+                      <svg className="w-10 h-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      <span className="block text-xs mt-1">Upload Photo</span>
-                    </div>
+                      <span className="text-sm text-gray-500">Upload Photo</span>
+                    </>
                   )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
                 </div>
                 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handlePhotoUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                
-                <div>
-                  <button
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 mb-2 w-full"
-                    onClick={() => fileInputRef.current.click()}
-                  >
-                    Select Photo
-                  </button>
-                  
-                  {photoPreview && (
-                    <button
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 w-full"
-                      onClick={() => {
-                        setPhotoPreview(null);
-                        setCharacterData({...characterData, photoUrl: ''});
-                      }}
-                    >
-                      Remove Photo
-                    </button>
-                  )}
+                <div className="text-sm text-gray-600">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Choose a clear photo of the face</li>
+                    <li>Avoid photos with multiple people</li>
+                    <li>Front-facing photos work best</li>
+                    <li>Good lighting improves results</li>
+                  </ul>
                 </div>
               </div>
             </div>
             
-            {/* Art Style Selection - only shown if forcedArtStyle is not provided */}
-            {!forcedArtStyle && (
-              <div className="mb-6">
-                <h3 className="font-medium mb-2">Character Style</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {ART_STYLES.map(style => (
-                    <div
-                      key={style.id}
-                      onClick={() => setCharacterData({...characterData, artStyle: style.id})}
-                      className={`border rounded-lg p-2 cursor-pointer ${
-                        characterData.artStyle === style.id 
-                          ? 'border-blue-500 ring-2 ring-blue-200' 
-                          : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
-                        <img 
-                          src={style.previewUrl}
-                          alt={style.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="text-center text-sm">{style.name}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* If forcedArtStyle is provided, show a message */}
-            {forcedArtStyle && (
-              <div className="mb-6">
-                <h3 className="font-medium mb-2">Character Style</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  All characters in your story will use the same style.
-                </p>
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden mr-3">
-                      {/* This would be a preview of the forced style */}
-                    </div>
-                    <div>
-                      <p className="font-medium capitalize">{forcedArtStyle} Style</p>
-                      <p className="text-sm text-gray-600">Selected for all characters in this story</p>
+            <div className="mb-6">
+              <h3 className="font-medium mb-3">Character Style</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Select a visual style for your character. This will determine how they appear in the story.
+              </p>
+              
+              <div className="space-y-8">
+                {ART_STYLE_CATEGORIES.map((category, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-900">{category.category}</h4>
+                    <p className="text-xs text-gray-600">{category.description}</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {category.styles.map(style => (
+                        <div
+                          key={style.id}
+                          onClick={() => !forcedArtStyle && setCharacterData({...characterData, artStyle: style.id})}
+                          className={`border rounded-lg p-3 transition-colors ${
+                            forcedArtStyle 
+                              ? 'opacity-60 cursor-not-allowed' 
+                              : characterData.artStyle === style.id
+                                ? 'border-blue-500 bg-blue-50 shadow-sm'
+                                : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/50'
+                          }`}
+                        >
+                          <div className="text-center mb-2">
+                            <h5 className="font-medium">{style.name}</h5>
+                          </div>
+                          <p className="text-xs text-gray-600 mb-2">{style.description}</p>
+                          
+                          {forcedArtStyle && characterData.artStyle === style.id && (
+                            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded text-center">
+                              Style set by book theme
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
+            </div>
             
-            <div className="flex justify-between">
+            <div className="mt-6 flex justify-between">
               <button
                 onClick={() => setCurrentStep(2)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
               >
                 Back
               </button>
+              
               <button
                 onClick={generateCharacterPreview}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:opacity-90 transition-opacity"
+                disabled={!characterData.name || isGenerating}
               >
-                {isGenerating ? 'Generating...' : 'Generate Preview'}
+                {isGenerating ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </span>
+                ) : 'Generate Preview'}
               </button>
             </div>
           </div>
