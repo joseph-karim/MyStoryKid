@@ -511,6 +511,43 @@ function CharactersStep() {
     }
   };
 
+  // Use a reliable fallback style code (we know 'cartoon' usually works)
+  const SAFE_STYLE_CODE = "80"; // Common working style code for cartoon
+  
+  // Helper to get a safe style code for API use
+  const getSafeStyleCode = (selectedStyleCode) => {
+    // If no valid style code is available, use a known working default
+    if (!selectedStyleCode || selectedStyleCode === 'undefined' || selectedStyleCode === 'custom') {
+      console.log("Using default safe style code:", SAFE_STYLE_CODE);
+      return SAFE_STYLE_CODE;
+    }
+    
+    return selectedStyleCode;
+  };
+  
+  // New function to generate previews for all characters at once
+  const handleGenerateAllPreviews = () => {
+    if (!artStyleCode) {
+      setError('Please select an art style first.');
+      return;
+    }
+    
+    // Filter characters that need generation (have photos but no confirmed previews)
+    const charactersToGenerate = bookCharacters.filter(char => 
+      isBase64DataUrl(char.photoUrl) && 
+      (!generationStatus[char.id] || generationStatus[char.id]?.status !== 'confirmed')
+    );
+    
+    if (charactersToGenerate.length === 0) {
+      return; // Nothing to generate
+    }
+    
+    // Generate preview for each character
+    charactersToGenerate.forEach(character => {
+      handleGeneratePreview(character.id);
+    });
+  };
+
   // --- NEW: Start Image Generation ---
   const handleGeneratePreview = async (characterId) => {
     setError(''); // Clear general errors
@@ -559,11 +596,8 @@ function CharactersStep() {
         }
       }
       
-      // Use a consistent style code that works well (cartoon or no_style) 
-      // and let the prompt do the heavy lifting for style details
-      const safeStyleCode = artStyleCode === 'custom' ? 
-        (noStyleCode || 'no_style') : 
-        (styleIdToCodeMap[selectedStyleId] || styleIdToCodeMap['cartoon'] || 'cartoon');
+      // Always use a safe style code that we know works with the API
+      const safeStyleCode = getSafeStyleCode(artStyleCode);
       
       console.log("Generating with prompt:", prompt);
       console.log("Using style code:", safeStyleCode);
@@ -587,7 +621,10 @@ function CharactersStep() {
 
     } catch (error) {
       console.error("Error creating Dzine task:", error);
-      updateGenStatus(characterId, { status: 'error', errorMessage: error.message || 'Failed to start generation.' });
+      updateGenStatus(characterId, { 
+        status: 'error', 
+        errorMessage: error.message || 'Failed to start generation.' 
+      });
     }
   };
 
@@ -790,6 +827,7 @@ function CharactersStep() {
         <CharacterWizard 
           onComplete={handleCharacterComplete} 
           initialStep={1}
+          forcedArtStyle={artStyleCode !== 'custom' ? artStyleCode : null}
         />
       ) : (
         <>
@@ -843,6 +881,21 @@ function CharactersStep() {
                       <p>If you upload a photo, we use it <strong className='font-medium'>only once</strong> to generate the character's art style for the preview below. Once you click "Confirm Style & Use", the <strong className='font-medium'>original photo is permanently discarded</strong> from our system. We do not store your original photos.</p>
                    </div>
                </div>
+            
+            {/* Generate All Button - Only visible when style is selected and there are characters with photos */}
+            {artStyleCode && bookCharacters.some(char => isBase64DataUrl(char.photoUrl)) && (
+              <div className="mb-6 text-center">
+                <button
+                  onClick={handleGenerateAllPreviews}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Generate All Character Previews
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Uses your selected art style to generate all character previews at once
+                </p>
+              </div>
+            )}
             
             {bookCharacters.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">

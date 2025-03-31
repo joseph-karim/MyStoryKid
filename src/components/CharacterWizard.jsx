@@ -107,13 +107,44 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     reader.readAsDataURL(file);
   };
   
-  // Generate character preview
+  // Modify the step rendering to skip the art style selection if there's a forced style
+  const renderStep = () => {
+    // If we have a forced art style, skip step 3 (art style selection)
+    if (forcedArtStyle && currentStep === 3) {
+      console.log("Skipping style selection because forcedArtStyle is set:", forcedArtStyle);
+      // Jump directly to preview step (with a slight delay for smoothness)
+      setTimeout(() => {
+        generateCharacterPreview();
+      }, 100);
+      return (
+        <div className="text-center p-8">
+          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Applying the story's art style to your character...</p>
+        </div>
+      );
+    }
+    
+    switch (currentStep) {
+      case 1:
+        return renderExistingCharactersStep();
+      case 2:
+        return renderCharacterDetailsStep();
+      case 3:
+        return renderAppearanceStep();
+      case 4:
+        return renderPreviewStep();
+      default:
+        return null;
+    }
+  };
+  
+  // Generate character preview - updated to always use forced style if provided
   const generateCharacterPreview = () => {
     setIsGenerating(true);
     
     // Simulate API call delay
     setTimeout(() => {
-      // Use the forced art style if provided, otherwise use the one from character data
+      // Always use the forced art style if provided, otherwise use the one from character data
       const styleToUse = forcedArtStyle || characterData.artStyle;
       const stylePreviewUrl = `https://via.placeholder.com/300x400?text=${characterData.name}+in+${styleToUse}+style`;
       
@@ -164,6 +195,144 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     onComplete(null);
   };
   
+  // Render the appearance step - hide style selection when forcedArtStyle is provided
+  const renderAppearanceStep = () => {
+    return (
+      <div>
+        <div className="mb-6">
+          <h3 className="font-medium mb-2">Upload Photo (Optional)</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            A photo will help create a character that resembles the real person.
+            <span className="block mt-1 text-xs text-blue-600">Photos are used only once for generation and are not stored.</span>
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-lg p-4 w-40 h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <>
+                  <svg className="w-10 h-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span className="text-sm text-gray-500">Upload Photo</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              <ul className="list-disc list-inside space-y-1">
+                <li>Choose a clear photo of the face</li>
+                <li>Avoid photos with multiple people</li>
+                <li>Front-facing photos work best</li>
+                <li>Good lighting improves results</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        {/* Only show style selection if no forced style is provided */}
+        {!forcedArtStyle && (
+          <div className="mb-6">
+            <h3 className="font-medium mb-3">Character Style</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select a visual style for your character. This will determine how they appear in the story.
+            </p>
+            
+            <div className="space-y-8">
+              {ART_STYLE_CATEGORIES.map((category, idx) => (
+                <div key={idx} className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-900">{category.category}</h4>
+                  <p className="text-xs text-gray-600">{category.description}</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {category.styles.map(style => (
+                      <div
+                        key={style.id}
+                        onClick={() => !forcedArtStyle && setCharacterData({...characterData, artStyle: style.id})}
+                        className={`border rounded-lg p-3 transition-colors ${
+                          forcedArtStyle 
+                            ? 'opacity-60 cursor-not-allowed' 
+                            : characterData.artStyle === style.id
+                              ? 'border-blue-500 bg-blue-50 shadow-sm'
+                              : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <div className="text-center mb-2">
+                          <h5 className="font-medium">{style.name}</h5>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-2">{style.description}</p>
+                        
+                        {forcedArtStyle && characterData.artStyle === style.id && (
+                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded text-center">
+                            Style set by book theme
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* If we have a forced style, show information about it */}
+        {forcedArtStyle && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-medium mb-2 text-blue-800">Selected Story Style</h3>
+            <p className="text-sm text-blue-700 mb-3">
+              This character will use the art style you already selected for your story.
+            </p>
+            <div className="text-center">
+              <button
+                onClick={generateCharacterPreview}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Continue with Story Style
+              </button>
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-6 flex justify-between">
+          <button
+            onClick={() => setCurrentStep(2)}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+          >
+            Back
+          </button>
+          
+          <button
+            onClick={generateCharacterPreview}
+            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:opacity-90 transition-opacity"
+            disabled={!characterData.name || isGenerating}
+          >
+            {isGenerating ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </span>
+            ) : 'Generate Preview'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       {/* Header with progress bar */}
@@ -171,7 +340,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <h2 className="text-xl font-bold text-white mb-2">
           {currentStep === 1 ? 'Select Character' :
            currentStep === 2 ? 'Character Details' :
-           currentStep === 3 ? 'Appearance' :
+           currentStep === 3 ? (forcedArtStyle ? 'Upload Photo' : 'Appearance') :
            'Preview Character'}
         </h2>
         <div className="w-full bg-white/30 h-2 rounded-full overflow-hidden">
@@ -183,320 +352,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       </div>
       
       <div className="p-4">
-        {/* Step 1: Select existing or create new */}
-        {currentStep === 1 && (
-          <div>
-            <p className="text-gray-600 mb-4">Select an existing character or create a new one for your story.</p>
-            
-            {characters.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-medium mb-3">Existing Characters</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {characters.map(character => (
-                    <div
-                      key={character.id}
-                      onClick={() => handleSelectExistingCharacter(character)}
-                      className="border rounded-lg p-3 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                    >
-                      <div className="aspect-[3/4] bg-gray-100 rounded mb-2 overflow-hidden">
-                        <img 
-                          src={character.stylePreview || 'https://via.placeholder.com/120x160?text=Character'} 
-                          alt={character.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-gray-800">{character.name}</p>
-                        <p className="text-xs text-gray-500">{character.age} year old {character.gender}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-center">
-              <button
-                onClick={() => setCurrentStep(2)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Create New Character
-              </button>
-            </div>
-            
-            <div className="mt-6 flex justify-between">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Step 2: Basic character info */}
-        {currentStep === 2 && (
-          <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2">Character Type</label>
-                  <div className="space-y-2">
-                    {CHARACTER_TYPES.map(type => (
-                      <label 
-                        key={type.id}
-                        className={`block border rounded-lg p-3 cursor-pointer transition-colors ${
-                          characterData.type === type.id 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="characterType"
-                          value={type.id}
-                          checked={characterData.type === type.id}
-                          onChange={() => setCharacterData({...characterData, type: type.id})}
-                          className="sr-only"
-                        />
-                        <div className="flex items-center">
-                          <span className="font-medium">{type.name}</span>
-                          <span className="ml-2 text-sm text-gray-600">{type.description}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2">Name</label>
-                  <input 
-                    type="text"
-                    value={characterData.name}
-                    onChange={(e) => setCharacterData({...characterData, name: e.target.value})}
-                    className="w-full border border-gray-300 rounded p-2"
-                    placeholder="Enter character name"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="mb-4">
-                    <label className="block text-gray-700 font-medium mb-2">Age</label>
-                    <input 
-                      type="text"
-                      value={characterData.age}
-                      onChange={(e) => setCharacterData({...characterData, age: e.target.value})}
-                      className="w-full border border-gray-300 rounded p-2"
-                      placeholder="Age"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-gray-700 font-medium mb-2">Gender</label>
-                    <select
-                      value={characterData.gender}
-                      onChange={(e) => setCharacterData({...characterData, gender: e.target.value})}
-                      className="w-full border border-gray-300 rounded p-2"
-                    >
-                      <option value="">Select...</option>
-                      <option value="Boy">Boy</option>
-                      <option value="Girl">Girl</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-between mt-6">
-              <button
-                onClick={() => setCurrentStep(1)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => {
-                  if (characterData.name.trim() === '') {
-                    alert('Please enter a character name');
-                    return;
-                  }
-                  setCurrentStep(3);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Step 3: Appearance with rich art style selection */}
-        {currentStep === 3 && (
-          <div>
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">Upload Photo (Optional)</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                A photo will help create a character that resembles the real person.
-                <span className="block mt-1 text-xs text-blue-600">Photos are used only once for generation and are not stored.</span>
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div 
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 w-40 h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <svg className="w-10 h-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <span className="text-sm text-gray-500">Upload Photo</span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </div>
-                
-                <div className="text-sm text-gray-600">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Choose a clear photo of the face</li>
-                    <li>Avoid photos with multiple people</li>
-                    <li>Front-facing photos work best</li>
-                    <li>Good lighting improves results</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <h3 className="font-medium mb-3">Character Style</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Select a visual style for your character. This will determine how they appear in the story.
-              </p>
-              
-              <div className="space-y-8">
-                {ART_STYLE_CATEGORIES.map((category, idx) => (
-                  <div key={idx} className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-900">{category.category}</h4>
-                    <p className="text-xs text-gray-600">{category.description}</p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {category.styles.map(style => (
-                        <div
-                          key={style.id}
-                          onClick={() => !forcedArtStyle && setCharacterData({...characterData, artStyle: style.id})}
-                          className={`border rounded-lg p-3 transition-colors ${
-                            forcedArtStyle 
-                              ? 'opacity-60 cursor-not-allowed' 
-                              : characterData.artStyle === style.id
-                                ? 'border-blue-500 bg-blue-50 shadow-sm'
-                                : 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/50'
-                          }`}
-                        >
-                          <div className="text-center mb-2">
-                            <h5 className="font-medium">{style.name}</h5>
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2">{style.description}</p>
-                          
-                          {forcedArtStyle && characterData.artStyle === style.id && (
-                            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded text-center">
-                              Style set by book theme
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-between">
-              <button
-                onClick={() => setCurrentStep(2)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-              >
-                Back
-              </button>
-              
-              <button
-                onClick={generateCharacterPreview}
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:opacity-90 transition-opacity"
-                disabled={!characterData.name || isGenerating}
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating...
-                  </span>
-                ) : 'Generate Preview'}
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Step 4: Character preview */}
-        {currentStep === 4 && (
-          <div>
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-48 h-64 bg-gray-200 rounded-lg overflow-hidden mb-4">
-                <img 
-                  src={currentCharacter ? currentCharacter.stylePreview : characterData.stylePreview || 'https://via.placeholder.com/192x256'} 
-                  alt="Character Preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              <h3 className="text-xl font-semibold">
-                {currentCharacter ? currentCharacter.name : characterData.name}
-              </h3>
-              <p className="text-gray-600">
-                {currentCharacter 
-                  ? `${currentCharacter.age} year old ${currentCharacter.gender}` 
-                  : `${characterData.age} year old ${characterData.gender}`
-                }
-              </p>
-              <p className="text-sm text-gray-500 capitalize mt-1">
-                {currentCharacter 
-                  ? `${currentCharacter.type} character in ${forcedArtStyle || currentCharacter.artStyle} style` 
-                  : `${characterData.type} character in ${forcedArtStyle || characterData.artStyle} style`
-                }
-              </p>
-            </div>
-            
-            <div className="flex justify-between">
-              <button
-                onClick={() => setCurrentStep(3)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleSaveCharacter}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                Save Character
-              </button>
-            </div>
-          </div>
-        )}
+        {renderStep()}
       </div>
     </div>
   );
