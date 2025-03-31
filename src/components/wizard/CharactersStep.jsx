@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
+import { getDzineStyles } from '../../services/dzineService.js';
 
 // Import Art Style Images using relative paths and new filenames
 import watercolorImg from '../../assets/watercolor-theme.png';
@@ -31,55 +32,52 @@ const CHARACTER_ROLES = [
   { id: 'magical', label: 'Magical Friend', description: 'A fairy, creature or magical being' },
 ];
 
-// New Art Styles grouped by category with images
-const ART_STYLE_CATEGORIES = [
+// Map our internal IDs to the preview images
+const styleImageMap = {
+  watercolor: watercolorImg,
+  pastel: pastelImg,
+  pencil_wash: pencilWashImg,
+  soft_digital: softDigitalImg,
+  pencil_ink: pencilInkImg,
+  golden_books: goldenBooksImg,
+  beatrix_potter: beatrixPotterImg,
+  cartoon: cartoonImg,
+  flat_vector: flatVectorImg,
+  storybook_pop: storybookPopImg,
+  papercut: papercutImg,
+  oil_pastel: oilPastelImg,
+  stylized_realism: stylizedRealismImg,
+  digital_painterly: digitalPainterlyImg,
+  kawaii: kawaiiImg,
+  scandinavian: scandinavianImg,
+  african_pattern: africanPatternImg,
+};
+
+// Base structure for UI grouping
+const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
     category: '🎨 Whimsical & Soft (Ages 0–5)',
-    styles: [
-      { id: 'watercolor', title: 'Watercolor', description: 'Soft, expressive, magical. Great for fairy tales.', imageUrl: watercolorImg },
-      { id: 'pastel', title: 'Pastel Illustration', description: 'Soft-edged, calming, chalk/crayon feel. Kid-friendly.', imageUrl: pastelImg },
-      { id: 'pencil_wash', title: 'Gentle Pencil + Wash', description: 'Subtle, intimate feel. Combines lines and light color.', imageUrl: pencilWashImg },
-      { id: 'soft_digital', title: 'Soft Brush Digital', description: 'Painterly but crisp, hand-drawn aesthetic.', imageUrl: softDigitalImg },
-    ]
+    styleIds: ['watercolor', 'pastel', 'pencil_wash', 'soft_digital'] // Use IDs for matching later
   },
   {
     category: '✏️ Classic & Timeless',
-    styles: [
-      { id: 'pencil_ink', title: 'Pencil Sketch / Ink', description: 'Monochrome or light ink. Vintage feel.', imageUrl: pencilInkImg },
-      { id: 'golden_books', title: 'Golden Books Style', description: 'Mid-century inspired, bright, expressive faces.', imageUrl: goldenBooksImg },
-      { id: 'beatrix_potter', title: 'Beatrix Potter Style', description: 'Classic watercolor + fine detail. Great for animal tales.', imageUrl: beatrixPotterImg },
-    ]
+    styleIds: ['pencil_ink', 'golden_books', 'beatrix_potter']
   },
   {
     category: '✨ Modern & Colorful',
-    styles: [
-      { id: 'cartoon', title: 'Cartoon / 2D Animation', description: 'Clean lines, bright colors, exaggerated expressions.', imageUrl: cartoonImg },
-      { id: 'flat_vector', title: 'Flat Vector Illustration', description: 'Bold, clean, simple. Modern educational look.', imageUrl: flatVectorImg },
-      { id: 'storybook_pop', title: 'Storybook Pop Style', description: 'Bright, slightly surreal, energetic. For wacky themes.', imageUrl: storybookPopImg },
-      { id: 'papercut', title: 'Cut-Paper / Collage', description: 'Layered paper/fabric look. Textured and charming.', imageUrl: papercutImg },
-    ]
+    styleIds: ['cartoon', 'flat_vector', 'storybook_pop', 'papercut']
   },
   {
     category: '🖼️ Artistic & Elevated',
-    styles: [
-      { id: 'oil_pastel', title: 'Oil Pastel / Gouache', description: 'Thick strokes, vivid color, tactile. For emotional stories.', imageUrl: oilPastelImg },
-      { id: 'stylized_realism', title: 'Stylized Realism', description: 'Semi-realistic with artistic lighting. Recognizable child.', imageUrl: stylizedRealismImg },
-      { id: 'digital_painterly', title: 'Digital Painterly', description: 'Mimics classical painting. Dramatic and immersive.', imageUrl: digitalPainterlyImg },
-    ]
+    styleIds: ['oil_pastel', 'stylized_realism', 'digital_painterly']
   },
   {
     category: '🌍 Cultural or Regional (Optional)',
-    styles: [
-      { id: 'kawaii', title: 'Japanese Kawaii', description: 'Ultra-cute, rounded characters, soft palettes.', imageUrl: kawaiiImg },
-      { id: 'scandinavian', title: 'Scandinavian Folk Art', description: 'Geometric, bold color, nature-themed.', imageUrl: scandinavianImg },
-      { id: 'african_pattern', title: 'African Patterned', description: 'Bright colors, bold patterns, symbolism.', imageUrl: africanPatternImg },
-    ]
+    styleIds: ['kawaii', 'scandinavian', 'african_pattern']
   },
   {
     category: '💡 Custom Style',
-    styles: [
-      { id: 'custom', title: 'Describe Your Own', description: 'Enter details below for a unique style.' }, // No image for custom
-    ]
+    styleIds: ['custom']
   },
 ];
 
@@ -91,27 +89,70 @@ function CharactersStep() {
   const [showCharacterWizard, setShowCharacterWizard] = useState(false);
   const [selectedRole, setSelectedRole] = useState('');
   const [error, setError] = useState('');
-  const [artStyle, setArtStyle] = useState(wizardState.storyData.artStyle || 'cartoon');
+  const [artStyleCode, setArtStyleCode] = useState(wizardState.storyData.artStyleCode || '');
   const [customStyleDescription, setCustomStyleDescription] = useState(wizardState.storyData.customStyleDescription || '');
 
-  // Auto-suggest style based on category (can be refined)
+  // State for fetched styles and mapping
+  const [dzineStyles, setDzineStyles] = useState([]);
+  const [styleIdToCodeMap, setStyleIdToCodeMap] = useState({});
+  const [noStyleCode, setNoStyleCode] = useState(null); // For custom style
+  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
+  const [styleFetchError, setStyleFetchError] = useState(null);
+
+  // Fetch styles from Dzine API on mount
   useEffect(() => {
-    if (!wizardState.storyData.artStyle && wizardState.storyData.category) {
-      const category = wizardState.storyData.category;
-      let suggestedStyle = 'cartoon'; // Default
-      if (category === 'adventure') suggestedStyle = 'cartoon';
-      else if (category === 'fantasy') suggestedStyle = 'watercolor';
-      else if (category === 'bedtime') suggestedStyle = 'pastel';
-      else if (category === 'learning') suggestedStyle = 'flat_vector';
-      else if (category === 'birthday') suggestedStyle = 'storybook_pop';
-      setArtStyle(suggestedStyle);
-    }
-  }, [wizardState.storyData.category, wizardState.storyData.artStyle]);
+    const fetchStyles = async () => {
+      setIsLoadingStyles(true);
+      setStyleFetchError(null);
+      try {
+        const data = await getDzineStyles();
+        setDzineStyles(data.list || []);
+        
+        // Create a map from name (or a generated ID) to style_code
+        const map = {};
+        let foundNoStyle = null;
+        (data.list || []).forEach(style => {
+          // Generate a simple ID from the name for mapping
+          const simpleId = style.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_v\d+$/, ''); 
+          map[simpleId] = style.style_code;
+          
+          if (style.name === 'No Style v2') {
+             foundNoStyle = style.style_code;
+          }
+        });
+        setStyleIdToCodeMap(map);
+        setNoStyleCode(foundNoStyle);
+
+        // Set initial artStyleCode if not already set
+        if (!wizardState.storyData.artStyleCode) {
+           // Auto-suggest style based on category (can be refined)
+           const category = wizardState.storyData.category;
+           let suggestedStyleId = 'cartoon'; // Default ID
+           if (category === 'adventure') suggestedStyleId = 'cartoon';
+           else if (category === 'fantasy') suggestedStyleId = 'watercolor';
+           else if (category === 'bedtime') suggestedStyleId = 'pastel';
+           else if (category === 'learning') suggestedStyleId = 'flat_vector';
+           else if (category === 'birthday') suggestedStyleId = 'storybook_pop';
+         
+           const suggestedCode = map[suggestedStyleId] || foundNoStyle || ''; // Fallback
+           setArtStyleCode(suggestedCode);
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch Dzine styles:", err);
+        setStyleFetchError(err.message || 'Could not load art styles.');
+      } finally {
+        setIsLoadingStyles(false);
+      }
+    };
+
+    fetchStyles();
+  }, []); // Fetch only once
   
-  // Load data from store when component mounts
+  // Load wizard state when it changes (e.g., navigating back)
   useEffect(() => {
     setBookCharacters(wizardState.storyData.bookCharacters || []);
-    setArtStyle(wizardState.storyData.artStyle || 'cartoon');
+    setArtStyleCode(wizardState.storyData.artStyleCode || '');
     setCustomStyleDescription(wizardState.storyData.customStyleDescription || '');
   }, [wizardState.storyData]);
 
@@ -125,10 +166,10 @@ function CharactersStep() {
       setShowCharacterWizard(false);
       return;
     }
+    // We don't store artStyle on individual characters anymore
     const characterWithRole = {
       ...character,
       role: selectedRole,
-      artStyle: artStyle, 
     };
     setBookCharacters([...bookCharacters, characterWithRole]);
     setShowCharacterWizard(false);
@@ -144,6 +185,10 @@ function CharactersStep() {
   };
 
   const handleContinue = () => {
+    if (isLoadingStyles) {
+      setError('Styles are still loading, please wait.');
+      return;
+    }
     if (bookCharacters.length === 0) {
       setError('Please add at least one character');
       return;
@@ -153,17 +198,27 @@ function CharactersStep() {
       setError('Please add a main character');
       return;
     }
-    if (artStyle === 'custom' && !customStyleDescription.trim()) {
+    // Use artStyleCode for validation
+    if (!artStyleCode && customStyleDescription === '') { 
+        setError('Please select an art style or describe a custom one.');
+        return;
+    }
+    if (artStyleCode === 'custom' && !customStyleDescription.trim()) {
       setError('Please describe your custom art style');
       return;
     }
 
     updateStoryData({ 
       bookCharacters,
-      artStyle,
-      customStyleDescription: artStyle === 'custom' ? customStyleDescription : ''
+      artStyleCode: artStyleCode === 'custom' ? noStyleCode : artStyleCode, // Use noStyleCode for custom
+      customStyleDescription: artStyleCode === 'custom' ? customStyleDescription : ''
     });
     setWizardStep(4); // Skip to generating step
+  };
+
+  // Helper to get style details from fetched list based on ID
+  const getStyleDetails = (id) => {
+      return dzineStyles.find(s => s.style_code === id);
   };
 
   return (
@@ -172,7 +227,6 @@ function CharactersStep() {
         <CharacterWizard 
           onComplete={handleCharacterComplete} 
           initialStep={1}
-          forcedArtStyle={artStyle}
         />
       ) : (
         <>
@@ -184,6 +238,11 @@ function CharactersStep() {
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
+            </div>
+          )}
+          {styleFetchError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              Error loading styles: {styleFetchError}
             </div>
           )}
 
@@ -248,56 +307,72 @@ function CharactersStep() {
               Choose one style that will be applied to all characters and illustrations in your book.
             </p>
             
-            <div className="space-y-6">
-              {ART_STYLE_CATEGORIES.map((categoryData) => (
-                <div key={categoryData.category}>
-                  <h4 className="text-md font-semibold mb-3 border-b pb-1">{categoryData.category}</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-                    {categoryData.styles.map((style) => (
-                      <div
-                        key={style.id}
-                        className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 flex flex-col items-center text-center shadow-sm hover:shadow-md ${ 
-                          artStyle === style.id 
-                            ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' 
-                            : 'border-gray-200 bg-white hover:border-blue-300'
-                        }`}
-                        onClick={() => {
-                          if (style.id !== 'custom') { // Don't clear error for custom until text is entered
-                             setError('');
-                          }
-                          setArtStyle(style.id);
-                        }}
-                      >
-                        <div className="w-full aspect-[3/4] bg-gray-100 mb-2 rounded flex items-center justify-center text-gray-400 overflow-hidden">
-                          {style.imageUrl ? (
-                            <img 
-                              src={style.imageUrl} 
-                              alt={style.title} 
-                              className="w-full h-full object-contain"
-                            />
-                          ) : style.id !== 'custom' ? (
-                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          ) : (
-                             // Placeholder for custom style
-                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                          )}
+            {isLoadingStyles ? (
+              <div className="text-center p-4 text-gray-500">Loading styles...</div>
+            ) : (
+              <div className="space-y-6">
+                {ART_STYLE_CATEGORIES_STRUCTURE.map((categoryData) => {
+                    // Filter the fetched styles that match the IDs in this UI category
+                    const stylesToShow = categoryData.styleIds
+                      .map(id => {
+                         if (id === 'custom') return { style_code: 'custom', name: 'Describe Your Own', description: 'Enter details below.', id: 'custom' };
+                         const code = styleIdToCodeMap[id];
+                         if (!code) return null; // Skip if no matching code found
+                         const details = dzineStyles.find(s => s.style_code === code);
+                         return details ? { ...details, id } : null;
+                      })
+                      .filter(Boolean); // Remove nulls
+
+                    if (stylesToShow.length === 0 && categoryData.styleIds[0] !== 'custom') return null; // Don't render empty categories (except custom)
+
+                    return (
+                      <div key={categoryData.category}>
+                        <h4 className="text-md font-semibold mb-3 border-b pb-1">{categoryData.category}</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                          {stylesToShow.map((style) => (
+                            <div
+                              key={style.style_code}
+                              className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 flex flex-col items-center text-center shadow-sm hover:shadow-md ${ 
+                                artStyleCode === style.style_code 
+                                  ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' 
+                                  : 'border-gray-200 bg-white hover:border-blue-300'
+                              }`}
+                              onClick={() => {
+                                setArtStyleCode(style.style_code); // Use style_code now
+                                if (style.style_code !== 'custom') {
+                                  setError('');
+                                  setCustomStyleDescription(''); // Clear custom if selecting preset
+                                }
+                              }}
+                            >
+                              <div className="w-full aspect-[3/4] bg-gray-100 mb-2 rounded flex items-center justify-center text-gray-400 overflow-hidden">
+                                {styleImageMap[style.id] ? ( // Use our local images for preview
+                                  <img src={styleImageMap[style.id]} alt={style.name} className="w-full h-full object-contain" />
+                                ) : style.id === 'custom' ? (
+                                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                   </svg>
+                                ) : (
+                                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                   </svg>
+                                )}
+                              </div>
+                              <h5 className="text-sm font-medium leading-tight mb-1">{style.name}</h5>
+                              {/* Use description from fetched data if available, else from our structure */}
+                              {/* <p className="text-xs text-gray-500 leading-snug">{style.description || ''}</p> */}
+                            </div>
+                          ))}
                         </div>
-                        <h5 className="text-sm font-medium leading-tight mb-1">{style.title}</h5>
-                        <p className="text-xs text-gray-500 leading-snug">{style.description}</p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
           {/* Custom Style Description */}
-          {artStyle === 'custom' && (
+          {artStyleCode === 'custom' && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }} 
               animate={{ opacity: 1, height: 'auto' }} 
@@ -328,7 +403,8 @@ function CharactersStep() {
             </button>
             <button
               onClick={handleContinue}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+              disabled={isLoadingStyles || styleFetchError} // Disable continue if styles loading/failed
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Continue
             </button>

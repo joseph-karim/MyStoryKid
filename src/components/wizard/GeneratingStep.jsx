@@ -51,7 +51,8 @@ function GeneratingStep() {
       title: generateTitle(wizardState.storyData.category, childName),
       status: 'draft',
       childName,
-      artStyle: wizardState.storyData.artStyle,
+      artStyleCode: wizardState.storyData.artStyleCode,
+      customStyleDescription: wizardState.storyData.customStyleDescription,
       characters: wizardState.storyData.bookCharacters,
       category: wizardState.storyData.category,
       pages: [
