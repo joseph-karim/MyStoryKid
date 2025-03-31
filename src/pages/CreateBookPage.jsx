@@ -8,7 +8,6 @@ import StoryDetailsStep from '../components/wizard/StoryDetailsStep';
 import CharactersStep from '../components/wizard/CharactersStep';
 import ArtStyleStep from '../components/wizard/ArtStyleStep';
 import SummaryStep from '../components/wizard/SummaryStep';
-import useBookStore from '../stores/bookStore';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
