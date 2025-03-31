@@ -3,6 +3,11 @@ const API_KEY = import.meta.env.VITE_DZINE_API_KEY;
 
 // Helper function for making authenticated requests
 const fetchDzine = async (endpoint, options = {}) => {
+  if (!API_KEY) {
+    console.warn('Dzine API Key not found. Please set VITE_DZINE_API_KEY in your .env file.');
+    throw new Error('Dzine API Key not configured');
+  }
+
   const url = `${API_BASE_URL}${endpoint}`;
   const headers = {
     'Authorization': API_KEY,
@@ -43,9 +48,18 @@ const fetchDzine = async (endpoint, options = {}) => {
 
 // 1. Load Dzine Style List
 export const getDzineStyles = async (pageNo = 0, pageSize = 200) => {
-  // Fetch a large number to likely get all styles at once
-  const params = new URLSearchParams({ page_no: pageNo, page_size: pageSize }).toString();
-  return fetchDzine(`/style/list?${params}`, { method: 'GET' });
+  try {
+    // Fetch a large number to likely get all styles at once
+    const params = new URLSearchParams({ page_no: pageNo, page_size: pageSize }).toString();
+    return fetchDzine(`/style/list?${params}`, { method: 'GET' });
+  } catch (error) {
+    console.warn('Could not load styles from Dzine API:', error.message);
+    // Return a minimal structure to prevent UI breakage
+    return { 
+      list: [],
+      total: 0
+    };
+  }
 };
 
 // 2. Get Token Balance (Example, not strictly needed for img2img)
@@ -58,6 +72,10 @@ export const getTokenBalance = async () => {
 
 // 5. Image-to-Image Task Creation
 export const createImg2ImgTask = async (payload) => {
+  if (!API_KEY) {
+    throw new Error('Dzine API Key not configured. Please check your environment variables.');
+  }
+  
   // Ensure the payload structure matches the API docs
   // { prompt, style_code, images: [{ base64_data }], style_intensity, structure_match, face_match, ... }
   return fetchDzine('/create_task_img2img', {
