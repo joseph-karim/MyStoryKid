@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.8.4",
     "framer-motion": "^12.6.2",
     "gsap": "^3.12.7",
     "lottie-react": "^2.4.1",
+    "openai": "^4.91.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-pageflip": "^2.0.3",
