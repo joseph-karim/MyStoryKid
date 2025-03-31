@@ -5,29 +5,30 @@ import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress } from '../services/dzineService';
 
 // Style ID to code map (copy from ArtStyleStep.jsx)
+// Updated with longer style codes per Dzine API requirement (min 10 characters)
 const styleIdToCodeMap = {
-  watercolor: '33',    // Watercolor styles
-  pastel: '32',        // Pastel style
-  pencil_wash: '24',   // Pencil wash
-  soft_digital: '73',  // Soft digital
-  pencil_ink: '22',    // Pencil and ink
-  golden_books: '70',  // Golden books style
-  beatrix_potter: '34', // Potter-like
-  cartoon: '80',       // Cartoon
-  flat_vector: '81',   // Flat vector
-  storybook_pop: '82', // Storybook
-  papercut: '83',      // Papercut style
-  oil_pastel: '35',    // Oil pastel
-  stylized_realism: '44', // Stylized realism
-  digital_painterly: '45', // Digital painterly
-  kawaii: '86',        // Kawaii style
-  scandinavian: '87',  // Scandinavian
-  african_pattern: '88', // African patterns
-  custom: 'custom'     // Custom style
+  watercolor: 'Style-0000000033',    // Watercolor styles
+  pastel: 'Style-0000000032',        // Pastel style
+  pencil_wash: 'Style-0000000024',   // Pencil wash
+  soft_digital: 'Style-0000000073',  // Soft digital
+  pencil_ink: 'Style-0000000022',    // Pencil and ink
+  golden_books: 'Style-0000000070',  // Golden books style
+  beatrix_potter: 'Style-0000000034', // Potter-like
+  cartoon: 'Style-0000000080',       // Cartoon
+  flat_vector: 'Style-0000000081',   // Flat vector
+  storybook_pop: 'Style-0000000082', // Storybook
+  papercut: 'Style-0000000083',      // Papercut style
+  oil_pastel: 'Style-0000000035',    // Oil pastel
+  stylized_realism: 'Style-0000000044', // Stylized realism
+  digital_painterly: 'Style-0000000045', // Digital painterly
+  kawaii: 'Style-0000000086',        // Kawaii style
+  scandinavian: 'Style-0000000087',  // Scandinavian
+  african_pattern: 'Style-0000000088', // African patterns
+  custom: 'Style-0000000080'     // Custom style (fallback to cartoon)
 };
 
 // Fallback style code for when mapping fails
-const SAFE_STYLE_CODE = "80"; // Common working style code for cartoon
+const SAFE_STYLE_CODE = "Style-0000000080"; // Common working style code for cartoon
 
 // Helper to get a safe style code for API use
 const getSafeStyleCode = (styleId) => {

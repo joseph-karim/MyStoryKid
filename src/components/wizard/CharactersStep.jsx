@@ -305,7 +305,7 @@ function CharactersStep() {
   };
 
   // Use a reliable fallback style code (we know 'cartoon' usually works)
-  const SAFE_STYLE_CODE = "80"; // Common working style code for cartoon
+  const SAFE_STYLE_CODE = "Style-0000000080"; // Common working style code for cartoon
   
   // Helper to get a safe style code for API use
   const getSafeStyleCode = (selectedStyleCode) => {
@@ -315,7 +315,17 @@ function CharactersStep() {
       return SAFE_STYLE_CODE;
     }
     
-    return selectedStyleCode;
+    // Check if the style code is already in the proper format
+    if (selectedStyleCode.startsWith('Style-') && selectedStyleCode.length >= 10) {
+      return selectedStyleCode;
+    }
+    
+    // If it's a short numeric code, convert to proper format
+    if (/^\d+$/.test(selectedStyleCode)) {
+      return `Style-${'0'.repeat(10-selectedStyleCode.length)}${selectedStyleCode}`;
+    }
+    
+    return SAFE_STYLE_CODE;
   };
   
   // New function to generate previews for all characters at once
