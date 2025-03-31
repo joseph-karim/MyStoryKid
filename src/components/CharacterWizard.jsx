@@ -4,6 +4,45 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress } from '../services/dzineService';
 
+// Style ID to code map (copy from ArtStyleStep.jsx)
+const styleIdToCodeMap = {
+  watercolor: '33',    // Watercolor styles
+  pastel: '32',        // Pastel style
+  pencil_wash: '24',   // Pencil wash
+  soft_digital: '73',  // Soft digital
+  pencil_ink: '22',    // Pencil and ink
+  golden_books: '70',  // Golden books style
+  beatrix_potter: '34', // Potter-like
+  cartoon: '80',       // Cartoon
+  flat_vector: '81',   // Flat vector
+  storybook_pop: '82', // Storybook
+  papercut: '83',      // Papercut style
+  oil_pastel: '35',    // Oil pastel
+  stylized_realism: '44', // Stylized realism
+  digital_painterly: '45', // Digital painterly
+  kawaii: '86',        // Kawaii style
+  scandinavian: '87',  // Scandinavian
+  african_pattern: '88', // African patterns
+  custom: 'custom'     // Custom style
+};
+
+// Fallback style code for when mapping fails
+const SAFE_STYLE_CODE = "80"; // Common working style code for cartoon
+
+// Helper to get a safe style code for API use
+const getSafeStyleCode = (styleId) => {
+  // Get the numeric code from the map
+  const styleCode = styleIdToCodeMap[styleId];
+  
+  // If no valid style code is available, use a known working default
+  if (!styleCode || styleCode === 'undefined' || styleCode === 'custom') {
+    console.log("Using default safe style code:", SAFE_STYLE_CODE);
+    return SAFE_STYLE_CODE;
+  }
+  
+  return styleCode;
+};
+
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
@@ -397,7 +436,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setError('');
     
     // Always use the forced art style if provided, otherwise use the one from character data
-    const styleToUse = forcedArtStyle || characterData.artStyle;
+    const styleIdToUse = forcedArtStyle || characterData.artStyle;
     
     try {
       if (!characterData.photoUrl) {
@@ -422,17 +461,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
       
       // Use artStyle style name in prompt for better results
-      const styleInfo = ALL_ART_STYLES.find(s => s.id === styleToUse);
+      const styleInfo = ALL_ART_STYLES.find(s => s.id === styleIdToUse);
       if (styleInfo) {
         prompt += ` in ${styleInfo.name} style`;
       }
       
-      console.log('Creating Dzine task with prompt:', prompt, 'style:', styleToUse);
+      console.log('Creating Dzine task with prompt:', prompt, 'style ID:', styleIdToUse);
+      
+      // Get the proper style code from the ID
+      const styleCode = getSafeStyleCode(styleIdToUse);
+      console.log('Using style code for API:', styleCode);
       
       // Create a payload for the Dzine API
       const payload = {
         prompt,
-        style_code: styleToUse,
+        style_code: styleCode,
         images: [{ base64_data: base64Data }],
         style_intensity: 1.0, // Max style intensity
         structure_match: 0.5, // Balance between structure and style
@@ -464,11 +507,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               setCharacterData(prev => ({
                 ...prev,
-                artStyle: styleToUse,
+                artStyle: styleIdToUse,
                 stylePreview: imageUrl
               }));
               
               setIsGenerating(false);
+              setStep(4); // Move to preview step
             } else {
               throw new Error('No images returned from generation');
             }
@@ -482,17 +526,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           console.error('Error polling task progress:', pollError);
           
           // Fallback to placeholder if API generation fails
-          const bgColor = stringToColor(characterData.name + styleToUse);
+          const bgColor = stringToColor(characterData.name + styleIdToUse);
           const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
           
           setCharacterData(prev => ({
             ...prev,
-            artStyle: styleToUse,
+            artStyle: styleIdToUse,
             stylePreview: fallbackPreview
           }));
           
           setError(`Failed to generate preview: ${pollError.message}. Using placeholder instead.`);
           setIsGenerating(false);
+          setStep(4); // Still move to preview step with the placeholder
         }
       }, 2000); // Poll every 2 seconds
       
@@ -503,17 +548,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           // Check if we're still generating (didn't get a result)
           if (isGenerating) {
-            const bgColor = stringToColor(characterData.name + styleToUse);
+            const bgColor = stringToColor(characterData.name + styleIdToUse);
             const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
             
             setCharacterData(prev => ({
               ...prev,
-              artStyle: styleToUse,
+              artStyle: styleIdToUse,
               stylePreview: fallbackPreview
             }));
             
             setError('Generation timed out. Using placeholder instead.');
             setIsGenerating(false);
+            setStep(4); // Still move to preview step with the placeholder
           }
         }
       }, 60000); // 60 second timeout
@@ -522,17 +568,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       console.error('Error creating Dzine task:', error);
       
       // Fallback to placeholder on error
-      const bgColor = stringToColor(characterData.name + styleToUse);
+      const bgColor = stringToColor(characterData.name + styleIdToUse);
       const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
         ...prev,
-        artStyle: styleToUse,
+        artStyle: styleIdToUse,
         stylePreview: fallbackPreview
       }));
       
       setError(`Failed to generate character: ${error.message}. Using placeholder instead.`);
       setIsGenerating(false);
+      setStep(4); // Still move to preview step with the placeholder
     }
   };
   
