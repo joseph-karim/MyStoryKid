@@ -60,7 +60,7 @@ function SummaryStep() {
         'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': 'Golden Hour',
         'Style-b484beb8-143e-4776-9a87-355e0456cfa3': 'Cute Exaggeration',
         'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': 'Glossy Elegance',
-        'Style-541a2afd-904a-4968-bc60-8ad0ede22a86': 'Starlit Fantasy',
+        'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': 'Starlit Fantasy',
         'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': 'Fantasy Hero',
         'Style-455da805-d716-4bc8-a960-4ac505aa7875': 'Joyful Clay',
         'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': 'Enchanted Elegance',

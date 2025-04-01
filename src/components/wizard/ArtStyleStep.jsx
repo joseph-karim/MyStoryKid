@@ -98,7 +98,8 @@ const dzineStyleImageMap = {
   'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': ceramicLifelikeImg,
   'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': yarnRealismImg,
   'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': mysticalSovereigntyImg,
-  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg
+  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg,
+  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': starlitFantasyImg
 };
 
 // Updated Art Style Categories with direct API styles and CORRECT names
@@ -201,7 +202,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         id: 'starlit_fantasy',
         apiCode: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
         title: 'Starlit Fantasy',
-        description: 'Magical, dreamy illustrations with starry, fantastical elements'
+        description: 'A dreamy and ethereal style with a magical starlit quality.'
       },
       { 
         id: 'fantasy_hero',
@@ -333,7 +334,7 @@ const styleDescriptions = {
   },
   starlit_fantasy: { 
     title: 'Starlit Fantasy',
-    description: 'Magical, dreamy illustrations with starry, fantastical elements'
+    description: 'A dreamy and ethereal style with a magical starlit quality.'
   },
   fantasy_hero: { 
     title: 'Fantasy Hero',
