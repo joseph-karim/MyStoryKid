@@ -647,11 +647,29 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         const result = await createImg2ImgTask(payload);
         console.log('Dzine task created:', result);
         
-        if (!result || !result.task_id) {
-          throw new Error('Failed to create image generation task');
+        if (!result) {
+          throw new Error('Empty response from image generation API');
         }
         
-        const taskId = result.task_id;
+        // Check for task_id in different possible locations
+        let taskId = null;
+        
+        if (result.task_id) {
+          taskId = result.task_id;
+          console.log('Found task_id directly in result:', taskId);
+        } else if (result.data && result.data.task_id) {
+          taskId = result.data.task_id;
+          console.log('Found task_id in result.data:', taskId);
+        } else if (typeof result === 'string' && result.includes('task')) {
+          // In case the API returns a string with the task ID
+          taskId = result;
+          console.log('Found task as string:', taskId);
+        } else {
+          // Log the structure for debugging
+          console.error('Could not find task_id in result:', JSON.stringify(result));
+          throw new Error('Invalid response from API: missing task_id. Response: ' + JSON.stringify(result).substring(0, 100));
+        }
+        
         let pollCount = 0;
         let maxPolls = 20; // Maximum number of polling attempts (40 seconds at 2 second intervals)
         

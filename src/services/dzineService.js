@@ -14,6 +14,7 @@ export const fetchDzine = async (endpoint, options = {}) => {
     
     console.log(`Calling Dzine API: ${url}`);
     
+    // Make the request to the API
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -22,35 +23,41 @@ export const fetchDzine = async (endpoint, options = {}) => {
       }
     });
     
-    if (!response.ok) {
-      // Try to get error info from response
-      try {
-        const errorText = await response.text();
-        try {
-          const errorData = JSON.parse(errorText);
-          console.error('Dzine API error response:', errorData);
-          throw new Error(`API error (Code: ${errorData.code || response.status}): ${errorData.msg || response.statusText}`);
-        } catch (parseError) {
-          // If we can't parse the error as JSON
-          console.error('Error response (not JSON):', errorText);
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-      } catch (e) {
-        // If we can't read the error as text
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-    }
+    // Log response status and headers
+    console.log(`Response status: ${response.status} ${response.statusText}`);
     
-    // Read and parse response text manually to catch JSON errors
+    // Get the response text first for analysis
     const responseText = await response.text();
     
+    // Always log the response body for debugging (truncate if too long)
+    const truncatedResponse = responseText.length > 1000 
+      ? responseText.substring(0, 1000) + '...' 
+      : responseText;
+    console.log(`Response body (${responseText.length} chars): ${truncatedResponse}`);
+    
+    // Try to parse as JSON
+    let data;
     try {
-      return JSON.parse(responseText);
+      data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('Failed to parse JSON response:', parseError);
-      console.error('Response text:', responseText.slice(0, 500) + '...');
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
+      console.error('Error parsing response as JSON:', parseError);
+      
+      // If status is success but not JSON, return the raw text
+      if (response.ok) {
+        return { text: responseText, status: response.status };
+      }
+      
+      throw new Error(`API returned non-JSON response: ${response.status} ${response.statusText}`);
     }
+    
+    // Check for error codes in response body
+    if (data && data.code && data.code !== 200) {
+      console.error('Dzine API error in response body:', data);
+      throw new Error(`API error in response body (Code: ${data.code}): ${data.msg || 'Unknown error'}`);
+    }
+    
+    // Return data even if status is not 200, as some APIs return error details as JSON
+    return data;
   } catch (error) {
     console.error('Error in fetchDzine:', error);
     throw error;
@@ -164,13 +171,37 @@ export const createImg2ImgTask = async (payload) => {
       body: JSON.stringify(payload)
     });
     
-    console.log(`Success with endpoint ${endpoint}:`, data);
+    // Log full response for debugging
+    console.log(`Raw response from API:`, JSON.stringify(data));
     
-    if (data && data.code === 200 && data.data) {
-      return data.data;
+    // Check for task_id in different possible response structures
+    if (data) {
+      console.log(`Success with endpoint ${endpoint}:`, data);
+      
+      // Case 1: Standard structure with code 200
+      if (data.code === 200 && data.data && data.data.task_id) {
+        console.log(`Found task_id in standard structure:`, data.data.task_id);
+        return data.data;
+      }
+      
+      // Case 2: Direct task_id in data
+      if (data.task_id) {
+        console.log(`Found direct task_id:`, data.task_id);
+        return { task_id: data.task_id };
+      }
+      
+      // Case 3: Nested in a different structure
+      if (data.data && data.data.task) {
+        console.log(`Found task in nested structure:`, data.data.task);
+        return { task_id: data.data.task };
+      }
+      
+      // If we got here, log the structure for debugging
+      console.warn(`Could not find task_id in response structure:`, data);
+      throw new Error('Could not find task_id in API response');
     } else {
-      console.error(`Invalid response structure from ${endpoint}:`, data);
-      throw new Error('Invalid response structure from API');
+      console.error(`Empty response from ${endpoint}`);
+      throw new Error('Empty response from API');
     }
   } catch (error) {
     console.error('Error in createImg2ImgTask:', error);
@@ -194,19 +225,45 @@ export const getTaskProgress = async (taskId) => {
       const endpoint = `/get_task_progress/${taskId}`;
       console.log(`Using documented task progress endpoint: ${endpoint}`);
       
-      const data = await fetchDzine(endpoint, {
+      const response = await fetchDzine(endpoint, {
         method: 'GET'
       });
       
-      console.log(`Task progress response:`, data);
+      // Log the raw response for debugging
+      console.log(`Raw task progress response:`, JSON.stringify(response));
       
-      if (data && data.code === 200 && data.data) {
-        return data.data;
-      } else {
-        console.warn(`Invalid task progress response:`, data);
+      // Handle different response formats
+      if (response) {
+        console.log(`Task progress response:`, response);
+        
+        // Case 1: Standard format with code 200
+        if (response.code === 200 && response.data) {
+          console.log(`Found progress in standard format`);
+          return response.data;
+        }
+        
+        // Case 2: Direct task data
+        if (response.status || response.task_id) {
+          console.log(`Found direct task progress data`);
+          return response;
+        }
+        
+        // Case 3: Data property contains the progress directly
+        if (response.data) {
+          console.log(`Using data property as progress data`);
+          return response.data;
+        }
+        
+        console.warn(`Unknown task progress response format:`, response);
         
         if (retries === maxRetries) {
-          throw new Error('Invalid response structure from task progress endpoint');
+          throw new Error(`Unexpected response format: ${JSON.stringify(response)}`);
+        }
+      } else {
+        console.warn(`Empty task progress response`);
+        
+        if (retries === maxRetries) {
+          throw new Error('Empty response from task progress endpoint');
         }
       }
       
