@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import toddlerImage from '../assets/toddler.jpg';
 import toddlerTransformed from '../assets/toddler transformed.png';
 import spaceAdventureCover from '../assets/space-adventure-cover.png';
-import magicalForestCover from '../assets/magical-forest-cover.png';
-import underseaQuestCover from '../assets/undersea-quest-cover.png';
+import magicalForestCover from '../assets/dzine-styles/Enchanted-Elegance.png';
+import underseaQuestCover from '../assets/dzine-styles/Watercolor-Whimsy.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
