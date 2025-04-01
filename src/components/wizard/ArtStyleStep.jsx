@@ -43,24 +43,12 @@ const styleImageMap = {
   african_pattern: africanPatternImg
 };
 
-// Updated Art Style Categories with direct API styles
-const ART_STYLE_CATEGORIES_STRUCTURE = [
+// Updated Art Style Categories with direct API styles and CORRECT names
+export const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
     category: 'Whimsical & Soft (Ages 0–5)',
     description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
     styleIds: [
-      { 
-        id: 'classic_watercolor', 
-        apiCode: 'Style-2478f952-50e7-4773-9cd3-c6056e774823',
-        title: 'Classic Watercolor',
-        description: 'Soft, dreamy illustrations with gentle color washes and fluid textures'
-      },
-      { 
-        id: 'whimsical_coloring',
-        apiCode: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',
-        title: 'Whimsical Coloring',
-        description: 'Tender, soothing colors with a gentle, chalky texture perfect for bedtime stories'
-      },
       { 
         id: 'watercolor_whimsy',
         apiCode: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
@@ -68,10 +56,22 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
         description: 'Rounded shapes and soft digital brushwork with gentle gradients'
       },
       { 
-        id: 'cozy_3d',
-        apiCode: 'Style-5b1b0c35-7abc-4f14-8b1d-dc2748f34915',
-        title: 'Cozy 3D',
-        description: 'Warm, comfortable 3D style with soft lighting and friendly characters'
+        id: 'whimsical_coloring',
+        apiCode: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',
+        title: 'Whimsical Coloring', 
+        description: 'Tender, soothing colors with a gentle, chalky texture perfect for bedtime stories'
+      },
+      { 
+        id: 'enchanted_character',
+        apiCode: 'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7',
+        title: 'Enchanted Character',
+        description: 'Magical characters with soft lighting and enchanting atmosphere'
+      },
+      { 
+        id: 'minimialist_cutesy',
+        apiCode: 'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895',
+        title: 'Minimialist Cutesy',
+        description: 'Simple, cute designs with minimal details and soft colors'
       }
     ]
   },
@@ -80,34 +80,34 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
     description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
     styleIds: [
       { 
-        id: 'golden_books',
-        apiCode: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',
-        title: 'Golden Era Illustrations',
-        description: 'Nostalgic illustrations inspired by classic mid-century "Little Golden Books"'
+        id: 'cheerful_storybook',
+        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
+        title: 'Cheerful Storybook',
+        description: 'Bright, cheerful illustrations with bold colors and playful details'
       },
       { 
-        id: 'warm_fables',
+        id: 'pleasently_warm',
         apiCode: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',
-        title: 'Warm Fables',
-        description: 'Charming, detailed watercolor illustrations in the style of classic children\'s tales'
+        title: 'Pleasently Warm',
+        description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
       },
       { 
-        id: 'sketch_elegance',
-        apiCode: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',
-        title: 'Sketch Elegance',
-        description: 'Classic line drawings with expressive ink work, reminiscent of beloved storybooks'
+        id: 'storytime_whimsy',
+        apiCode: 'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a',
+        title: 'Storytime Whimsy',
+        description: 'Whimsical, storybook-style illustrations with a classic feel'
       },
       { 
-        id: 'line_wash',
+        id: 'line_and_wash',
         apiCode: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',
-        title: 'Line & Wash',
+        title: 'Line and Wash',
         description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
       },
       { 
-        id: 'storybook_charm',
-        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
-        title: 'Storybook Charm',
-        description: 'Bright, cheerful illustrations with bold colors and playful details'
+        id: 'golden_hour',
+        apiCode: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',
+        title: 'Golden Hour',
+        description: 'Nostalgic illustrations with warm, golden lighting inspired by classic picture books'
       }
     ]
   },
@@ -116,40 +116,34 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
     description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
     styleIds: [
       { 
-        id: 'cartoon_anime',
+        id: 'cute_exaggeration',
         apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
-        title: 'Cartoon Anime',
-        description: 'Clean lines, bright colors, and exaggerated expressions'
+        title: 'Cute Exaggeration',
+        description: 'Playful, exaggerated features with bright colors and clean lines'
       },
       { 
-        id: 'simple_icon',
+        id: 'glossy_elegance',
         apiCode: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',
-        title: 'Simple Icon',
-        description: 'Bold, clean, simple shapes with a modern minimal feel'
+        title: 'Glossy Elegance',
+        description: 'Clean, sleek, modern illustrations with a glossy finish'
       },
       { 
-        id: 'paper_cutout',
+        id: 'starlit_fantasy',
         apiCode: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
-        title: 'Paper Cutout',
-        description: 'Textured look that resembles layers of cut paper with distinct shapes'
+        title: 'Starlit Fantasy',
+        description: 'Magical, dreamy illustrations with starry, fantastical elements'
       },
       { 
-        id: 'pixiepop_3d',
+        id: 'fantasy_hero',
         apiCode: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f',
-        title: 'PixiePop 3D',
-        description: 'Vibrant 3D cartoon style with charming character features and rich textures'
+        title: 'Fantasy Hero',
+        description: 'Bold, heroic character illustrations with a fantasy adventure feel'
       },
       { 
-        id: 'everything_kawaii',
+        id: 'joyful_clay',
         apiCode: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
-        title: 'Everything Kawaii',
-        description: 'Cute, adorable characters with simplified features and expressive eyes'
-      },
-      { 
-        id: 'scandi',
-        apiCode: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60',
-        title: 'Scandi',
-        description: 'Clean, minimal illustrations with folk art influences and nature motifs'
+        title: 'Joyful Clay',
+        description: 'Cheerful characters that look like they are made of colorful clay'
       }
     ]
   },
@@ -158,28 +152,28 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
     description: 'Sophisticated art styles with richer detail, ideal for preserving the likeness of your child.',
     styleIds: [
       { 
-        id: 'structured_serenity',
+        id: 'enchanted_elegance',
         apiCode: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347',
-        title: 'Structured Serenity',
-        description: 'More detailed illustrations with accurate proportions but artistic styling'
+        title: 'Enchanted Elegance',
+        description: 'Detailed illustrations with an elegant, enchanted quality'
       },
       { 
-        id: 'realistic',
+        id: 'warm_portrait',
         apiCode: 'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703',
-        title: 'Realistic',
-        description: 'Highest detail level for capturing accurate facial features'
+        title: 'Warm Portrait',
+        description: 'Realistic portraits with warm lighting and preserved facial features'
       },
       { 
-        id: 'toon_portrait',
+        id: 'magic_portrait',
         apiCode: 'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c',
-        title: 'Toon Portrait',
-        description: 'Stylized but recognizable portrait style that preserves facial features'
+        title: 'Magic Portrait',
+        description: 'Semi-stylized portraits with a magical, fantasy quality'
       },
       { 
-        id: 'vibrant_impasto',
+        id: 'vivid_tableaux',
         apiCode: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',
-        title: 'Vibrant Impasto',
-        description: 'Rich, textured illustrations with bold strokes and vibrant color blending'
+        title: 'Vivid Tableaux',
+        description: 'Rich, textured scenes with vibrant colors and detailed compositions'
       },
       { 
         id: 'luminous_narratives',
@@ -383,17 +377,17 @@ function ArtStyleStep() {
   // Special handling for Warm Fables style
   useEffect(() => {
     try {
-      // Make sure Warm Fables is always available by ID in localStorage
+      // Make sure Pleasently Warm style is always available by ID in localStorage
       const existingNames = localStorage.getItem('styleCodeNames') || '{}';
       const namesMap = JSON.parse(existingNames);
       
-      // Hard-code the Warm Fables style
-      const warmFablesStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
-      namesMap[warmFablesStyleCode] = 'Warm Fables';
+      // Hard-code the Pleasently Warm style
+      const pleasentlyWarmStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+      namesMap[pleasentlyWarmStyleCode] = 'Pleasently Warm';
       
       localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
     } catch (e) {
-      console.error("Failed to ensure Warm Fables style is in localStorage:", e);
+      console.error("Failed to ensure Pleasently Warm style is in localStorage:", e);
     }
   }, []);
   

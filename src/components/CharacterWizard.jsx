@@ -85,7 +85,7 @@ const CURATED_STYLES = [
 ];
 
 // Map of style IDs to API style codes - no longer needed, using direct API codes
-const WARM_FABLES_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+const PLEASENTLY_WARM_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
 
 // Fallback style code for when mapping fails - use "No Style v2" as fallback
 const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; 
@@ -1226,8 +1226,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (!characterData.artStyle) return 'No style selected';
       
       // Special case for the Warm Fables style code
-      if (characterData.artStyle === WARM_FABLES_STYLE_CODE) {
-        return 'Warm Fables';
+      if (characterData.artStyle === PLEASENTLY_WARM_STYLE_CODE) {
+        return 'Pleasently Warm';
       }
       
       // If it's a full style code (starts with "Style-")
@@ -1244,7 +1244,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           // Also check the lastSelectedStyleName for Warm Fables style
           const lastStyleName = localStorage.getItem('lastSelectedStyleName');
-          if (lastStyleName && characterData.artStyle === WARM_FABLES_STYLE_CODE) {
+          if (lastStyleName && characterData.artStyle === PLEASENTLY_WARM_STYLE_CODE) {
             return lastStyleName;
           }
         } catch (e) {

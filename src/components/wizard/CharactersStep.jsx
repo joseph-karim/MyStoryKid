@@ -23,6 +23,9 @@ import kawaiiImg from '../../assets/japanese-kawaii.png';
 import scandinavianImg from '../../assets/scandinavian-folk-art.png';
 import africanPatternImg from '../../assets/african-patterned-illustration.png';
 
+// Import the ART_STYLE_CATEGORIES_STRUCTURE for style name lookups
+import { ART_STYLE_CATEGORIES_STRUCTURE } from './ArtStyleStep';
+
 // Character roles
 const CHARACTER_ROLES = [
   { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
@@ -72,82 +75,44 @@ const WARM_FABLES_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
 
 // --- NEW: Helper function to get style name from API style code ---
 const getStyleNameFromCode = (styleCode) => {
-  if (!styleCode) return 'No Style Selected';
+  if (!styleCode) return 'Default Style';
   
-  // First check if we have a stored style name from ArtStyleStep
+  // Special handling for Pleasently Warm style
+  if (styleCode === 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1') {
+    return 'Pleasently Warm';
+  }
+  
+  // Try to find the style in our ART_STYLE_CATEGORIES_STRUCTURE (imported from ArtStyleStep.jsx)
+  let styleName = null;
+  for (const category of ART_STYLE_CATEGORIES_STRUCTURE) {
+    for (const style of category.styleIds) {
+      if (style.apiCode === styleCode) {
+        styleName = style.title;
+        break;
+      }
+    }
+    if (styleName) break;
+  }
+  
+  // If found, return it
+  if (styleName) return styleName;
+  
+  // Try to get from localStorage (for backward compatibility)
   try {
-    const storedStyleName = localStorage.getItem('lastSelectedStyleName');
-    if (storedStyleName && styleCode === WARM_FABLES_STYLE_CODE) {
-      // This is the Warm Fables style code
-      return storedStyleName;
+    const allStyleNames = localStorage.getItem('styleCodeNames');
+    if (allStyleNames) {
+      const namesMap = JSON.parse(allStyleNames);
+      if (namesMap[styleCode]) {
+        return namesMap[styleCode];
+      }
     }
   } catch (e) {
-    console.error("Failed to check localStorage:", e);
+    console.error('Error reading style names from localStorage:', e);
   }
   
-  // Special case for the Warm Fables style
-  if (styleCode === WARM_FABLES_STYLE_CODE) {
-    return 'Warm Fables';
-  }
-  
-  // For style codes, look up the name in the imported styles or return a default
-  if (styleCode.startsWith('Style-')) {
-    // Try to get the style name from localStorage as a fallback
-    try {
-      const allStyleNames = localStorage.getItem('styleCodeNames');
-      if (allStyleNames) {
-        const namesMap = JSON.parse(allStyleNames);
-        if (namesMap[styleCode]) {
-          return namesMap[styleCode];
-        }
-      }
-    } catch (e) {
-      console.error("Failed to check localStorage for style names:", e);
-    }
-    
-    // If nothing works, return a generic label
-    return 'API Style';
-  }
-  
-  // It's not a style code, so it might be some legacy ID - just format it
-  return styleCode.split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  // Finally, if all else fails, just return the code
+  return styleCode.replace('Style-', '').substring(0, 8) + '...';
 };
-
-// Enhance ART_STYLE_CATEGORIES_STRUCTURE with rich descriptions
-const ART_STYLE_CATEGORIES_STRUCTURE = [
-  {
-    category: '🎨 Whimsical & Soft (Ages 0–5)',
-    description: 'These styles are warm, comforting, and often have a dreamy quality. Ideal for bedtime stories or gentle adventures.',
-    styleIds: ['watercolor', 'pastel', 'pencil_wash', 'soft_digital'] // Use IDs for matching later
-  },
-  {
-    category: '✏️ Classic & Timeless',
-    description: 'These styles evoke nostalgia and timelessness — ideal if you want something that feels like a classic.',
-    styleIds: ['pencil_ink', 'golden_books', 'beatrix_potter']
-  },
-  {
-    category: '✨ Modern & Colorful',
-    description: 'These styles pop and tend to work well for high-energy, imaginative adventures.',
-    styleIds: ['cartoon', 'flat_vector', 'storybook_pop', 'papercut']
-  },
-  {
-    category: '🖼️ Artistic & Elevated',
-    description: 'More sophisticated, painterly styles that could double as fine art.',
-    styleIds: ['oil_pastel', 'stylized_realism', 'digital_painterly']
-  },
-  {
-    category: '🌍 Cultural or Regional (Optional)',
-    description: 'Stylistic approaches inspired by different traditions and cultural aesthetics.',
-    styleIds: ['kawaii', 'scandinavian', 'african_pattern']
-  },
-  {
-    category: '💡 Custom Style',
-    description: 'Describe your own unique art style with specific details about colors, textures, and references.',
-    styleIds: ['custom']
-  },
-];
 
 // Add style descriptions to enrich the presentation
 const styleDescriptions = {
