@@ -189,10 +189,10 @@ export const getTaskProgress = async (taskId) => {
   
   while (retries <= maxRetries) {
     try {
-      // Use the endpoint that most likely matches the create_task_img2img pattern
-      console.log(`Checking task progress for ${taskId}`);
-      const endpoint = `/query_task?task_id=${taskId}`;
-      console.log(`Using task progress endpoint: ${endpoint}`);
+      // The exact endpoint format from the documentation:
+      // GET https://papi.dzine.ai/openapi/v1/get_task_progress/{task_id}
+      const endpoint = `/get_task_progress/${taskId}`;
+      console.log(`Using documented task progress endpoint: ${endpoint}`);
       
       const data = await fetchDzine(endpoint, {
         method: 'GET'
