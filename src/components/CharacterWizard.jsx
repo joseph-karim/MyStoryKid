@@ -1189,34 +1189,42 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Generate a unique ID for this polling session to avoid conflicts
     const pollingId = `poll_${Date.now()}`;
     let pollCount = 0;
-    const maxPolls = 20; // Reduced maximum polling attempts to 20 seconds
+    const maxPolls = 60; // Increased to 60 seconds max wait time
     
     // Count consecutive errors and 404s
     let consecutiveErrors = 0;
     let consecutive404s = 0;
-    const maxConsecutiveErrors = 3; // Reduced for faster fallback
-    const maxConsecutive404s = 5; // Tolerance for 404s before using fallback
+    const maxConsecutiveErrors = 5; // Increased tolerance for errors
+    const maxConsecutive404s = 10; // Increased tolerance for 404s
     
     // Store the interval in a ref so we can clear it from anywhere
     pollingSessionRef.current[pollingId] = setInterval(async () => {
       pollCount++;
       console.log(`Polling attempt ${pollCount} for task ${taskId}`);
-      setProgressMessage(`Processing image... (${pollCount}s)`);
+      
+      // Update progress message with more informative status
+      if (pollCount <= 10) {
+        setProgressMessage(`Initializing generation... (${pollCount}s)`);
+      } else if (pollCount <= 30) {
+        setProgressMessage(`Processing your image... (${pollCount}s)`);
+      } else {
+        setProgressMessage(`Still working... (${pollCount}s)`);
+      }
       
       if (pollCount >= maxPolls) {
         console.log(`Reached maximum polling time (${maxPolls}s), stopping`);
-        setProgressMessage('Generation taking too long - using fallback image');
+        setProgressMessage('Generation timeout - please try again');
         clearInterval(pollingSessionRef.current[pollingId]);
         setIsGenerating(false);
         delete pollingSessionRef.current[pollingId];
         
-        // Use fallback on timeout
+        // Only use fallback after maximum time
         useFallbackImage(fallbackImage);
         return;
       }
       
       try {
-        // Fetch the task progress with a light wrapper for safety
+        // Fetch the task progress
         let progressData;
         let is404 = false;
         
