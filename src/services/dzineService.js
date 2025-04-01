@@ -161,7 +161,25 @@ export const getTokenBalance = async () => {
 // 5. Image-to-Image Task Creation
 export const createImg2ImgTask = async (payload) => {
   try {
-    console.log('Sending to Dzine API:', JSON.stringify(payload, null, 2));
+    // Validate style code first
+    if (!payload.style_code) {
+      console.error('Missing style_code in payload');
+      throw new Error('Style code is required');
+    }
+    
+    // Log style details for debugging
+    console.log('Style parameters for img2img:', {
+      styleCode: payload.style_code,
+      styleIntensity: payload.style_intensity,
+      structureMatch: payload.structure_match,
+      faceMatch: payload.face_match,
+      colorMatch: payload.color_match,
+    });
+    
+    console.log('Sending to Dzine API:', JSON.stringify({
+      ...payload,
+      images: payload.images ? [`${payload.images.length} images`] : []
+    }, null, 2));
     
     // Use the EXACT endpoint from the documentation
     const endpoint = '/create_task_img2img';
@@ -199,6 +217,12 @@ export const createImg2ImgTask = async (payload) => {
       
       // If we got here, log the structure for debugging
       console.warn(`Could not find task_id in response structure:`, data);
+      
+      // Check for style-related errors
+      if (data.msg && data.msg.toLowerCase().includes('style')) {
+        throw new Error(`Style error: ${data.msg}`);
+      }
+      
       throw new Error('Could not find task_id in API response');
     } else {
       console.error(`Empty response from ${endpoint}`);
@@ -213,6 +237,20 @@ export const createImg2ImgTask = async (payload) => {
 // 6. Text-to-Image Task Creation
 export const createTxt2ImgTask = async (payload) => {
   try {
+    // Validate style code first
+    if (!payload.style_code) {
+      console.error('Missing style_code in payload');
+      throw new Error('Style code is required');
+    }
+    
+    // Log style details for debugging
+    console.log('Style parameters for txt2img:', {
+      styleCode: payload.style_code,
+      styleIntensity: payload.style_intensity,
+      promptStrength: payload.prompt_strength,
+      cfgScale: payload.cfg_scale
+    });
+    
     console.log('Sending Text-to-Image request to Dzine API:', JSON.stringify(payload, null, 2));
     
     // Use the EXACT endpoint from the documentation
@@ -249,6 +287,11 @@ export const createTxt2ImgTask = async (payload) => {
         return { task_id: data.data.task };
       }
       
+      // Check for style-related errors
+      if (data.msg && data.msg.toLowerCase().includes('style')) {
+        throw new Error(`Style error: ${data.msg}`);
+      }
+      
       // If we got here, log the structure for debugging
       console.warn(`Could not find task_id in response structure:`, data);
       throw new Error('Could not find task_id in API response');
@@ -262,81 +305,47 @@ export const createTxt2ImgTask = async (payload) => {
   }
 };
 
-// Check task progress with retry logic
+// 7. Get Task Progress (improved error handling and debugging)
 export const getTaskProgress = async (taskId) => {
   if (!taskId) {
+    console.error('No task ID provided to getTaskProgress');
     throw new Error('Task ID is required');
   }
   
-  let retries = 0;
-  const maxRetries = 3;
-  
-  while (retries <= maxRetries) {
-    try {
-      // The exact endpoint format from the documentation:
-      // GET https://papi.dzine.ai/openapi/v1/get_task_progress/{task_id}
-      const endpoint = `/get_task_progress/${taskId}`;
-      console.log(`Using documented task progress endpoint: ${endpoint}`);
+  try {
+    console.log(`Checking progress for task: ${taskId}`);
+    
+    // Construct the correct endpoint according to docs
+    const endpoint = `/get_task_status?task_id=${taskId}`;
+    
+    const data = await fetchDzine(endpoint, { method: 'GET' });
+    
+    // Handle different response structures
+    if (data) {
+      // Debug log
+      console.log(`Task ${taskId} progress data:`, JSON.stringify(data));
       
-      const response = await fetchDzine(endpoint, {
-        method: 'GET'
-      });
-      
-      // Log the raw response for debugging
-      console.log(`Raw task progress response:`, JSON.stringify(response));
-      
-      // Handle different response formats
-      if (response) {
-        console.log(`Task progress response:`, response);
-        
-        // Case 1: Standard format with code 200
-        if (response.code === 200 && response.data) {
-          console.log(`Found progress in standard format`);
-          return response.data;
-        }
-        
-        // Case 2: Direct task data
-        if (response.status || response.task_id) {
-          console.log(`Found direct task progress data`);
-          return response;
-        }
-        
-        // Case 3: Data property contains the progress directly
-        if (response.data) {
-          console.log(`Using data property as progress data`);
-          return response.data;
-        }
-        
-        console.warn(`Unknown task progress response format:`, response);
-        
-        if (retries === maxRetries) {
-          throw new Error(`Unexpected response format: ${JSON.stringify(response)}`);
-        }
-      } else {
-        console.warn(`Empty task progress response`);
-        
-        if (retries === maxRetries) {
-          throw new Error('Empty response from task progress endpoint');
-        }
+      // Check if the response is in the data field
+      if (data.data) {
+        return data.data;
       }
       
-      // Wait a bit before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      retries++;
-    } catch (error) {
-      console.error(`Error in getTaskProgress (attempt ${retries + 1}/${maxRetries + 1}):`, error);
-      
-      if (retries === maxRetries) {
-        throw error;
+      // Check if the response is directly in the root
+      if (data.status !== undefined) {
+        return data;
       }
       
-      // Wait a bit before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      retries++;
+      // If response doesn't match either pattern, log it and return raw data
+      console.warn('Unexpected response structure:', data);
+      return data;
+    } else {
+      console.error('Empty response from task progress check');
+      throw new Error('Empty response from API when checking task progress');
     }
+  } catch (error) {
+    console.error(`Error checking progress for task ${taskId}:`, error);
+    throw error;
   }
-  
-  throw new Error(`Failed to get task progress after ${maxRetries} retries`);
 };
 
 // Check API access - to diagnose issues with API connectivity

@@ -954,7 +954,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         console.log("No style selected, using safe default style:", SAFE_STYLE_CODE);
       }
       
-      console.log("Using style code:", styleCode);
+      console.log("STYLE DEBUG: Attempting to use style code:", styleCode);
       
       // Handle text-to-image generation
       if (characterData.useTextToImage) {
@@ -979,23 +979,34 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         enhancedPrompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
         console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
+        console.log(`STYLE DEBUG: Using style_code=${styleCode} with intensity=1.0`);
+        
+        // More detailed payload for better art style application
+        const txt2imgPayload = {
+          prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
+          style_code: styleCode,
+          style_intensity: 1.0, // Maximum style intensity
+          quality_mode: 1, // High quality
+          target_h: 1024, // Standard size
+          target_w: 1024,
+          cfg_scale: 9, // Stronger adherence to prompt
+          prompt_strength: 1.0, // Maximum prompt influence
+          generate_slots: [1, 1], // Generate 2 images
+          output_format: 'webp', // Use webp for better quality/size ratio
+          name: characterData.name // Add name for better tracking
+        };
+        
+        console.log("PAYLOAD DEBUG:", JSON.stringify(txt2imgPayload));
         
         try {
           // Create the text-to-image task
-          const taskResult = await createTxt2ImgTask({
-            prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
-            style_code: styleCode,
-            style_intensity: 1, // Full style application
-            quality_mode: 1, // High quality
-            target_h: 1024, // Standard size
-            target_w: 1024,
-            generate_slots: [1, 1], // Generate 2 images
-            output_format: 'webp' // Use webp for better quality/size ratio
-          });
+          const taskResult = await createTxt2ImgTask(txt2imgPayload);
           
           if (!taskResult || !taskResult.task_id) {
             throw new Error('Failed to start text-to-image generation task');
           }
+          
+          console.log("Task created successfully with style:", styleCode);
           
           // Start polling for this task
           startPollingTask(taskResult.task_id);
@@ -1006,17 +1017,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           if (apiError.message && apiError.message.includes("Style are invalid")) {
             console.log("Style code rejected by API, trying with default style");
             
+            // Update payload with the default style, but keep everything else the same
+            const retryPayload = {
+              ...txt2imgPayload,
+              style_code: SAFE_STYLE_CODE // Use the safe default
+            };
+            
+            console.log("RETRY PAYLOAD:", JSON.stringify(retryPayload));
+            
             // Retry with the default style code
-            const retryResult = await createTxt2ImgTask({
-              prompt: enhancedPrompt.substring(0, 800),
-              style_code: SAFE_STYLE_CODE, // Use the safe default
-              style_intensity: 1,
-              quality_mode: 1,
-              target_h: 1024,
-              target_w: 1024,
-              generate_slots: [1, 1],
-              output_format: 'webp'
-            });
+            const retryResult = await createTxt2ImgTask(retryPayload);
             
             if (!retryResult || !retryResult.task_id) {
               throw new Error('Failed to start text-to-image generation with fallback style');
@@ -1047,8 +1057,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         // Add instructions for a neutral background with no distractions
         prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
-        // Create the payload for the API - matching the working parameters
-        const payload = {
+        console.log(`STYLE DEBUG: Using img2img with style_code=${styleCode} with style_intensity=1.0`);
+        
+        // Improved payload for better style application
+        const img2imgPayload = {
           prompt: prompt,
           style_code: styleCode,
           images: [
@@ -1056,24 +1068,27 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               base64_data: base64Data
             }
           ],
-          style_intensity: 0.8,
-          structure_match: 0.7,
-          face_match: 1,
-          color_match: 0,
-          quality_mode: 0,
-          generate_slots: [1, 0, 0, 0],
-          output_format: "webp"
+          style_intensity: 1.0, // Maximum style application
+          structure_match: 0.7, // Keep structure but allow style to influence
+          face_match: 1.0, // Keep face details
+          color_match: 0, // Let style colors dominate
+          quality_mode: 1, // High quality
+          prompt_strength: 0.8, // Strong adherence to prompt
+          cfg_scale: 9, // Stronger guidance
+          generate_slots: [1, 1], // Generate 2 images
+          output_format: "webp",
+          name: characterData.name // Add name for better tracking
         };
         
         // Log the payload structure (without the full base64 data)
-        console.log('Sending payload with structure:', {
-          ...payload,
+        console.log('PAYLOAD DEBUG:', {
+          ...img2imgPayload,
           images: [{ base64_data: "data:image/*;base64,..." }]
         });
         
         try {
           // Call the Dzine API to create an img2img task
-          const result = await createImg2ImgTask(payload);
+          const result = await createImg2ImgTask(img2imgPayload);
           console.log('Dzine task created:', result);
           
           if (!result) {
@@ -1093,6 +1108,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             throw new Error('Invalid response from API: missing task_id');
           }
           
+          console.log("Task created successfully with style:", styleCode);
+          
           // Start polling for this task
           startPollingTask(taskId);
         } catch (apiError) {
@@ -1102,11 +1119,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           if (apiError.message && apiError.message.includes("Style are invalid")) {
             console.log("Style code rejected by API, trying with default style");
             
-            // Update the payload with the default style code
+            // Update payload with default style but keep other parameters
             const retryPayload = {
-              ...payload,
+              ...img2imgPayload,
               style_code: SAFE_STYLE_CODE // Use the safe default
             };
+            
+            console.log("RETRY PAYLOAD:", JSON.stringify({
+              ...retryPayload,
+              images: [{ base64_data: "data:image/*;base64,..." }]
+            }));
             
             // Retry with the default style code
             const retryResult = await createImg2ImgTask(retryPayload);
@@ -1148,63 +1170,101 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Create a new helper function to handle task polling
+  // Start polling for task progress
   const startPollingTask = (taskId) => {
+    if (!taskId) {
+      console.error('Invalid task ID for polling');
+      setProgressMessage('Error: Invalid task ID');
+      setIsGenerating(false);
+      return;
+    }
+    
+    console.log(`Starting to poll for task: ${taskId}`);
+    setProgressMessage('Starting image generation...');
+    
+    // Generate a unique ID for this polling session to avoid conflicts
+    const pollingId = `poll_${Date.now()}`;
     let pollCount = 0;
-    let maxPolls = 20; // Maximum number of polling attempts
+    const maxPolls = 30; // Maximum number of polling attempts (60 seconds)
     
-    // Create a unique ID for this polling session to avoid conflicts
-    const pollingId = uuidv4();
-    console.log(`Starting polling with ID ${pollingId} for task ${taskId}`);
-    
-    // Mark this polling session as active
-    pollingSessionRef.current[pollingId] = true;
-    
-    // Set up polling to check task progress
-    const pollInterval = setInterval(async () => {
+    // Store the interval in a ref so we can clear it from anywhere
+    pollingSessionRef.current[pollingId] = setInterval(async () => {
+      pollCount++;
+      console.log(`Polling attempt ${pollCount} for task ${taskId}`);
+      setProgressMessage(`Processing image... (${pollCount}s)`);
+      
+      if (pollCount >= maxPolls) {
+        console.log(`Reached maximum polling time (${maxPolls}s), stopping`);
+        setProgressMessage('Generation taking too long, stopping');
+        clearInterval(pollingSessionRef.current[pollingId]);
+        setIsGenerating(false);
+        delete pollingSessionRef.current[pollingId];
+        return;
+      }
+      
       try {
-        // If component is unmounted or polling was explicitly canceled for this session
-        if (!pollingSessionRef.current[pollingId]) {
-          console.log(`Stopping poll ${pollingId} because polling was canceled`);
-          clearInterval(pollInterval);
-          return;
+        // Fetch the task progress
+        const progressData = await getTaskProgress(taskId);
+        
+        // Debug log all response data
+        console.log(`Task ${taskId} progress data (attempt ${pollCount}):`, progressData);
+        
+        // Extract status from various possible response structures
+        let status = null;
+        
+        if (progressData.status) {
+          status = progressData.status;
+        } else if (progressData.data && progressData.data.status) {
+          status = progressData.data.status;
+        } else if (typeof progressData === 'string' && 
+                  (progressData.includes('success') || 
+                   progressData.includes('running') || 
+                   progressData.includes('failed'))) {
+          status = progressData.includes('success') ? 'success' : 
+                  progressData.includes('running') ? 'running' : 'failed';
         }
         
-        pollCount++;
-        setProgressMessage(`Generating...`);
+        console.log(`Extracted status: ${status}`);
         
-        // Check task progress
-        const progressData = await getTaskProgress(taskId);
-        console.log(`Poll ${pollCount}/${maxPolls} for task ${taskId}:`, progressData);
-        
-        // Handle different status formats
-        const status = 
-          progressData.status || 
-          (progressData.data && progressData.data.status) || 
-          'unknown';
-        
-        console.log(`Task status: ${status}`);
-        
-        if (status === 'succeed' || status === 'succeeded') {
+        // Update UI based on status
+        if (status === 'running' || status === 'pending' || status === 'waiting') {
+          // Task is still running, continue polling
+          console.log(`Task ${taskId} is still running`);
+          setProgressMessage(`Generating image... (${pollCount}s)`);
+        } else if (status === 'success' || status === 'completed') {
           // Task completed successfully
-          console.log('Task completed successfully!');
+          console.log(`Task ${taskId} completed successfully`);
+          setProgressMessage('Image generated successfully!');
           
-          // Look for the result image URL(s) in various places
+          // Extract image URLs from the response
           let resultUrls = [];
           
-          if (progressData.images) {
-            resultUrls = progressData.images;
-          } else if (progressData.data && progressData.data.images) {
-            resultUrls = progressData.data.images;
+          // Check various places where the URLs might be
+          if (progressData.generate_result_urls && progressData.generate_result_urls.length > 0) {
+            resultUrls = progressData.generate_result_urls;
+            console.log("Found URLs in generate_result_urls:", resultUrls);
+          } else if (progressData.data && progressData.data.generate_result_urls && progressData.data.generate_result_urls.length > 0) {
+            resultUrls = progressData.data.generate_result_urls;
+            console.log("Found URLs in data.generate_result_urls:", resultUrls);
           } else if (progressData.result && progressData.result.images) {
             resultUrls = progressData.result.images;
+            console.log("Found URLs in result.images:", resultUrls);
           } else if (progressData.generate_result_slots && progressData.generate_result_slots.length > 0) {
             resultUrls = progressData.generate_result_slots;
+            console.log("Found URLs in generate_result_slots:", resultUrls);
           } else if (progressData.data && progressData.data.generate_result_slots && progressData.data.generate_result_slots.length > 0) {
             resultUrls = progressData.data.generate_result_slots;
+            console.log("Found URLs in data.generate_result_slots:", resultUrls);
+          } else if (progressData.result && progressData.result.generate_result_slots) {
+            resultUrls = progressData.result.generate_result_slots;
+            console.log("Found URLs in result.generate_result_slots:", resultUrls);
+          } else if (progressData.images && progressData.images.length > 0) {
+            resultUrls = progressData.images;
+            console.log("Found URLs in images array:", resultUrls);
           } else {
             // Try to find images elsewhere in the response
             resultUrls = extractImageUrls(progressData);
+            console.log("Extracted image URLs from response:", resultUrls);
           }
           
           // If we found any URLs, use the first one
@@ -1215,12 +1275,43 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             if (typeof resultUrls[0] === 'string') {
               if (resultUrls[0].startsWith('data:image')) {
                 imageUrl = resultUrls[0];
-              } else {
-                // Otherwise assume it's a URL
+                console.log("Found base64 image data");
+              } else if (resultUrls[0].includes('http')) {
+                // It's a regular URL
                 imageUrl = resultUrls[0];
+                console.log("Found HTTP image URL:", imageUrl);
+              } else {
+                // Try to format as a data URL if it's raw base64
+                try {
+                  if (resultUrls[0].match(/^[A-Za-z0-9+/=]+$/)) {
+                    imageUrl = `data:image/jpeg;base64,${resultUrls[0]}`;
+                    console.log("Converted raw base64 to data URL");
+                  }
+                } catch (err) {
+                  console.error("Error formatting base64 data:", err);
+                }
               }
               
-              console.log('Using image URL:', imageUrl);
+              if (imageUrl) {
+                console.log('Using image URL:', imageUrl.substring(0, 100) + '...');
+                
+                // Update the character data with the style preview
+                setCharacterData(prev => ({
+                  ...prev,
+                  stylePreview: imageUrl
+                }));
+                
+                // We're done polling
+                console.log(`Successful completion, ending poll ${pollingId}`);
+                clearInterval(pollingSessionRef.current[pollingId]);
+                setIsGenerating(false);
+                delete pollingSessionRef.current[pollingId];
+                return;
+              }
+            } else if (typeof resultUrls[0] === 'object' && resultUrls[0].url) {
+              // Handle object format with URL field
+              imageUrl = resultUrls[0].url;
+              console.log("Found URL in object format:", imageUrl);
               
               // Update the character data with the style preview
               setCharacterData(prev => ({
@@ -1230,7 +1321,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               // We're done polling
               console.log(`Successful completion, ending poll ${pollingId}`);
-              clearInterval(pollInterval);
+              clearInterval(pollingSessionRef.current[pollingId]);
               setIsGenerating(false);
               delete pollingSessionRef.current[pollingId];
               return;
@@ -1239,36 +1330,56 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           console.warn('Task completed but no images found in the response');
           setProgressMessage('Task completed but no images found ⚠️');
+          clearInterval(pollingSessionRef.current[pollingId]);
+          setIsGenerating(false);
+          delete pollingSessionRef.current[pollingId];
+          
+          // Create a fallback placeholder if no image was found
+          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
+          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+          
+          setCharacterData(prev => ({
+            ...prev,
+            stylePreview: fallbackPreview
+          }));
         } else if (status === 'failed' || status === 'error') {
           // Task failed
           console.error('Task failed:', progressData);
           setProgressMessage('Generation failed');
-          clearInterval(pollInterval);
+          clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
-          return;
-        }
-        
-        // If we've reached the maximum polling attempts, stop polling
-        if (pollCount >= maxPolls) {
-          console.log(`Reached maximum polling attempts (${maxPolls}), stopping`);
-          setProgressMessage('Generation taking longer than expected');
-          clearInterval(pollInterval);
-          setIsGenerating(false);
-          delete pollingSessionRef.current[pollingId];
+          
+          // Create a fallback placeholder on error
+          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
+          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+          
+          setCharacterData(prev => ({
+            ...prev,
+            stylePreview: fallbackPreview
+          }));
           return;
         }
       } catch (error) {
         console.error(`Error in polling attempt ${pollCount}:`, error);
         
         if (pollCount >= maxPolls) {
-          setProgressMessage('Error occurred');
-          clearInterval(pollInterval);
+          setProgressMessage('Error occurred while generating');
+          clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
+          
+          // Create a fallback placeholder on error
+          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
+          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+          
+          setCharacterData(prev => ({
+            ...prev,
+            stylePreview: fallbackPreview
+          }));
         }
       }
-    }, 2000);
+    }, 1000); // Poll every second instead of every 2 seconds
   };
   
   // Helper function to extract image URLs from response
