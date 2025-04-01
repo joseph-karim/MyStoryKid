@@ -564,19 +564,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the appearance step to remove style selection entirely
   const renderAppearanceStep = () => {
-    console.log('[Render] renderAppearanceStep');
+    console.log('[Render] renderAppearanceStep - Start'); // Log Start
     return (
       <div className="space-y-6 animate-fadeIn">
         {/* REMOVED: Style Selection Section */}
-        {/* {!forcedArtStyle && ( ... )} */}
-
+        
          {/* --- Photo vs Description Choice --- */}
-         {/* Ensure this section doesn't have conditional margin/padding based on forcedArtStyle */}
          <div className={`mt-0 pt-0`}> 
            <h2 className="text-2xl font-bold mb-4">Provide Character Source</h2>
            <p className="text-sm text-gray-600 mb-4">Choose how to generate the character image. The art style is pre-selected.</p>
            <div className="space-y-4">
              {/* Photo Upload Option */}
+             {console.log('[Render] renderAppearanceStep - Before Photo Upload Block')} {/* Log Before */}
              <div 
                className={`border rounded-lg p-4 cursor-pointer transition-colors ${!characterData.useTextToImage ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:bg-gray-50'}`}
                onClick={() => handleChange('useTextToImage', false)}
@@ -643,6 +642,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               </div>
               
              {/* Text Description Option */}
+             {console.log('[Render] renderAppearanceStep - Before Text Description Block')} {/* Log Before */}
              <div 
                className={`border rounded-lg p-4 cursor-pointer transition-colors ${characterData.useTextToImage ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:bg-gray-50'}`}
                onClick={() => handleChange('useTextToImage', true)}
@@ -674,7 +674,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               </div>
             </div>
             
-         {/* Navigation Buttons */} 
+         {/* Navigation Buttons */}
+         {console.log('[Render] renderAppearanceStep - Before Navigation Buttons')} {/* Log Before */}
          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
               <button
                onClick={handleBack}
@@ -693,6 +694,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                Next
               </button>
             </div>
+          {console.log('[Render] renderAppearanceStep - End')} {/* Log End */}
           </div>
      );
    };
