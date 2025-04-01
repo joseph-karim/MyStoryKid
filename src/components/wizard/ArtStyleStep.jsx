@@ -68,37 +68,39 @@ const styleImageMap = {
 
 // Direct mapping from API style codes to images for more reliable lookups
 const dzineStyleImageMap = {
+  // Whimsical & Soft styles
   'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': watercolorWhimsyImg,
   'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': whimsicalColoringImg,
   'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': enchantedCharacterImg,
   'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': minimalistCuteImg,
+  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg,
   
+  // Classic & Timeless styles
   'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf': cheerfulStorybookImg,
   'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': pleasantlyWarmImg,
   'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a': storytimeWhimsyImg,
   'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': lineAndWashImg,
   'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': goldenHourImg,
+  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': ancientChinaImg,
   
+  // Modern & Colorful styles
   'Style-b484beb8-143e-4776-9a87-355e0456cfa3': cuteExaggerationImg,
   'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': glossyEleganceImg,
   'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': starlitFantasyImg,
   'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': fantasyHeroImg,
   'Style-455da805-d716-4bc8-a960-4ac505aa7875': joyfulClayImg,
+  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': ceramicLifelikeImg,
+  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': yarnRealismImg,
+  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': mysticalSovereigntyImg,
   
+  // Realistic & Artistic styles
   'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': enchantedEleganceImg,
   'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': warmPortraitImg,
   'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': magicPortraitImg,
   'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': vividTableauxImg,
   'Style-ce7b4279-1398-4964-882c-19911e12aef3': luminousNarrativesImg,
-  
-  // Additional styles that were missing
-  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': ancientChinaImg,
   'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': dreamlikePortraitureImg,
-  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': aquarelleLifeImg,
-  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': ceramicLifelikeImg,
-  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': yarnRealismImg,
-  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': mysticalSovereigntyImg,
-  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg
+  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': aquarelleLifeImg
 };
 
 // Updated Art Style Categories with direct API styles and CORRECT names
