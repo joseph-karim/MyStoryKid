@@ -36,10 +36,10 @@ const styleImageMap = {
   watercolor_whimsy: watercolorWhimsyImg,
   whimsical_coloring: whimsicalColoringImg,
   enchanted_character: enchantedCharacterImg,
-  minimialist_cutesy: minimalistCuteImg,
+  minimalist_cutesy: minimalistCuteImg,
   
   cheerful_storybook: cheerfulStorybookImg,
-  pleasently_warm: pleasantlyWarmImg,
+  pleasantly_warm: pleasantlyWarmImg,
   storytime_whimsy: storytimeWhimsyImg,
   line_and_wash: lineAndWashImg,
   golden_hour: goldenHourImg,
@@ -117,9 +117,9 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         description: 'Magical characters with soft lighting and enchanting atmosphere'
       },
       { 
-        id: 'minimialist_cutesy',
+        id: 'minimalist_cutesy',
         apiCode: 'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895',
-        title: 'Minimialist Cutesy',
+        title: 'Minimalist Cutesy',
         description: 'Simple, cute designs with minimal details and soft colors'
       }
     ]
@@ -236,73 +236,81 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
 
 // Detailed descriptions for each art style - for legacy compatibility only
 const styleDescriptions = {
-  watercolor: { 
-    title: 'Watercolor',
-    description: 'Soft, dreamy illustrations with gentle color washes and fluid textures'
+  watercolor_whimsy: { 
+    title: 'Watercolor Whimsy',
+    description: 'Soft, rounded shapes with gentle digital brushwork and gradients'
   },
-  pastel: { 
-    title: 'Pastel Illustration',
-    description: 'Tender, soothing colors with a gentle, chalky texture perfect for bedtime stories'
+  whimsical_coloring: { 
+    title: 'Whimsical Coloring',
+    description: 'Tender, soothing colors with a gentle, chalky texture'
   },
-  pencil_wash: { 
-    title: 'Pencil & Wash',
-    description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
+  enchanted_character: { 
+    title: 'Enchanted Character',
+    description: 'Magical characters with soft lighting and enchanting atmosphere'
   },
-  soft_digital: { 
-    title: 'Soft Digital',
-    description: 'Rounded shapes and soft digital brushwork with gentle gradients and textures'
+  minimalist_cutesy: { 
+    title: 'Minimalist Cutesy',
+    description: 'Simple, cute designs with minimal details and soft colors'
   },
-  pencil_ink: { 
-    title: 'Pencil & Ink',
-    description: 'Classic line drawings with expressive ink work, reminiscent of beloved storybooks'
-  },
-  golden_books: { 
-    title: 'Golden Book Style',
-    description: 'Nostalgic illustrations inspired by classic "Little Golden Books" from mid-century'
-  },
-  beatrix_potter: { 
-    title: 'Beatrix Potter Style',
-    description: 'Charming, detailed watercolor illustrations in the style of Peter Rabbit and friends'
-  },
-  cartoon: { 
-    title: 'Cartoon',
-    description: 'Lively, energetic illustrations with bold outlines and vibrant colors'
-  },
-  flat_vector: { 
-    title: 'Flat Vector',
-    description: 'Clean, modern illustrations with simple shapes and minimal detail'
-  },
-  storybook_pop: { 
-    title: 'Storybook Pop',
+  cheerful_storybook: { 
+    title: 'Cheerful Storybook',
     description: 'Bright, cheerful illustrations with bold colors and playful details'
   },
-  papercut: { 
-    title: 'Papercut Style',
-    description: 'Illustrations that look like colorful layers of cut paper with distinct shapes'
+  pleasantly_warm: { 
+    title: 'Pleasantly Warm',
+    description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
   },
-  oil_pastel: { 
-    title: 'Oil Pastel',
-    description: 'Rich, textured illustrations with bold strokes and vibrant color blending'
+  storytime_whimsy: { 
+    title: 'Storytime Whimsy',
+    description: 'Whimsical, storybook-style illustrations with a classic feel'
   },
-  stylized_realism: { 
-    title: 'Stylized Realism',
-    description: 'More detailed illustrations with accurate proportions but artistic styling'
+  line_and_wash: { 
+    title: 'Line and Wash',
+    description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
   },
-  digital_painterly: { 
-    title: 'Digital Painterly',
+  golden_hour: { 
+    title: 'Golden Hour',
+    description: 'Nostalgic illustrations with warm, golden lighting'
+  },
+  cute_exaggeration: { 
+    title: 'Cute Exaggeration',
+    description: 'Playful, exaggerated features with bright colors and clean lines'
+  },
+  glossy_elegance: { 
+    title: 'Glossy Elegance',
+    description: 'Clean, sleek, modern illustrations with a glossy finish'
+  },
+  starlit_fantasy: { 
+    title: 'Starlit Fantasy',
+    description: 'Magical, dreamy illustrations with starry, fantastical elements'
+  },
+  fantasy_hero: { 
+    title: 'Fantasy Hero',
+    description: 'Bold, heroic character illustrations with a fantasy adventure feel'
+  },
+  joyful_clay: { 
+    title: 'Joyful Clay',
+    description: 'Cheerful characters that look like they are made of colorful clay'
+  },
+  enchanted_elegance: { 
+    title: 'Enchanted Elegance',
+    description: 'Detailed illustrations with an elegant, enchanted quality'
+  },
+  warm_portrait: { 
+    title: 'Warm Portrait',
+    description: 'Realistic portraits with warm lighting and preserved facial features'
+  },
+  magic_portrait: { 
+    title: 'Magic Portrait',
+    description: 'Semi-stylized portraits with a magical, fantasy quality'
+  },
+  vivid_tableaux: { 
+    title: 'Vivid Tableaux',
+    description: 'Rich, textured scenes with vibrant colors and detailed compositions'
+  },
+  luminous_narratives: { 
+    title: 'Luminous Narratives',
     description: 'Rich digital illustrations with painterly effects and detailed lighting'
-  },
-  kawaii: { 
-    title: 'Japanese Kawaii',
-    description: 'Cute, adorable characters with simplified features and expressive eyes'
-  },
-  scandinavian: { 
-    title: 'Scandinavian',
-    description: 'Clean, minimal illustrations with folk art influences and nature motifs'
-  },
-  african_pattern: { 
-    title: 'African Pattern',
-    description: 'Vibrant illustrations inspired by African textiles with bold patterns and colors'
   },
   custom: {
     title: 'Custom Style',

@@ -34,61 +34,82 @@ import softRadianceImg from '../assets/Dzine Styles/Soft Radiance.png';
 
 // Map style IDs to the imported images
 const styleImageMap = {
-  watercolor: watercolorWhimsyImg,
-  pastel: cheerfulStorybookImg,
-  pencil_wash: lineAndWashImg, 
-  soft_digital: glossyEleganceImg,
-  pencil_ink: magicPortraitImg,
-  golden_books: starlitFantasyImg,
-  beatrix_potter: warmPortraitImg,
-  cartoon: dreamlikePortraitureImg,
-  flat_vector: whimsicalColoringImg,
-  storybook_pop: storytimeWhimsyImg,
-  papercut: aquarelleLifeImg,
-  oil_pastel: glossyEleganceImg,
-  stylized_realism: ceramicLifelikeImg,
-  digital_painterly: joyfulClayImg,
-  kawaii: enchantedCharacterImg,
-  scandinavian: yarnRealismImg,
-  african_pattern: fantasyHeroImg
+  watercolor_whimsy: watercolorWhimsyImg,
+  whimsical_coloring: whimsicalColoringImg,
+  enchanted_character: enchantedCharacterImg,
+  minimalist_cutesy: minimalistCuteImg,
+  
+  cheerful_storybook: cheerfulStorybookImg,
+  pleasantly_warm: pleasantlyWarmImg,
+  storytime_whimsy: storytimeWhimsyImg,
+  line_and_wash: lineAndWashImg,
+  golden_hour: goldenHourImg,
+  
+  cute_exaggeration: cuteExaggerationImg,
+  glossy_elegance: glossyEleganceImg,
+  starlit_fantasy: starlitFantasyImg,
+  fantasy_hero: fantasyHeroImg,
+  joyful_clay: joyfulClayImg,
+  
+  enchanted_elegance: enchantedEleganceImg,
+  warm_portrait: warmPortraitImg,
+  magic_portrait: magicPortraitImg,
+  vivid_tableaux: vividTableauxImg,
+  luminous_narratives: luminousNarrativesImg,
+  
+  // Additional styles
+  dreamlike_portraiture: dreamlikePortraitureImg,
+  aquarelle_life: aquarelleLifeImg,
+  ancient_china: ancientChinaImg,
+  ceramic_lifelike: ceramicLifelikeImg,
+  yarn_realism: yarnRealismImg,
+  mystical_sovereignty: mysticalSovereigntyImg,
+  soft_radiance: softRadianceImg
 };
 
 // Curated art style categories with representative styles
 const CURATED_STYLES = [
   {
-    category: '🎨 3D & Cartoon Styles',
-    description: 'Modern 3D and cartoon art styles',
+    category: 'Whimsical & Soft (Ages 0–5)',
+    description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
     styles: [
-      { id: 'cartoon', name: 'Cartoon', description: 'Clean lines, bright colors, and exaggerated expressions', imageUrl: cartoonImg, keywordMatch: ['cartoon', 'anime', '3d', 'pixie'] },
-      { id: 'flat_vector', name: 'Flat Vector', description: 'Bold, clean, simple shapes with modern feel', imageUrl: flatVectorImg, keywordMatch: ['vector', 'flat', 'simple', 'icon'] },
-      { id: 'storybook_pop', name: 'Storybook Pop', description: 'Bright, slightly surreal, energetic style', imageUrl: storybookPopImg, keywordMatch: ['storybook', 'pop', 'bright', 'vibrant'] }
+      { id: 'watercolor_whimsy', name: 'Watercolor Whimsy', description: 'Rounded shapes and soft digital brushwork with gentle gradients', imageUrl: watercolorWhimsyImg, keywordMatch: ['water', 'soft', 'gentle'] },
+      { id: 'whimsical_coloring', name: 'Whimsical Coloring', description: 'Tender, soothing colors with a gentle, chalky texture', imageUrl: whimsicalColoringImg, keywordMatch: ['color', 'chalky', 'whimsical'] },
+      { id: 'enchanted_character', name: 'Enchanted Character', description: 'Magical characters with soft lighting and enchanting atmosphere', imageUrl: enchantedCharacterImg, keywordMatch: ['magical', 'enchanted', 'character'] },
+      { id: 'minimalist_cutesy', name: 'Minimalist Cutesy', description: 'Simple, cute designs with minimal details and soft colors', imageUrl: minimalistCuteImg, keywordMatch: ['simple', 'cute', 'minimal'] }
     ]
   },
   {
-    category: '🖌️ Painterly & Artistic',
-    description: 'Styles with texture, depth, and artistic elements',
+    category: 'Classic & Timeless (Ages 3–8)',
+    description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
     styles: [
-      { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, magical quality', imageUrl: watercolorWhimsyImg, keywordMatch: ['water', 'soft', 'gentle'] },
-      { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes with vivid colors', imageUrl: vividTableauxImg, keywordMatch: ['oil', 'pastel', 'paint', 'brush'] },
-      { id: 'digital_painterly', name: 'Digital Painterly', description: 'Digital art with classical painting feel', imageUrl: luminousNarrativesImg, keywordMatch: ['paint', 'digital', 'artistic'] }
+      { id: 'cheerful_storybook', name: 'Cheerful Storybook', description: 'Bright, cheerful illustrations with bold colors and playful details', imageUrl: cheerfulStorybookImg, keywordMatch: ['cheerful', 'storybook', 'bright'] },
+      { id: 'pleasantly_warm', name: 'Pleasantly Warm', description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling', imageUrl: pleasantlyWarmImg, keywordMatch: ['warm', 'cozy', 'charming'] },
+      { id: 'storytime_whimsy', name: 'Storytime Whimsy', description: 'Whimsical, storybook-style illustrations with a classic feel', imageUrl: storytimeWhimsyImg, keywordMatch: ['storytime', 'whimsy', 'classic'] },
+      { id: 'line_and_wash', name: 'Line and Wash', description: 'Delicate pencil drawings with light watercolor washes for a timeless feel', imageUrl: lineAndWashImg, keywordMatch: ['pencil', 'wash', 'line'] },
+      { id: 'golden_hour', name: 'Golden Hour', description: 'Nostalgic illustrations with warm, golden lighting', imageUrl: goldenHourImg, keywordMatch: ['golden', 'nostalgic', 'warm'] }
     ]
   },
   {
-    category: '✏️ Classic & Illustration',
-    description: 'Timeless illustration styles',
+    category: 'Modern & Colorful (Ages 4–9)',
+    description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
     styles: [
-      { id: 'golden_books', name: 'Golden Books', description: 'Classic mid-century illustration style', imageUrl: starlitFantasyImg, keywordMatch: ['classic', 'golden', 'vintage', 'book'] },
-      { id: 'beatrix_potter', name: 'Warm Fables', description: 'Detailed watercolor with classic feel', imageUrl: warmPortraitImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
-      { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Fine line work with light color washes', imageUrl: magicPortraitImg, keywordMatch: ['pencil', 'ink', 'sketch', 'line'] }
+      { id: 'cute_exaggeration', name: 'Cute Exaggeration', description: 'Playful, exaggerated features with bright colors and clean lines', imageUrl: cuteExaggerationImg, keywordMatch: ['cute', 'exaggerated', 'playful'] },
+      { id: 'glossy_elegance', name: 'Glossy Elegance', description: 'Clean, sleek, modern illustrations with a glossy finish', imageUrl: glossyEleganceImg, keywordMatch: ['glossy', 'elegant', 'sleek'] },
+      { id: 'starlit_fantasy', name: 'Starlit Fantasy', description: 'Magical, dreamy illustrations with starry, fantastical elements', imageUrl: starlitFantasyImg, keywordMatch: ['starlit', 'fantasy', 'magical'] },
+      { id: 'fantasy_hero', name: 'Fantasy Hero', description: 'Bold, heroic character illustrations with a fantasy adventure feel', imageUrl: fantasyHeroImg, keywordMatch: ['fantasy', 'hero', 'bold'] },
+      { id: 'joyful_clay', name: 'Joyful Clay', description: 'Cheerful characters that look like they are made of colorful clay', imageUrl: joyfulClayImg, keywordMatch: ['clay', 'joyful', 'colorful'] }
     ]
   },
   {
-    category: '✨ Whimsical & Playful',
-    description: 'Fun styles perfect for young children',
+    category: 'Realistic & Artistic (Ages 6–12)',
+    description: 'Sophisticated art styles with richer detail, ideal for preserving the likeness of your child.',
     styles: [
-      { id: 'kawaii', name: 'Kawaii', description: 'Ultra-cute Japanese style with soft colors', imageUrl: enchantedCharacterImg, keywordMatch: ['cute', 'kawaii', 'japan', 'soft'] },
-      { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper', imageUrl: aquarelleLifeImg, keywordMatch: ['paper', 'cut', 'collage', 'texture'] },
-      { id: 'scandinavian', name: 'Scandinavian', description: 'Geometric shapes with folk art influences', imageUrl: yarnRealismImg, keywordMatch: ['scandi', 'folk', 'nordic', 'pattern'] }
+      { id: 'enchanted_elegance', name: 'Enchanted Elegance', description: 'Detailed illustrations with an elegant, enchanted quality', imageUrl: enchantedEleganceImg, keywordMatch: ['enchanted', 'elegant', 'detailed'] },
+      { id: 'warm_portrait', name: 'Warm Portrait', description: 'Realistic portraits with warm lighting and preserved facial features', imageUrl: warmPortraitImg, keywordMatch: ['portrait', 'warm', 'realistic'] },
+      { id: 'magic_portrait', name: 'Magic Portrait', description: 'Semi-stylized portraits with a magical, fantasy quality', imageUrl: magicPortraitImg, keywordMatch: ['magic', 'portrait', 'fantasy'] },
+      { id: 'vivid_tableaux', name: 'Vivid Tableaux', description: 'Rich, textured scenes with vibrant colors and detailed compositions', imageUrl: vividTableauxImg, keywordMatch: ['vivid', 'rich', 'textured'] },
+      { id: 'luminous_narratives', name: 'Luminous Narratives', description: 'Rich digital illustrations with painterly effects and detailed lighting', imageUrl: luminousNarrativesImg, keywordMatch: ['luminous', 'digital', 'painterly'] }
     ]
   }
 ];

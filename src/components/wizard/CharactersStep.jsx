@@ -125,86 +125,85 @@ const getStyleNameFromCode = (styleCode) => {
 
 // Add style descriptions to enrich the presentation
 const styleDescriptions = {
-  watercolor: { 
-    title: 'Classic Watercolor',
-    description: 'Soft, expressive, and magical. Great for fairy tales and heartwarming journeys.'
-  },
-  pastel: { 
-    title: 'Whimsical Coloring',
-    description: 'Soft-edged and calming, like chalk or crayon textures. Very kid-friendly and light.'
-  },
-  pencil_wash: { 
-    title: 'Line & Wash',
-    description: 'Combines pencil lines with light color washes. A subtle and intimate feel, often found in timeless books.'
-  },
-  soft_digital: { 
+  watercolor_whimsy: { 
     title: 'Watercolor Whimsy',
-    description: 'Digital painting with a hand-drawn aesthetic. Looks painterly, but crisp enough for printing.'
+    description: 'Soft, rounded shapes with gentle digital brushwork and gradients'
   },
-  
-  pencil_ink: { 
-    title: 'Sketch Elegance',
-    description: 'Monochrome or light inked outlines with shading. Great for a vintage feel.'
+  whimsical_coloring: { 
+    title: 'Whimsical Coloring',
+    description: 'Tender, soothing colors with a gentle, chalky texture'
   },
-  golden_books: { 
-    title: 'Golden Era Illustrations',
-    description: 'Inspired by mid-century illustrations (like Little Golden Books). Bright, detailed, with expressive faces.'
+  enchanted_character: { 
+    title: 'Enchanted Character',
+    description: 'Magical characters with soft lighting and enchanting atmosphere'
   },
-  beatrix_potter: { 
-    title: 'Warm Fables',
-    description: 'Classic English watercolor + fine detail. Excellent for animal tales and nature-based themes.'
+  minimalist_cutesy: { 
+    title: 'Minimalist Cutesy',
+    description: 'Simple, cute designs with minimal details and soft colors'
   },
-  warm_fables: { 
-    title: 'Warm Fables',
-    description: 'Charming, detailed watercolor illustrations in the style of classic children\'s tales'
+  cheerful_storybook: { 
+    title: 'Cheerful Storybook',
+    description: 'Bright, cheerful illustrations with bold colors and playful details'
   },
-  
-  cartoon: { 
-    title: 'Cartoon Anime',
-    description: 'Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories.'
+  pleasantly_warm: { 
+    title: 'Pleasantly Warm',
+    description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
   },
-  flat_vector: { 
-    title: 'Simple Icon',
-    description: 'Bold, clean, and simple. Often used in modern educational books.'
+  storytime_whimsy: { 
+    title: 'Storytime Whimsy',
+    description: 'Whimsical, storybook-style illustrations with a classic feel'
   },
-  storybook_pop: { 
-    title: 'Storybook Charm',
-    description: 'Bright, slightly surreal, and energetic. Ideal for space, monsters, and wacky themes.'
+  line_and_wash: { 
+    title: 'Line and Wash',
+    description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
   },
-  papercut: { 
-    title: 'Paper Cutout',
-    description: 'Looks like it was made with layers of paper or fabric. Textured and tactile feel, very charming.'
+  golden_hour: { 
+    title: 'Golden Hour',
+    description: 'Nostalgic illustrations with warm, golden lighting'
   },
-  
-  oil_pastel: { 
-    title: 'Vibrant Impasto',
-    description: 'Thick brush strokes, vivid color, tactile textures. Great for magical realism or emotional storytelling.'
+  cute_exaggeration: { 
+    title: 'Cute Exaggeration',
+    description: 'Playful, exaggerated features with bright colors and clean lines'
   },
-  stylized_realism: { 
-    title: 'Structured Serenity',
-    description: 'Semi-realistic faces and proportions with artistic lighting. Ideal if you want to "recognize" the child in the art.'
+  glossy_elegance: { 
+    title: 'Glossy Elegance',
+    description: 'Clean, sleek, modern illustrations with a glossy finish'
   },
-  digital_painterly: { 
+  starlit_fantasy: { 
+    title: 'Starlit Fantasy',
+    description: 'Magical, dreamy illustrations with starry, fantastical elements'
+  },
+  fantasy_hero: { 
+    title: 'Fantasy Hero',
+    description: 'Bold, heroic character illustrations with a fantasy adventure feel'
+  },
+  joyful_clay: { 
+    title: 'Joyful Clay',
+    description: 'Cheerful characters that look like they are made of colorful clay'
+  },
+  enchanted_elegance: { 
+    title: 'Enchanted Elegance',
+    description: 'Detailed illustrations with an elegant, enchanted quality'
+  },
+  warm_portrait: { 
+    title: 'Warm Portrait',
+    description: 'Realistic portraits with warm lighting and preserved facial features'
+  },
+  magic_portrait: { 
+    title: 'Magic Portrait',
+    description: 'Semi-stylized portraits with a magical, fantasy quality'
+  },
+  vivid_tableaux: { 
+    title: 'Vivid Tableaux',
+    description: 'Rich, textured scenes with vibrant colors and detailed compositions'
+  },
+  luminous_narratives: { 
     title: 'Luminous Narratives',
-    description: 'Mimics classical painting but created digitally. For dramatic lighting, beautiful spreads, and immersive scenes.'
+    description: 'Rich digital illustrations with painterly effects and detailed lighting'
   },
-  
-  kawaii: { 
-    title: 'Everything Kawaii',
-    description: 'Ultra-cute, rounded characters, soft palettes. Great for emotional and nurturing stories.'
-  },
-  scandinavian: { 
-    title: 'Scandi',
-    description: 'Geometric shapes, bold color, often nature-themed. Feels minimalist but magical.'
-  },
-  african_pattern: { 
-    title: 'Bold Collage',
-    description: 'Bright colors, bold patterns, and symbolism. Vibrant and culturally rich visuals.'
-  },
-  
   custom: {
     title: 'Custom Style',
-    description: 'Your own unique style description. Be specific about colors, techniques, and references you like.'
+    description: 'Your own unique style description'
   }
 };
 
