@@ -181,84 +181,46 @@ export const getTokenBalance = async () => {
 // 5. Image-to-Image Task Creation
 export const createImg2ImgTask = async (payload) => {
   try {
-    // Validate style code first
-    if (!payload.style_code) {
-      console.error('Missing style_code in payload');
-      throw new Error('Style code is required');
-    }
-
-    // Ensure style exists in available styles
-    const availableStyles = await getAvailableStyles();
-    const styleExists = availableStyles.some(style => style.style_code === payload.style_code);
-    
-    if (!styleExists) {
-      console.error(`Style code ${payload.style_code} not found in available styles`);
-      // Get a list of valid style codes for debugging
-      const validCodes = availableStyles.map(s => s.style_code).slice(0, 5);
-      console.log('First 5 valid style codes:', validCodes);
-      throw new Error('Invalid style code');
-    }
-
-    // Ensure all required fields are present
-    const requiredFields = {
-      prompt: 'string',
-      style_code: 'string',
-      images: 'array',
-      style_intensity: 'number',
-      structure_match: 'number',
-      face_match: 'number',
-      color_match: 'number'
-    };
-
-    for (const [field, type] of Object.entries(requiredFields)) {
+    // Validate required fields
+    const requiredFields = ['style_code', 'image', 'prompt', 'color_match', 'face_match'];
+    for (const field of requiredFields) {
       if (!payload[field]) {
-        console.error(`Missing required field: ${field}`);
         throw new Error(`${field} is required`);
       }
-      if (typeof payload[field] !== type && !(type === 'array' && Array.isArray(payload[field]))) {
-        console.error(`Invalid type for ${field}: expected ${type}, got ${typeof payload[field]}`);
-        throw new Error(`Invalid type for ${field}`);
-      }
     }
 
-    // Log style details for debugging
-    console.log('Style parameters for img2img:', {
-      styleCode: payload.style_code,
-      styleIntensity: payload.style_intensity,
-      structureMatch: payload.structure_match,
-      faceMatch: payload.face_match,
-      colorMatch: payload.color_match,
-    });
-    
-    // Clean the payload to ensure no extra fields
+    // Clean and prepare the payload
     const cleanPayload = {
-      prompt: payload.prompt,
       style_code: payload.style_code,
-      images: payload.images,
-      style_intensity: payload.style_intensity,
-      structure_match: payload.structure_match,
-      face_match: payload.face_match,
-      color_match: payload.color_match,
-      quality_mode: payload.quality_mode || 1,
-      prompt_strength: payload.prompt_strength || 0.8,
-      cfg_scale: payload.cfg_scale || 9,
-      generate_slots: payload.generate_slots || [1, 1],
-      output_format: payload.output_format || 'webp',
-      name: payload.name
+      image: payload.image,
+      prompt: payload.prompt,
+      color_match: payload.color_match || 0.5, // Default to 0.5 if not specified
+      face_match: payload.face_match || 1.0, // Default to 1.0 if not specified
+      style_intensity: payload.style_intensity || 1.0,
+      negative_prompt: payload.negative_prompt || '',
+      seed: payload.seed || -1,
+      num_images: payload.num_images || 1,
+      image_resolution: payload.image_resolution || '512*512',
+      safety_check: payload.safety_check !== false, // Default to true
+      async_process: payload.async_process !== false // Default to true
     };
-    
-    console.log('Sending to Dzine API:', JSON.stringify(cleanPayload, null, 2));
-    
-    // Use the EXACT endpoint from the documentation
-    const endpoint = '/create_task_img2img';
-    console.log(`Using documented endpoint: ${endpoint}`);
-    
-    const data = await fetchDzine(endpoint, {
+
+    // Log the cleaned payload for debugging
+    console.log('Creating img2img task with payload:', {
+      ...cleanPayload,
+      image: cleanPayload.image ? 'base64_image_data' : 'no_image' // Don't log full image data
+    });
+
+    // Make the API call
+    const response = await fetchDzine('/task/img2img', {
       method: 'POST',
       body: JSON.stringify(cleanPayload)
     });
 
-    return data;
+    // Log the response for debugging
+    console.log('Img2img task creation response:', response);
+
+    return response;
   } catch (error) {
     console.error('Error in createImg2ImgTask:', error);
     throw error;

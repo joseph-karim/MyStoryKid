@@ -1631,6 +1631,59 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
+  const generateCharacterImage = async (styleId, prompt, fallbackImage) => {
+    try {
+      setIsGenerating(true);
+      setProgressMessage('Starting generation...');
+      
+      // Get the style code from our mapping or use the provided style ID directly
+      const styleCode = STYLE_CODE_MAP[styleId] || styleId;
+      
+      console.log('STYLE DEBUG: Using style ID', {
+        originalStyle: styleId,
+        mappedCode: styleCode,
+        fromApi: styleId.startsWith('Style-')
+      });
+      
+      // Prepare the base64 image from the character data
+      const baseImage = characterData.baseImage;
+      if (!baseImage) {
+        throw new Error('No base image available');
+      }
+      
+      // Create the API payload
+      const payload = {
+        style_code: styleCode,
+        image: baseImage,
+        prompt: prompt || 'Generate a character portrait in the selected style',
+        color_match: 0.5,
+        face_match: 1.0, // Maximum face matching to preserve facial features
+        style_intensity: 1.0,
+        negative_prompt: 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
+        num_images: 1,
+        image_resolution: '512*512'
+      };
+      
+      console.log('STYLE DEBUG: Using img2img with mapped API style_code=' + styleCode + ' with style_intensity=' + payload.style_intensity + ' and face_match=' + payload.face_match);
+      
+      // Create the task
+      const taskResponse = await createImg2ImgTask(payload);
+      
+      if (!taskResponse || !taskResponse.task_id) {
+        console.error('Invalid task response:', taskResponse);
+        throw new Error('Failed to create generation task');
+      }
+      
+      // Start polling for the result
+      startPollingTask(taskResponse.task_id, fallbackImage);
+    } catch (error) {
+      console.error('API error in image-to-image:', error);
+      setProgressMessage('Error: ' + error.message);
+      setIsGenerating(false);
+      useFallbackImage(fallbackImage);
+    }
+  };
+  
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
