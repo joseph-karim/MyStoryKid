@@ -43,53 +43,150 @@ const styleImageMap = {
   african_pattern: africanPatternImg
 };
 
-// Define the structure for art style categories with detailed descriptions
+// Updated Art Style Categories with direct API styles
 const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
     category: 'Whimsical & Soft (Ages 0–5)',
     description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
     styleIds: [
-      { id: 'watercolor', keywords: ['watercolor', 'water', 'soft', 'gentle', 'dreamy', 'whimsy'] },
-      { id: 'pastel', keywords: ['pastel', 'chalk', 'soft', 'tender', 'gentle', 'soothing'] },
-      { id: 'pencil_wash', keywords: ['pencil', 'wash', 'line', 'drawing', 'sketch', 'watercolor'] },
-      { id: 'soft_digital', keywords: ['soft', 'digital', 'rounded', 'gentle', 'brush', 'whimsy'] }
+      { 
+        id: 'classic_watercolor', 
+        apiCode: 'Style-2478f952-50e7-4773-9cd3-c6056e774823',
+        title: 'Classic Watercolor',
+        description: 'Soft, dreamy illustrations with gentle color washes and fluid textures'
+      },
+      { 
+        id: 'whimsical_coloring',
+        apiCode: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',
+        title: 'Whimsical Coloring',
+        description: 'Tender, soothing colors with a gentle, chalky texture perfect for bedtime stories'
+      },
+      { 
+        id: 'watercolor_whimsy',
+        apiCode: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+        title: 'Watercolor Whimsy',
+        description: 'Rounded shapes and soft digital brushwork with gentle gradients'
+      },
+      { 
+        id: 'cozy_3d',
+        apiCode: 'Style-5b1b0c35-7abc-4f14-8b1d-dc2748f34915',
+        title: 'Cozy 3D',
+        description: 'Warm, comfortable 3D style with soft lighting and friendly characters'
+      }
     ]
   },
   {
     category: 'Classic & Timeless (Ages 3–8)',
     description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
     styleIds: [
-      { id: 'pencil_ink', keywords: ['pencil', 'ink', 'sketch', 'line', 'drawing', 'classic'] },
-      { id: 'golden_books', keywords: ['golden', 'book', 'classic', 'vintage', 'retro', 'mid-century'] },
-      { id: 'beatrix_potter', keywords: ['classic', 'fable', 'warm', 'gentle', 'tale', 'peter', 'rabbit'] }
+      { 
+        id: 'golden_books',
+        apiCode: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',
+        title: 'Golden Era Illustrations',
+        description: 'Nostalgic illustrations inspired by classic mid-century "Little Golden Books"'
+      },
+      { 
+        id: 'warm_fables',
+        apiCode: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',
+        title: 'Warm Fables',
+        description: 'Charming, detailed watercolor illustrations in the style of classic children\'s tales'
+      },
+      { 
+        id: 'sketch_elegance',
+        apiCode: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',
+        title: 'Sketch Elegance',
+        description: 'Classic line drawings with expressive ink work, reminiscent of beloved storybooks'
+      },
+      { 
+        id: 'line_wash',
+        apiCode: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',
+        title: 'Line & Wash',
+        description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
+      },
+      { 
+        id: 'storybook_charm',
+        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
+        title: 'Storybook Charm',
+        description: 'Bright, cheerful illustrations with bold colors and playful details'
+      }
     ]
   },
   {
     category: 'Modern & Colorful (Ages 4–9)',
     description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
     styleIds: [
-      { id: 'cartoon', keywords: ['cartoon', 'anime', 'animation', 'fun', 'vibrant', '2d'] },
-      { id: 'flat_vector', keywords: ['flat', 'vector', 'simple', 'clean', 'minimal', 'icon'] },
-      { id: 'storybook_pop', keywords: ['storybook', 'pop', 'vibrant', 'bright', 'fun', 'energetic'] },
-      { id: 'papercut', keywords: ['paper', 'cut', 'cutout', 'collage', 'texture', 'layer'] }
+      { 
+        id: 'cartoon_anime',
+        apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
+        title: 'Cartoon Anime',
+        description: 'Clean lines, bright colors, and exaggerated expressions'
+      },
+      { 
+        id: 'simple_icon',
+        apiCode: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',
+        title: 'Simple Icon',
+        description: 'Bold, clean, simple shapes with a modern minimal feel'
+      },
+      { 
+        id: 'paper_cutout',
+        apiCode: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
+        title: 'Paper Cutout',
+        description: 'Textured look that resembles layers of cut paper with distinct shapes'
+      },
+      { 
+        id: 'pixiepop_3d',
+        apiCode: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f',
+        title: 'PixiePop 3D',
+        description: 'Vibrant 3D cartoon style with charming character features and rich textures'
+      },
+      { 
+        id: 'everything_kawaii',
+        apiCode: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
+        title: 'Everything Kawaii',
+        description: 'Cute, adorable characters with simplified features and expressive eyes'
+      },
+      { 
+        id: 'scandi',
+        apiCode: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60',
+        title: 'Scandi',
+        description: 'Clean, minimal illustrations with folk art influences and nature motifs'
+      }
     ]
   },
   {
-    category: 'Artistic & Elevated (Ages 6–12)',
-    description: 'Sophisticated art styles with richer detail and artistic techniques for older children.',
+    category: 'Realistic & Artistic (Ages 6–12)',
+    description: 'Sophisticated art styles with richer detail, ideal for preserving the likeness of your child.',
     styleIds: [
-      { id: 'oil_pastel', keywords: ['oil', 'pastel', 'paint', 'texture', 'brush', 'stroke', 'vibrant'] },
-      { id: 'stylized_realism', keywords: ['stylized', 'realism', 'realistic', 'detail', 'structure', 'serenity'] },
-      { id: 'digital_painterly', keywords: ['digital', 'paint', 'painterly', 'artistic', 'rich', 'luminous'] }
-    ]
-  },
-  {
-    category: 'Cultural Styles (All Ages)',
-    description: 'Art styles inspired by diverse cultural traditions and aesthetic sensibilities.',
-    styleIds: [
-      { id: 'kawaii', keywords: ['kawaii', 'cute', 'japanese', 'japan', 'anime', 'adorable'] },
-      { id: 'scandinavian', keywords: ['scandinavian', 'nordic', 'folk', 'scandi', 'minimal', 'clean'] },
-      { id: 'african_pattern', keywords: ['african', 'pattern', 'bold', 'collage', 'vibrant', 'colorful'] }
+      { 
+        id: 'structured_serenity',
+        apiCode: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347',
+        title: 'Structured Serenity',
+        description: 'More detailed illustrations with accurate proportions but artistic styling'
+      },
+      { 
+        id: 'realistic',
+        apiCode: 'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703',
+        title: 'Realistic',
+        description: 'Highest detail level for capturing accurate facial features'
+      },
+      { 
+        id: 'toon_portrait',
+        apiCode: 'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c',
+        title: 'Toon Portrait',
+        description: 'Stylized but recognizable portrait style that preserves facial features'
+      },
+      { 
+        id: 'vibrant_impasto',
+        apiCode: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',
+        title: 'Vibrant Impasto',
+        description: 'Rich, textured illustrations with bold strokes and vibrant color blending'
+      },
+      { 
+        id: 'luminous_narratives',
+        apiCode: 'Style-ce7b4279-1398-4964-882c-19911e12aef3',
+        title: 'Luminous Narratives',
+        description: 'Rich digital illustrations with painterly effects and detailed lighting'
+      }
     ]
   }
 ];
@@ -376,27 +473,30 @@ function ArtStyleStep() {
             <p className="text-sm text-gray-600 mb-3">{category.description}</p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {category.styleIds.map((styleItem) => {
-                // Find the API style that best matches this internal style
-                const apiStyle = findBestMatchingStyle(styleItem, dzineStyles);
-                const isAvailable = !!apiStyle;
-                const styleCode = apiStyle?.style_code || '';
+              {category.styleIds.map((style) => {
+                // We'll use the direct API code from our curated list
+                const styleCode = style.apiCode;
+                const isAvailable = true; // Since we've curated these, they should be available
                 
                 return (
                   <div 
-                    key={styleItem.id}
-                    onClick={() => isAvailable && handleStyleSelect(styleCode)}
+                    key={style.id}
+                    onClick={() => handleStyleSelect(styleCode)}
                     className={`border rounded-lg overflow-hidden transition-all hover:shadow-md ${
                       artStyleCode === styleCode 
                         ? 'ring-2 ring-blue-500 border-blue-500' 
                         : 'border-gray-200 hover:border-blue-300'
-                    } ${isAvailable ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
+                    } cursor-pointer`}
                   >
                     <div className={`aspect-[4/3] bg-gray-100 relative`}>
                       <img 
-                        src={styleImageMap[styleItem.id]} 
-                        alt={styleItem.id}
+                        src={styleImageMap[style.id] || '/placeholder-style.jpg'} 
+                        alt={style.title}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback if image isn't available
+                          e.target.src = 'https://placehold.co/400x300/e5e7eb/a3a3a3?text=Style+Image';
+                        }}
                       />
                       {artStyleCode === styleCode && (
                         <div className="absolute top-2 right-2 bg-blue-500 text-white p-1 rounded-full">
@@ -407,15 +507,8 @@ function ArtStyleStep() {
                       )}
                     </div>
                     <div className="p-3">
-                      <h4 className="font-medium mb-1">
-                        {isAvailable ? apiStyle.name : styleDescriptions[styleItem.id]?.title}
-                      </h4>
-                      <p className="text-sm text-gray-600">{styleDescriptions[styleItem.id]?.description}</p>
-                      {!isAvailable && (
-                        <div className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-md inline-block">
-                          Currently unavailable
-                        </div>
-                      )}
+                      <h4 className="font-medium mb-1">{style.title}</h4>
+                      <p className="text-sm text-gray-600">{style.description}</p>
                     </div>
                   </div>
                 );
@@ -423,45 +516,6 @@ function ArtStyleStep() {
             </div>
           </div>
         ))}
-        
-        {/* Add a section with direct API styles for additional options */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <details className="group">
-            <summary className="flex items-center justify-between cursor-pointer">
-              <h4 className="font-medium text-gray-700">🔍 More API Styles</h4>
-              <div className="text-sm text-gray-500 group-open:rotate-180 transition-transform duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M8 4a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 1 1 .708-.708L7.5 10.293V4.5A.5.5 0 0 1 8 4z"/>
-                </svg>
-              </div>
-            </summary>
-            
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {dzineStyles.slice(0, 16).map(style => (
-                <div
-                  key={style.style_code}
-                  className={`p-2 border rounded-lg cursor-pointer text-sm ${
-                    artStyleCode === style.style_code
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300'
-                  }`}
-                  onClick={() => handleStyleSelect(style.style_code)}
-                >
-                  <div className="flex flex-col space-y-1">
-                    {style.cover_url && (
-                      <img 
-                        src={style.cover_url} 
-                        alt={style.name}
-                        className="w-full h-20 object-cover rounded"
-                      />
-                    )}
-                    <div className="font-medium truncate">{style.name}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
         
         {/* Custom style option */}
         <div className="mt-6">
@@ -515,7 +569,7 @@ function ArtStyleStep() {
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
           <p>Error loading art styles from the server. You can continue with a custom style description.</p>
           <p className="text-xs">{styleFetchError}</p>
-            </div>
+        </div>
       )}
       
       {isLoadingStyles ? (
