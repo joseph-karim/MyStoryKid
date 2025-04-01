@@ -155,40 +155,43 @@ export const createImg2ImgTask = async (payload) => {
   try {
     console.log('Sending to Dzine API:', JSON.stringify(payload, null, 2));
     
-    // Try direct POST first - this matches the log of successful calls
-    try {
-      // Send the payload directly using the fetchDzine helper
-      const data = await fetchDzine('/img2img/create_task', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      
-      console.log('Full Dzine API response:', data);
-      
-      if (data && data.code === 200 && data.data) {
-        return data.data;
-      } else {
-        console.error('Invalid API response structure:', data);
-        throw new Error('Invalid response structure from API');
-      }
-    } catch (firstAttemptError) {
-      console.warn('First attempt failed:', firstAttemptError);
-      
-      // Try with different path format as fallback
-      const data = await fetchDzine('/img2img', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      
-      console.log('Fallback API response:', data);
-      
-      if (data && data.code === 200 && data.data) {
-        return data.data;
-      } else {
-        console.error('Invalid API response structure from fallback:', data);
-        throw new Error('Invalid response structure from API');
+    // Try multiple endpoint formats until one works
+    const endpointsToTry = [
+      '/img2img/create_task',  // Current format that's failing
+      '/img2img',              // First fallback that's failing
+      '/task/create',          // New attempt - general task create
+      '/v1/img2img',           // Try with v1 prefix
+      '/img2img/create',       // Alternative format
+      '/api/img2img/task'      // Another possible format
+    ];
+    
+    let lastError = null;
+    
+    for (const endpoint of endpointsToTry) {
+      try {
+        console.log(`Trying endpoint: ${endpoint}`);
+        const data = await fetchDzine(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        
+        console.log(`Success with endpoint ${endpoint}:`, data);
+        
+        if (data && data.code === 200 && data.data) {
+          return data.data;
+        } else {
+          console.warn(`Invalid response structure from ${endpoint}:`, data);
+        }
+      } catch (error) {
+        console.warn(`Endpoint ${endpoint} failed:`, error.message);
+        lastError = error;
+        // Continue to next endpoint
       }
     }
+    
+    // If we get here, all endpoints failed
+    console.error('All endpoints failed. Last error:', lastError);
+    throw lastError || new Error('All API endpoints failed');
   } catch (error) {
     console.error('Error in createImg2ImgTask:', error);
     throw error;
@@ -206,34 +209,49 @@ export const getTaskProgress = async (taskId) => {
   
   while (retries <= maxRetries) {
     try {
-      // Try different endpoint formats
-      try {
-        // First try the primary endpoint format
-        const data = await fetchDzine(`/task/query?task_id=${taskId}`, {
-          method: 'GET'
-        });
-        
-        if (data && data.code === 200 && data.data) {
-          return data.data;
-        } else {
-          console.warn(`Invalid response structure from API (attempt ${retries + 1}/${maxRetries + 1}):`, data);
-          throw new Error('Invalid response structure');
-        }
-      } catch (firstEndpointError) {
-        console.warn('Primary task endpoint failed:', firstEndpointError);
-        
-        // Try alternate endpoint format
-        const data = await fetchDzine(`/img2img/query_task?task_id=${taskId}`, {
-          method: 'GET'
-        });
-        
-        if (data && data.code === 200 && data.data) {
-          return data.data;
-        } else {
-          console.warn(`Invalid response from alternate endpoint (attempt ${retries + 1}/${maxRetries + 1}):`, data);
-          throw new Error('Invalid response structure from alternate endpoint');
+      // Try multiple endpoint formats for task progress
+      const endpointsToTry = [
+        `/task/query?task_id=${taskId}`,      // Current format
+        `/img2img/query_task?task_id=${taskId}`, // Current fallback
+        `/task/progress?task_id=${taskId}`,   // New attempt
+        `/v1/task/query?task_id=${taskId}`,   // With v1 prefix
+        `/img2img/task/query?task_id=${taskId}`, // Another possible format
+        `/api/task/progress?id=${taskId}`     // Another format with different param name
+      ];
+      
+      let lastError = null;
+      
+      for (const endpoint of endpointsToTry) {
+        try {
+          console.log(`Trying task progress endpoint: ${endpoint}`);
+          const data = await fetchDzine(endpoint, {
+            method: 'GET'
+          });
+          
+          console.log(`Success with task progress endpoint ${endpoint}:`, data);
+          
+          if (data && data.code === 200 && data.data) {
+            return data.data;
+          } else {
+            console.warn(`Invalid response structure from ${endpoint}:`, data);
+          }
+        } catch (error) {
+          console.warn(`Task endpoint ${endpoint} failed:`, error.message);
+          lastError = error;
+          // Continue to next endpoint
         }
       }
+      
+      // If we get here, all endpoints failed on this retry
+      console.error(`All task progress endpoints failed (attempt ${retries + 1}/${maxRetries + 1}). Last error:`, lastError);
+      
+      if (retries === maxRetries) {
+        throw lastError || new Error('All task progress endpoints failed');
+      }
+      
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
     } catch (error) {
       console.error(`Error in getTaskProgress (attempt ${retries + 1}/${maxRetries + 1}):`, error);
       
