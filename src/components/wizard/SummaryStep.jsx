@@ -168,7 +168,16 @@ function SummaryStep() {
           <div className="mt-2 space-y-2">
             <p><span className="font-medium">Title:</span> {storyData.title || 'Not specified'}</p>
             
-            <p><span className="font-medium">Setting:</span> {storyData.setting || 'Not specified'}</p>
+            <p><span className="font-medium">Story Type:</span> {
+              storyData.storyType === 'standard' ? 'Standard Picture Book' :
+              storyData.storyType === 'rhyming' ? 'Rhyming Story' :
+              storyData.storyType === 'early_reader' ? 'Early Reader / Simple Chapters' :
+              storyData.storyType === 'lesson' ? 'Lesson/Challenge Focused Story' :
+              storyData.storyType === 'board_book' ? 'Board Book' :
+              'Not specified'
+            }</p>
+            
+            <p><span className="font-medium">Age Range:</span> {storyData.ageRange || 'Not specified'}</p>
             
             {/* Core Theme */}
             <p className="mt-2">
@@ -190,11 +199,81 @@ function SummaryStep() {
               )}
             </p>
             
-            <p><span className="font-medium">Challenge:</span> {storyData.challenge || 'Not specified'}</p>
+            {/* Story Structure */}
+            <div className="mt-4 border-t border-gray-100 pt-3">
+              <h4 className="font-medium mb-2">Story Structure:</h4>
+              
+              <div className="space-y-3">
+                {/* Starting Point */}
+                <div className="bg-blue-50 p-2 rounded border border-blue-100">
+                  <p className="text-sm font-medium text-blue-700">1. The Starting Point:</p>
+                  <p className="text-sm">
+                    {storyData.storyStart === 'custom' ? storyData.customStoryStart :
+                     storyData.storyStart ? storyData.storyStart.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+                
+                {/* Main Hurdle */}
+                <div className="bg-purple-50 p-2 rounded border border-purple-100">
+                  <p className="text-sm font-medium text-purple-700">2. The Main Hurdle:</p>
+                  <p className="text-sm">
+                    {storyData.mainHurdle === 'custom' ? storyData.customMainHurdle :
+                     storyData.mainHurdle ? storyData.mainHurdle.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+                
+                {/* Big Try */}
+                <div className="bg-green-50 p-2 rounded border border-green-100">
+                  <p className="text-sm font-medium text-green-700">3. The Character's Big Try:</p>
+                  <p className="text-sm">
+                    {storyData.bigTry === 'custom' ? storyData.customBigTry :
+                     storyData.bigTry ? storyData.bigTry.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+                
+                {/* Turning Point */}
+                <div className="bg-amber-50 p-2 rounded border border-amber-100">
+                  <p className="text-sm font-medium text-amber-700">4. The Turning Point:</p>
+                  <p className="text-sm">
+                    {storyData.turningPoint === 'custom' ? storyData.customTurningPoint :
+                     storyData.turningPoint ? storyData.turningPoint.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+                
+                {/* Resolution */}
+                <div className="bg-red-50 p-2 rounded border border-red-100">
+                  <p className="text-sm font-medium text-red-700">5. The Resolution:</p>
+                  <p className="text-sm">
+                    {storyData.resolution === 'custom' ? storyData.customResolution :
+                     storyData.resolution ? storyData.resolution.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+                
+                {/* Takeaway */}
+                <div className="bg-indigo-50 p-2 rounded border border-indigo-100">
+                  <p className="text-sm font-medium text-indigo-700">6. The Takeaway:</p>
+                  <p className="text-sm">
+                    {storyData.takeaway === 'custom' ? storyData.customTakeaway :
+                     storyData.takeaway ? storyData.takeaway.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') :
+                     'Not specified'}
+                  </p>
+                </div>
+              </div>
+            </div>
             
-            <p><span className="font-medium">Ending:</span> {storyData.ending || 'Not specified'}</p>
+            <p className="mt-3"><span className="font-medium">Word Count:</span> {storyData.wordCount || 'Not specified'} words</p>
             
-            <p><span className="font-medium">Book Length:</span> {storyData.length || 'Standard (10-12 pages)'}</p>
+            {storyData.specificRequests && (
+              <div className="mt-2">
+                <p className="font-medium">Special Requests:</p>
+                <p className="text-sm text-gray-600 italic">{storyData.specificRequests}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

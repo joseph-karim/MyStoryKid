@@ -104,31 +104,76 @@ const themeCategories = [
   },
 ];
 
-// New dropdown options for Main Challenge / Plot
-const mainChallengeOptions = [
-  { value: 'new_sibling', label: 'Adjusting to a new sibling' },
-  { value: 'new_school', label: 'First day at a new school' },
-  { value: 'making_friends', label: 'Making new friends' },
-  { value: 'overcoming_fear', label: 'Overcoming a specific fear' },
-  { value: 'lost_item', label: 'Finding a lost favorite toy/item' },
-  { value: 'learning_skill', label: 'Learning a new skill' },
-  { value: 'solving_puzzle', label: 'Solving a puzzle or mystery' },
-  { value: 'helping_friend', label: 'Helping a friend in need' },
-  { value: 'magical_adventure', label: 'Going on a magical adventure' },
-  { value: 'standing_up', label: 'Standing up for what\'s right' },
-  { value: 'accepting_change', label: 'Accepting change in life' },
-  { value: 'custom', label: '✏️ Custom Challenge (Write Your Own)' },
+// Story structure options with dropdown choices
+const storyStartOptions = [
+  { value: 'normal_day_interrupted', label: 'A normal day is interrupted by something unexpected.' },
+  { value: 'special_invitation', label: 'Character receives a special invitation or message.' },
+  { value: 'loses_something', label: 'Character loses something important.' },
+  { value: 'discovers_something', label: 'Character discovers something mysterious (object, place).' },
+  { value: 'wants_something', label: 'Character strongly wants something they don\'t have.' },
+  { value: 'asked_for_help', label: 'Someone asks the character for help.' },
+  { value: 'special_event', label: 'Character is preparing for a special event.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
 ];
 
-// New dropdown options for Story Ending
-const endingOptions = [
-  { value: 'happy', label: 'Happy ending with a clear resolution' },
-  { value: 'lesson', label: 'Character learns an important lesson' },
-  { value: 'surprise', label: 'Surprise twist ending' },
-  { value: 'open', label: 'Open-ended (leaves room for imagination)' },
-  { value: 'celebration', label: 'Celebration or gathering at the end' },
-  { value: 'growth', label: 'Character shows growth or change' },
-  { value: 'custom', label: '✏️ Custom Ending (Write Your Own)' },
+const mainHurdleOptions = [
+  { value: 'getting_lost', label: 'Getting lost or separated from loved ones.' },
+  { value: 'finding_lost_item', label: 'Needing to find a specific lost item or person.' },
+  { value: 'facing_fear', label: 'Having to face a specific fear (e.g., the dark, heights, performing).' },
+  { value: 'misunderstanding', label: 'A big misunderstanding or argument with a friend/sibling.' },
+  { value: 'difficult_task', label: 'Needing to accomplish a physically difficult task (e.g., climb, build, travel far).' },
+  { value: 'blocked_path', label: 'Someone or something is blocking the character\'s path/goal.' },
+  { value: 'unfair_situation', label: 'Dealing with someone being unfair or unkind.' },
+  { value: 'race_against_time', label: 'A race against time to do something important.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
+];
+
+const bigTryOptions = [
+  { value: 'journey', label: 'Goes on a journey/expedition.' },
+  { value: 'asks_for_help', label: 'Asks different characters for help or advice.' },
+  { value: 'builds_something', label: 'Tries (and maybe fails) to build, fix, or create something.' },
+  { value: 'practices_skill', label: 'Practices a skill repeatedly to get better.' },
+  { value: 'confronts_problem', label: 'Tries to confront the problem or fear directly.' },
+  { value: 'talks_it_out', label: 'Attempts to talk things out, apologize, or explain.' },
+  { value: 'follows_clues', label: 'Follows clues or a map.' },
+  { value: 'clever_plan', label: 'Comes up with a clever plan or trick.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
+];
+
+const turningPointOptions = [
+  { value: 'confronts_source', label: 'Finally confronting the source of the problem.' },
+  { value: 'chase_scene', label: 'A chase scene or urgent race against time.' },
+  { value: 'difficult_choice', label: 'Making a difficult but important choice.' },
+  { value: 'near_failure', label: 'A moment of near failure, followed by a breakthrough.' },
+  { value: 'using_new_skill', label: 'Successfully using a newly learned skill under pressure.' },
+  { value: 'unexpected_help', label: 'Receiving unexpected help at a critical moment.' },
+  { value: 'surprising_truth', label: 'Discovering a surprising secret or truth.' },
+  { value: 'standing_up', label: 'Standing up to someone who was unfair.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
+];
+
+const resolutionOptions = [
+  { value: 'found_item', label: 'The lost item/person/place is successfully found.' },
+  { value: 'reached_goal', label: 'The character reaches their goal or destination.' },
+  { value: 'misunderstanding_cleared', label: 'Misunderstandings are cleared; friendship/harmony is restored.' },
+  { value: 'bravery_saves_day', label: 'The character\'s bravery or skill saves the day.' },
+  { value: 'teamwork_success', label: 'Working together with others leads to success.' },
+  { value: 'obstacle_overcome', label: 'The obstacle is overcome, removed, or understood.' },
+  { value: 'sharing_success', label: 'The character shares what they found/created.' },
+  { value: 'celebration', label: 'A celebration marks the success.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
+];
+
+const takeawayOptions = [
+  { value: 'friendship_teamwork', label: 'Learns "Friendship/teamwork makes things better."' },
+  { value: 'braver_than_thought', label: 'Realizes "I am braver/more capable than I thought."' },
+  { value: 'handling_emotions', label: 'Understands "It\'s okay to feel [emotion] and how to handle it."' },
+  { value: 'perseverance', label: 'Learns "Trying again/perseverance pays off."' },
+  { value: 'family_appreciation', label: 'Gains appreciation for family/home.' },
+  { value: 'kindness_honesty', label: 'Understands "Being kind/honest is important."' },
+  { value: 'being_unique', label: 'Learns "It\'s okay to be different/unique."' },
+  { value: 'proud_effort', label: 'Feels proud of their accomplishment and effort.' },
+  { value: 'custom', label: '✏️ Custom Input...' },
 ];
 
 // Length options with estimated print costs
@@ -150,10 +195,21 @@ function StoryDetailsStep() {
     ageRange: wizardState.storyData.ageRange || '4-8',
     narrativeStyle: wizardState.storyData.narrativeStyle || 'third_person_limited',
     toneStyle: wizardState.storyData.toneStyle || 'playful',
-    mainChallengePlot: wizardState.storyData.mainChallengePlot || '',
-    customMainChallenge: wizardState.storyData.customMainChallenge || '',
-    desiredEnding: wizardState.storyData.desiredEnding || '',
-    customEnding: wizardState.storyData.customEnding || '',
+    
+    // Story structure elements
+    storyStart: wizardState.storyData.storyStart || '',
+    customStoryStart: wizardState.storyData.customStoryStart || '',
+    mainHurdle: wizardState.storyData.mainHurdle || '',
+    customMainHurdle: wizardState.storyData.customMainHurdle || '',
+    bigTry: wizardState.storyData.bigTry || '',
+    customBigTry: wizardState.storyData.customBigTry || '',
+    turningPoint: wizardState.storyData.turningPoint || '',
+    customTurningPoint: wizardState.storyData.customTurningPoint || '',
+    resolution: wizardState.storyData.resolution || '',
+    customResolution: wizardState.storyData.customResolution || '',
+    takeaway: wizardState.storyData.takeaway || '',
+    customTakeaway: wizardState.storyData.customTakeaway || '',
+    
     rhymeScheme: wizardState.storyData.rhymeScheme || 'AABB',
     wordCount: wizardState.storyData.wordCount || 500,
     specificRequests: wizardState.storyData.specificRequests || '',
@@ -161,9 +217,13 @@ function StoryDetailsStep() {
   
   const [error, setError] = useState('');
   
-  // New state variables for custom inputs
-  const [isCustomChallenge, setIsCustomChallenge] = useState(formData.mainChallengePlot === 'custom' || (formData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === formData.mainChallengePlot)));
-  const [isCustomEnding, setIsCustomEnding] = useState(formData.desiredEnding === 'custom' || (formData.desiredEnding && !endingOptions.some(o => o.value === formData.desiredEnding)));
+  // State variables for custom inputs
+  const [isCustomStoryStart, setIsCustomStoryStart] = useState(formData.storyStart === 'custom');
+  const [isCustomMainHurdle, setIsCustomMainHurdle] = useState(formData.mainHurdle === 'custom');
+  const [isCustomBigTry, setIsCustomBigTry] = useState(formData.bigTry === 'custom');
+  const [isCustomTurningPoint, setIsCustomTurningPoint] = useState(formData.turningPoint === 'custom');
+  const [isCustomResolution, setIsCustomResolution] = useState(formData.resolution === 'custom');
+  const [isCustomTakeaway, setIsCustomTakeaway] = useState(formData.takeaway === 'custom');
 
   // Update local state if global state changes (e.g., navigating back)
   useEffect(() => {
@@ -174,28 +234,60 @@ function StoryDetailsStep() {
       ageRange: wizardState.storyData.ageRange || '4-8',
       narrativeStyle: wizardState.storyData.narrativeStyle || 'third_person_limited',
       toneStyle: wizardState.storyData.toneStyle || 'playful',
-      mainChallengePlot: wizardState.storyData.mainChallengePlot || '',
-      customMainChallenge: wizardState.storyData.customMainChallenge || '',
-      desiredEnding: wizardState.storyData.desiredEnding || '',
-      customEnding: wizardState.storyData.customEnding || '',
+      
+      // Story structure elements
+      storyStart: wizardState.storyData.storyStart || '',
+      customStoryStart: wizardState.storyData.customStoryStart || '',
+      mainHurdle: wizardState.storyData.mainHurdle || '',
+      customMainHurdle: wizardState.storyData.customMainHurdle || '',
+      bigTry: wizardState.storyData.bigTry || '',
+      customBigTry: wizardState.storyData.customBigTry || '',
+      turningPoint: wizardState.storyData.turningPoint || '',
+      customTurningPoint: wizardState.storyData.customTurningPoint || '',
+      resolution: wizardState.storyData.resolution || '',
+      customResolution: wizardState.storyData.customResolution || '',
+      takeaway: wizardState.storyData.takeaway || '',
+      customTakeaway: wizardState.storyData.customTakeaway || '',
+      
       rhymeScheme: wizardState.storyData.rhymeScheme || 'AABB',
       wordCount: wizardState.storyData.wordCount || 500,
       specificRequests: wizardState.storyData.specificRequests || '',
     });
     
-    // Check if we need to set the custom flags based on data
-    setIsCustomChallenge(wizardState.storyData.mainChallengePlot === 'custom' || (wizardState.storyData.mainChallengePlot && !mainChallengeOptions.some(o => o.value === wizardState.storyData.mainChallengePlot)));
-    setIsCustomEnding(wizardState.storyData.desiredEnding === 'custom' || (wizardState.storyData.desiredEnding && !endingOptions.some(o => o.value === wizardState.storyData.desiredEnding)));
+    // Set custom flags based on data
+    setIsCustomStoryStart(wizardState.storyData.storyStart === 'custom');
+    setIsCustomMainHurdle(wizardState.storyData.mainHurdle === 'custom');
+    setIsCustomBigTry(wizardState.storyData.bigTry === 'custom');
+    setIsCustomTurningPoint(wizardState.storyData.turningPoint === 'custom');
+    setIsCustomResolution(wizardState.storyData.resolution === 'custom');
+    setIsCustomTakeaway(wizardState.storyData.takeaway === 'custom');
   }, [wizardState.storyData]);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     
-    // Special handling for select inputs that toggle custom fields
-    if (name === 'mainChallengePlot') {
-      setIsCustomChallenge(value === 'custom');
-    } else if (name === 'desiredEnding') {
-      setIsCustomEnding(value === 'custom');
+    // Toggle custom input fields when custom option is selected
+    switch (name) {
+      case 'storyStart':
+        setIsCustomStoryStart(value === 'custom');
+        break;
+      case 'mainHurdle':
+        setIsCustomMainHurdle(value === 'custom');
+        break;
+      case 'bigTry':
+        setIsCustomBigTry(value === 'custom');
+        break;
+      case 'turningPoint':
+        setIsCustomTurningPoint(value === 'custom');
+        break;
+      case 'resolution':
+        setIsCustomResolution(value === 'custom');
+        break;
+      case 'takeaway':
+        setIsCustomTakeaway(value === 'custom');
+        break;
+      default:
+        break;
     }
     
     setFormData(prev => ({
@@ -215,24 +307,26 @@ function StoryDetailsStep() {
       return;
     }
 
-    if (!formData.mainChallengePlot) {
-      setError('Please select a main challenge or plot for your story');
-      return;
-    }
+    // Validate all story structure elements
+    const structureElements = [
+      { field: 'storyStart', custom: 'customStoryStart', isCustom: isCustomStoryStart, label: 'starting point' },
+      { field: 'mainHurdle', custom: 'customMainHurdle', isCustom: isCustomMainHurdle, label: 'main hurdle' },
+      { field: 'bigTry', custom: 'customBigTry', isCustom: isCustomBigTry, label: 'character\'s big try' },
+      { field: 'turningPoint', custom: 'customTurningPoint', isCustom: isCustomTurningPoint, label: 'turning point' },
+      { field: 'resolution', custom: 'customResolution', isCustom: isCustomResolution, label: 'resolution' },
+      { field: 'takeaway', custom: 'customTakeaway', isCustom: isCustomTakeaway, label: 'takeaway' }
+    ];
 
-    if (isCustomChallenge && !formData.customMainChallenge) {
-      setError('Please describe your custom challenge');
-      return;
-    }
+    for (const element of structureElements) {
+      if (!formData[element.field]) {
+        setError(`Please select a ${element.label} for your story`);
+        return;
+      }
 
-    if (!formData.desiredEnding) {
-      setError('Please select a desired ending for your story');
-      return;
-    }
-
-    if (isCustomEnding && !formData.customEnding) {
-      setError('Please describe your custom ending');
-      return;
+      if (element.isCustom && !formData[element.custom]) {
+        setError(`Please describe your custom ${element.label}`);
+        return;
+      }
     }
 
     // All validation passed, update store with form data
@@ -249,7 +343,7 @@ function StoryDetailsStep() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold mb-4">Story Details</h2>
       <p className="text-gray-600 mb-6">
-        Let's add some details to your story. These will help us generate a story that's just right for you.
+        Let's create the structure of your story. These choices will guide how the narrative unfolds.
       </p>
 
       {error && (
@@ -275,161 +369,305 @@ function StoryDetailsStep() {
           />
         </div>
 
-        {/* Story Type */}
-        <div>
-          <label htmlFor="storyType" className="block text-sm font-medium text-gray-700 mb-1">
-            Story Type
-          </label>
-          <select
-            id="storyType"
-            name="storyType"
-            value={formData.storyType}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            {storyTypeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Age Range */}
-        <div>
-          <label htmlFor="ageRange" className="block text-sm font-medium text-gray-700 mb-1">
-            Target Age Range
-          </label>
-          <select
-            id="ageRange"
-            name="ageRange"
-            value={formData.ageRange}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            {ageRangeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Narrative Style */}
-        <div>
-          <label htmlFor="narrativeStyle" className="block text-sm font-medium text-gray-700 mb-1">
-            Narrative Style
-          </label>
-          <select
-            id="narrativeStyle"
-            name="narrativeStyle"
-            value={formData.narrativeStyle}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            {narrativeStyleOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Tone */}
-        <div>
-          <label htmlFor="toneStyle" className="block text-sm font-medium text-gray-700 mb-1">
-            Story Tone
-          </label>
-          <select
-            id="toneStyle"
-            name="toneStyle"
-            value={formData.toneStyle}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            {toneOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Main Challenge / Plot */}
-        <div>
-          <label htmlFor="mainChallengePlot" className="block text-sm font-medium text-gray-700 mb-1">
-            Main Challenge or Plot
-          </label>
-          <select
-            id="mainChallengePlot"
-            name="mainChallengePlot"
-            value={formData.mainChallengePlot}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="">Select a challenge or plot...</option>
-            {mainChallengeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Custom challenge input */}
-        {isCustomChallenge && (
+        {/* Basic Story Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Story Type */}
           <div>
-            <label htmlFor="customMainChallenge" className="block text-sm font-medium text-gray-700 mb-1">
-              Describe Your Custom Challenge
+            <label htmlFor="storyType" className="block text-sm font-medium text-gray-700 mb-1">
+              Story Type
             </label>
-            <textarea
-              id="customMainChallenge"
-              name="customMainChallenge"
-              value={formData.customMainChallenge}
+            <select
+              id="storyType"
+              name="storyType"
+              value={formData.storyType}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
-              placeholder="Describe the main challenge or plot for your story..."
-            />
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              {storyTypeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        {/* Desired Ending */}
-        <div>
-          <label htmlFor="desiredEnding" className="block text-sm font-medium text-gray-700 mb-1">
-            Desired Ending
+          {/* Age Range */}
+          <div>
+            <label htmlFor="ageRange" className="block text-sm font-medium text-gray-700 mb-1">
+              Target Age Range
+            </label>
+            <select
+              id="ageRange"
+              name="ageRange"
+              value={formData.ageRange}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              {ageRangeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Narrative Style */}
+          <div>
+            <label htmlFor="narrativeStyle" className="block text-sm font-medium text-gray-700 mb-1">
+              Narrative Style
+            </label>
+            <select
+              id="narrativeStyle"
+              name="narrativeStyle"
+              value={formData.narrativeStyle}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              {narrativeStyleOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tone */}
+          <div>
+            <label htmlFor="toneStyle" className="block text-sm font-medium text-gray-700 mb-1">
+              Story Tone
+            </label>
+            <select
+              id="toneStyle"
+              name="toneStyle"
+              value={formData.toneStyle}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              {toneOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Story Structure Section Heading */}
+        <div className="border-t border-gray-200 pt-6 mt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Story Structure</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Build your story by choosing key elements for each part of the narrative.
+          </p>
+        </div>
+
+        {/* 1. Story Start */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <label htmlFor="storyStart" className="block text-sm font-medium text-blue-700 mb-1">
+            1. The Starting Point / The Spark (What kicks off the story?)
           </label>
           <select
-            id="desiredEnding"
-            name="desiredEnding"
-            value={formData.desiredEnding}
+            id="storyStart"
+            name="storyStart"
+            value={formData.storyStart}
             onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            className="w-full border border-blue-200 bg-white rounded-md px-3 py-2"
           >
-            <option value="">Select an ending style...</option>
-            {endingOptions.map(option => (
+            <option value="">Select how the story begins...</option>
+            {storyStartOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </select>
+          
+          {isCustomStoryStart && (
+            <div className="mt-2">
+              <textarea
+                id="customStoryStart"
+                name="customStoryStart"
+                value={formData.customStoryStart}
+                onChange={handleChange}
+                className="w-full border border-blue-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe how your story begins..."
+              />
+            </div>
+          )}
         </div>
 
-        {/* Custom ending input */}
-        {isCustomEnding && (
-          <div>
-            <label htmlFor="customEnding" className="block text-sm font-medium text-gray-700 mb-1">
-              Describe Your Custom Ending
-            </label>
-            <textarea
-              id="customEnding"
-              name="customEnding"
-              value={formData.customEnding}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 h-24"
-              placeholder="Describe how you would like the story to end..."
-            />
-          </div>
-        )}
+        {/* 2. Main Hurdle */}
+        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+          <label htmlFor="mainHurdle" className="block text-sm font-medium text-purple-700 mb-1">
+            2. The Main Hurdle / Core Conflict (Biggest challenge?)
+          </label>
+          <select
+            id="mainHurdle"
+            name="mainHurdle"
+            value={formData.mainHurdle}
+            onChange={handleChange}
+            className="w-full border border-purple-200 bg-white rounded-md px-3 py-2"
+          >
+            <option value="">Select the main challenge...</option>
+            {mainHurdleOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          
+          {isCustomMainHurdle && (
+            <div className="mt-2">
+              <textarea
+                id="customMainHurdle"
+                name="customMainHurdle"
+                value={formData.customMainHurdle}
+                onChange={handleChange}
+                className="w-full border border-purple-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe the main challenge or hurdle..."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 3. Big Try */}
+        <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+          <label htmlFor="bigTry" className="block text-sm font-medium text-green-700 mb-1">
+            3. The Character's Big Try (What main action do they take?)
+          </label>
+          <select
+            id="bigTry"
+            name="bigTry"
+            value={formData.bigTry}
+            onChange={handleChange}
+            className="w-full border border-green-200 bg-white rounded-md px-3 py-2"
+          >
+            <option value="">Select what action the character takes...</option>
+            {bigTryOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          
+          {isCustomBigTry && (
+            <div className="mt-2">
+              <textarea
+                id="customBigTry"
+                name="customBigTry"
+                value={formData.customBigTry}
+                onChange={handleChange}
+                className="w-full border border-green-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe what action the character takes..."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 4. Turning Point */}
+        <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+          <label htmlFor="turningPoint" className="block text-sm font-medium text-amber-700 mb-1">
+            4. A Key Turning Point / Climax (Most exciting moment?)
+          </label>
+          <select
+            id="turningPoint"
+            name="turningPoint"
+            value={formData.turningPoint}
+            onChange={handleChange}
+            className="w-full border border-amber-200 bg-white rounded-md px-3 py-2"
+          >
+            <option value="">Select the key turning point...</option>
+            {turningPointOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          
+          {isCustomTurningPoint && (
+            <div className="mt-2">
+              <textarea
+                id="customTurningPoint"
+                name="customTurningPoint"
+                value={formData.customTurningPoint}
+                onChange={handleChange}
+                className="w-full border border-amber-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe the climax or turning point..."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 5. Resolution */}
+        <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+          <label htmlFor="resolution" className="block text-sm font-medium text-red-700 mb-1">
+            5. The Happy Ending / Resolution (How is the problem solved?)
+          </label>
+          <select
+            id="resolution"
+            name="resolution"
+            value={formData.resolution}
+            onChange={handleChange}
+            className="w-full border border-red-200 bg-white rounded-md px-3 py-2"
+          >
+            <option value="">Select how the story resolves...</option>
+            {resolutionOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          
+          {isCustomResolution && (
+            <div className="mt-2">
+              <textarea
+                id="customResolution"
+                name="customResolution"
+                value={formData.customResolution}
+                onChange={handleChange}
+                className="w-full border border-red-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe how the problem is resolved..."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 6. Takeaway */}
+        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+          <label htmlFor="takeaway" className="block text-sm font-medium text-indigo-700 mb-1">
+            6. The Takeaway / Theme Connection (What is learned/felt differently?)
+          </label>
+          <select
+            id="takeaway"
+            name="takeaway"
+            value={formData.takeaway}
+            onChange={handleChange}
+            className="w-full border border-indigo-200 bg-white rounded-md px-3 py-2"
+          >
+            <option value="">Select what is learned...</option>
+            {takeawayOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          
+          {isCustomTakeaway && (
+            <div className="mt-2">
+              <textarea
+                id="customTakeaway"
+                name="customTakeaway"
+                value={formData.customTakeaway}
+                onChange={handleChange}
+                className="w-full border border-indigo-200 rounded-md px-3 py-2 h-20"
+                placeholder="Describe what the character learns or feels differently..."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Additional Options Section */}
+        <div className="border-t border-gray-200 pt-6 mt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Options</h3>
+        </div>
 
         {/* Rhyme Scheme (only for rhyming stories) */}
         {showRhymeOptions && (
