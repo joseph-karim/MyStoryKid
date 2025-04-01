@@ -874,6 +874,7 @@ function CharactersStep() {
         <CharacterWizard 
           onComplete={handleCharacterComplete} 
           initialRole={selectedRole}
+          forcedArtStyle={artStyleCode}
         />
       ) : (
         <>
