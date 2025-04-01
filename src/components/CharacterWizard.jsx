@@ -156,6 +156,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const fileInputRef = useRef(null);
   const pollingSessionRef = useRef({});
   
+  // Add state for tabs based navigation
+  const [unlockedSteps, setUnlockedSteps] = useState([1]);
+  
   // Add state for API styles
   const [apiStyles, setApiStyles] = useState([]);
   const [isLoadingStyles, setIsLoadingStyles] = useState(true);
@@ -557,6 +560,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         }));
       }
       
+      // Unlock the next step if not already unlocked
+      if (!unlockedSteps.includes(nextStep)) {
+        setUnlockedSteps(prev => [...prev, nextStep]);
+      }
+      
       setStep(nextStep);
       
       // If moving to preview step, generate the character preview
@@ -567,8 +575,23 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
     
     // Regular step progression
-    setStep(step + 1);
+    const nextStep = step + 1;
+    
+    // Unlock the next step if not already unlocked
+    if (!unlockedSteps.includes(nextStep)) {
+      setUnlockedSteps(prev => [...prev, nextStep]);
+    }
+    
+    setStep(nextStep);
     setError('');
+  };
+  
+  // Add a function to handle tab navigation
+  const handleTabClick = (tabStep) => {
+    // Only allow navigation to unlocked steps
+    if (unlockedSteps.includes(tabStep)) {
+      setStep(tabStep);
+    }
   };
   
   // Handle selecting an existing character
@@ -940,55 +963,35 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  // Progress indicator at the top of the wizard
-  const renderProgressBar = () => {
-    const steps = [
-      { number: 1, name: getStepTitle(1) },
-      { number: 2, name: getStepTitle(2) },
-      // Only show the style step if we don't have a forced style
-      ...(forcedArtStyle ? [] : [{ number: 3, name: getStepTitle(3) }]),
-      { number: forcedArtStyle ? 3 : 4, name: getStepTitle(forcedArtStyle ? 3 : 4) }
-    ];
+  // Modified renderStep to avoid adding duplicate navigation buttons
+  const renderStep = () => {
+    // If we have a forced art style, skip step 3 (art style selection)
+    if (forcedArtStyle && step === 3) {
+      console.log("Skipping style selection because forcedArtStyle is set:", forcedArtStyle);
+      // Jump directly to preview step (with a slight delay for smoothness)
+      setTimeout(() => {
+        generateCharacterPreview();
+      }, 100);
+      return (
+        <div className="text-center p-8">
+          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Applying the story's art style to your character...</p>
+        </div>
+      );
+    }
     
-    return (
-      <div className="mb-8">
-        <div className="flex justify-between">
-          {steps.map((stepInfo) => (
-            <div 
-              key={stepInfo.number} 
-              className={`flex-1 text-center ${step >= stepInfo.number ? 'text-blue-600' : 'text-gray-400'}`}
-            >
-              {stepInfo.name}
-            </div>
-          ))}
-        </div>
-        <div className="relative mt-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full h-1 bg-gray-200 rounded"></div>
-          </div>
-          <div className="relative flex justify-between">
-            {steps.map((stepInfo) => (
-              <div 
-                key={stepInfo.number}
-                className={`h-6 w-6 rounded-full border-2 flex items-center justify-center bg-white 
-                  ${step >= stepInfo.number ? 'border-blue-600' : 'border-gray-400'} 
-                  ${step === stepInfo.number ? 'bg-blue-600 text-white' : step > stepInfo.number ? 'bg-blue-600 text-white' : 'bg-white'}`}
-              >
-                {step > stepInfo.number ? (
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <span className={`text-xs font-medium ${step === stepInfo.number ? 'text-white' : 'text-gray-500'}`}>
-                    {stepInfo.number}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    switch (step) {
+      case 1:
+        return <div className="animate-fadeIn">{renderDetailsStep()}</div>;
+      case 2:
+        return <div className="animate-fadeIn">{renderAppearanceStep()}</div>;
+      case 3:
+        return <div className="animate-fadeIn">{renderStyleStep()}</div>;
+      case 4:
+        return <div className="animate-fadeIn">{renderPreviewStep()}</div>;
+      default:
+        return null;
+    }
   };
   
   // Update the generateCharacterPreview function to handle text-to-image generation
@@ -1370,37 +1373,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     return luminance > 0.5 ? '#000000' : '#FFFFFF';
   };
   
-  // Modify the step rendering to skip the art style selection if there's a forced style
-  const renderStep = () => {
-    // If we have a forced art style, skip step 3 (art style selection)
-    if (forcedArtStyle && step === 3) {
-      console.log("Skipping style selection because forcedArtStyle is set:", forcedArtStyle);
-      // Jump directly to preview step (with a slight delay for smoothness)
-      setTimeout(() => {
-        generateCharacterPreview();
-      }, 100);
-      return (
-        <div className="text-center p-8">
-          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Applying the story's art style to your character...</p>
-            </div>
-      );
-    }
-    
-    switch (step) {
-      case 1:
-        return renderDetailsStep();
-      case 2:
-        return renderAppearanceStep();
-      case 3:
-        return renderStyleStep();
-      case 4:
-        return renderPreviewStep();
-      default:
-        return null;
-    }
-  };
-  
   // Also modify the conditional render to always generate preview when step 4 is mounted
   useEffect(() => {
     // Auto-generate preview when entering step 4 (preview step)
@@ -1512,33 +1484,98 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-                <button
+        <button
           onClick={handleCancel}
           className="text-gray-400 hover:text-gray-600"
-                >
+        >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-                </button>
-            </div>
+        </button>
+      </div>
       
-      {/* Progress Indicator */}
-      {renderProgressBar()}
+      {/* Tab Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+          <li className="mr-2">
+            <button
+              onClick={() => handleTabClick(1)}
+              className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                step === 1 
+                  ? 'text-blue-600 border-blue-600' 
+                  : unlockedSteps.includes(1)
+                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                    : 'text-gray-400 cursor-not-allowed border-transparent'
+              }`}
+              disabled={!unlockedSteps.includes(1)}
+            >
+              Details
+            </button>
+          </li>
+          <li className="mr-2">
+            <button
+              onClick={() => handleTabClick(2)}
+              className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                step === 2 
+                  ? 'text-blue-600 border-blue-600' 
+                  : unlockedSteps.includes(2)
+                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                    : 'text-gray-400 cursor-not-allowed border-transparent'
+              }`}
+              disabled={!unlockedSteps.includes(2)}
+            >
+              Photo/Description
+            </button>
+          </li>
+          {!forcedArtStyle && (
+            <li className="mr-2">
+              <button
+                onClick={() => handleTabClick(3)}
+                className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                  step === 3 
+                    ? 'text-blue-600 border-blue-600' 
+                    : unlockedSteps.includes(3)
+                      ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                      : 'text-gray-400 cursor-not-allowed border-transparent'
+                }`}
+                disabled={!unlockedSteps.includes(3)}
+              >
+                Art Style
+              </button>
+            </li>
+          )}
+          <li className="mr-2">
+            <button
+              onClick={() => handleTabClick(4)}
+              className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                step === 4 
+                  ? 'text-blue-600 border-blue-600' 
+                  : unlockedSteps.includes(4)
+                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                    : 'text-gray-400 cursor-not-allowed border-transparent'
+              }`}
+              disabled={!unlockedSteps.includes(4)}
+            >
+              Confirm
+            </button>
+          </li>
+        </ul>
+      </div>
       
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-          </div>
-        )}
+        </div>
+      )}
       
       {/* Step Content */}
-      <div className="mb-8 min-h-[300px]">
+      <div className="mb-8 min-h-[400px]">
         {renderStep()}
       </div>
       
-      {/* Navigation */}
+      {/* Navigation Buttons */}
       <div className="flex justify-between">
-              <button
+        <button
           onClick={handleBack}
           className={`px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 ${
             step === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
@@ -1552,8 +1589,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           {step === 4 ? 'Complete' : 'Next'}
-              </button>
-            </div>
+        </button>
+      </div>
       
       {/* Render Image Preview Modal */}
       <ImagePreviewModal 
