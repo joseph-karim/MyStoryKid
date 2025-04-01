@@ -1698,19 +1698,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         preview: characterData.photoUrl?.substring(0, 50) + '...'
       });
 
-      // Validate base64 image format
-      if (!characterData.photoUrl.startsWith('data:image')) {
-        console.error('Invalid image format:', characterData.photoUrl.substring(0, 50));
-        throw new Error('Invalid image format. Expected base64 data URL.');
-      }
-      
       // Create the API payload with the correct structure from the documentation
       const payload = {
-        images: [{
-          base64_data: characterData.photoUrl
-        }],
         style_code: styleCode,
         prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`,
+        images: [{
+          base64_data: characterData.photoUrl // Send the full data URL as required
+        }],
         color_match: 0,
         face_match: 1,
         style_intensity: 1.0,
@@ -1738,12 +1732,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       // Create the task
       const taskResponse = await createImg2ImgTask(payload);
       
-      if (!taskResponse || !taskResponse.data || !taskResponse.data.task_id) {
+      if (!taskResponse || !taskResponse.task_id) {
         console.error('Invalid task response:', taskResponse);
         throw new Error('Failed to create image generation task');
       }
       
-      const taskId = taskResponse.data.task_id;
+      const taskId = taskResponse.task_id;
       console.log('Task created with ID:', taskId);
       
       // Start polling for the result
