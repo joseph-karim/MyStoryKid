@@ -977,13 +977,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     switch (step) {
       case 1:
-        return <div className="animate-fadeIn">{renderDetailsStep()}</div>;
+        return renderDetailsStep();
       case 2:
-        return <div className="animate-fadeIn">{renderAppearanceStep()}</div>;
+        return renderAppearanceStep();
       case 3:
-        return <div className="animate-fadeIn">{renderStyleStep()}</div>;
+        return renderStyleStep();
       case 4:
-        return <div className="animate-fadeIn">{renderPreviewStep()}</div>;
+        return renderPreviewStep();
       default:
         return null;
     }
@@ -1582,6 +1582,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <button
           onClick={handleNext}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          disabled={(step === 1 && !characterData.name) ||
+                   (step === 2 && ((!characterData.photoUrl && !characterData.useTextToImage) || 
+                                  (characterData.useTextToImage && !characterData.generationPrompt))) ||
+                   (step === 3 && !characterData.artStyle) ||
+                   (step === 4 && (!characterData.stylePreview || isGenerating))}
         >
           {step === 4 ? 'Complete' : 'Next'}
         </button>
