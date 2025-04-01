@@ -219,7 +219,7 @@ export const createImg2ImgTask = async (payload) => {
 
     // Prepare the payload exactly as per documentation
     // We don't need to upload manually, the API accepts base64_data directly
-    const apiPayload = {
+    let apiPayload = {
       prompt: payload.prompt.substring(0, 800), // Ensure prompt length limit
       style_code: payload.style_code,
       images: payload.images.map(img => ({ // Map to ensure only allowed fields are sent
