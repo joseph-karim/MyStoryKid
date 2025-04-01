@@ -699,7 +699,7 @@ function processPlaceholders(text) {
   };
 
   // First simplify the text (basic word substitutions)
-  let processed = simplifyText(text);
+  let processed = processTemplateText(text);
   
   // Then handle specific placeholder/template patterns
   processed = processTemplate(processed, 'obstacle_overcome', () => 'overcame the challenge');
@@ -717,7 +717,7 @@ function processPlaceholders(text) {
 /**
  * Enhanced text simplification that also processes templates and placeholders
  */
-function simplifyText(text) {
+function processTemplateText(text) {
   // Basic word substitutions for simplicity
   let simplified = text
     .replace(/\bacquired\b/g, "got")
