@@ -131,6 +131,19 @@ const getSafeStyleCode = (styleCode) => {
   return SAFE_STYLE_CODE;
 };
 
+// Initialize form state with defaults
+const defaultCharacterData = {
+  name: '',
+  type: '',
+  age: '',
+  gender: '',
+  artStyle: '',
+  photoUrl: null,
+  stylePreview: null,
+  useTextToImage: false,
+  generationPrompt: ''
+};
+
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
@@ -148,26 +161,41 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [isLoadingStyles, setIsLoadingStyles] = useState(true);
   
   // Character data
-  const [characterData, setCharacterData] = useState(() => ({
-    id: uuidv4(), // Generate a unique ID each time the component mounts
-    name: '',
-    type: 'child',
-    age: '',
-    gender: '',
-    traits: [],
-    interests: [],
-    photoUrl: null,
-    artStyle: forcedArtStyle || null, // Will be set to first available style after fetch
-    stylePreview: null,
-    description: '',
-    customRole: '',  // For storing custom role description
-    generationPrompt: '', // For text-to-image generation
-    useTextToImage: false // Flag for text-to-image vs image-to-image
-  }));
+  const [characterData, setCharacterData] = useState(defaultCharacterData);
   
   // Add state for image preview modal
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
+  
+  // Reset the form state when the component mounts
+  useEffect(() => {
+    // Reset form to default values
+    setCharacterData(defaultCharacterData);
+    setPhotoPreview(null);
+    setError('');
+    setStep(1);
+    setIsGenerating(false);
+    setProgressMessage('');
+    
+    // If we have a forced art style, set it
+    if (forcedArtStyle) {
+      setCharacterData(prev => ({
+        ...prev,
+        artStyle: forcedArtStyle
+      }));
+    }
+    
+    // Load API styles on mount
+    fetchStyles();
+    
+    // Check API status
+    checkApiStatus();
+    
+    // Clean up polling when component unmounts
+    return () => {
+      pollingSessionRef.current = {};
+    };
+  }, [forcedArtStyle]);
   
   // Fetch styles from API on mount
   useEffect(() => {
@@ -361,7 +389,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Skip to the correct step if we have a forcedArtStyle
   useEffect(() => {
     if (forcedArtStyle && step === 3) {
-      // Skip art style selection step
+      // Skip art style selection
       setStep(4);
     }
   }, [step, forcedArtStyle]);
@@ -550,17 +578,35 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setStep(4); // Skip to preview
   };
   
-  // Handle photo upload
+  // Photo handler to correctly process uploaded photos
   const handlePhotoUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
     
+    // Check file size
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Please upload a photo smaller than 10MB');
+      return;
+    }
+    
     const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoPreview(reader.result);
-      setCharacterData(prev => ({ ...prev, photoUrl: reader.result }));
+    reader.onload = (event) => {
+      const imageData = event.target?.result;
+      if (typeof imageData === 'string') {
+        setPhotoPreview(imageData);
+        handleChange('photoUrl', imageData);
+        // Clear any existing generation prompt since we're using a photo
+        handleChange('generationPrompt', '');
+        // Set useTextToImage to false since we're using a photo
+        handleChange('useTextToImage', false);
+      }
     };
     reader.readAsDataURL(file);
+    
+    // Clear the file input to allow uploading the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
   
   // Function to open the image preview modal
@@ -829,8 +875,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         {/* Character Generation Method Selection */}
         <div className="mb-6">
-          <label className="block font-medium text-gray-700 mb-2">How would you like to create your character?</label>
-          
           <div className="space-y-4">
             {/* Photo Upload Option */}
             <div 
@@ -848,15 +892,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 </div>
                 <div className="ml-3">
                   <label className="font-medium text-gray-700">Upload a Photo</label>
-                  <p className="text-gray-500 text-sm">Upload a photo of your character and transform it into art</p>
                 </div>
               </div>
               
+              {/* Always show the upload box when this option is selected */}
               {!characterData.useTextToImage && (
                 <div className="mt-4">
                   <div 
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors"
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current && fileInputRef.current.click();
+                    }}
                   >
                     {photoPreview ? (
                       <div className="flex flex-col items-center">
@@ -884,22 +931,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                         <span className="mt-2 block text-sm font-medium text-gray-700">
                           Click to upload a photo
                         </span>
-                        <span className="mt-1 block text-xs text-gray-500">
-                          PNG, JPG, WEBP up to 10MB
-                        </span>
                       </div>
                     )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                    />
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Photos are used only once for style conversion and then discarded for privacy.
-                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                  />
                 </div>
               )}
             </div>
@@ -919,8 +960,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   />
                 </div>
                 <div className="ml-3">
-                  <label className="font-medium text-gray-700">Describe Your Character</label>
-                  <p className="text-gray-500 text-sm">Provide a detailed description and we'll generate your character</p>
+                  <label className="font-medium text-gray-700">Generate from Description</label>
                 </div>
               </div>
               
@@ -932,9 +972,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     placeholder="Describe your character in detail. For example: 'A 7-year-old girl with curly brown hair and green eyes, wearing a yellow dress with flower patterns, has a cheerful smile, and is holding a small teddy bear.'"
                     className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Be specific about appearance, clothing, pose, and expression for best results.
-                  </p>
                 </div>
               )}
             </div>
@@ -1471,115 +1508,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const renderPreviewStep = () => {
-    // Helper to get a display name for the art style
-    const getArtStyleDisplayName = () => {
-      if (!characterData.artStyle) return 'No style selected';
-      
-      // Special case for the Warm Fables style code
-      if (characterData.artStyle === PLEASANTLY_WARM_STYLE_CODE) {
-        return 'Pleasantly Warm';
-      }
-      
-      // If it's a full style code (starts with "Style-")
-      if (characterData.artStyle.startsWith('Style-')) {
-        // Check if we have a stored name in localStorage
-        try {
-          const allStyleNames = localStorage.getItem('styleCodeNames');
-          if (allStyleNames) {
-            const namesMap = JSON.parse(allStyleNames);
-            if (namesMap[characterData.artStyle]) {
-              return namesMap[characterData.artStyle];
-            }
-          }
-          
-          // Also check the lastSelectedStyleName for Warm Fables style
-          const lastStyleName = localStorage.getItem('lastSelectedStyleName');
-          if (lastStyleName && characterData.artStyle === PLEASANTLY_WARM_STYLE_CODE) {
-            return lastStyleName;
-          }
-        } catch (e) {
-          console.error("Failed to retrieve style name from localStorage:", e);
-        }
-        
-        // If we have a matching style in the API styles, use its name
-        const matchingStyle = apiStyles.find(s => s.style_code === characterData.artStyle);
-        if (matchingStyle) return matchingStyle.name;
-        
-        return 'API Style'; // Fallback name
-      }
-      
-      // Format the style ID as a last resort
-      return characterData.artStyle
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    };
-    
-    // Determine if image was generated from text or transformed from photo
-    const generationMethod = characterData.useTextToImage 
-      ? "Generated from description" 
-      : photoPreview ? "Transformed from photo" : "Generated character";
-    
     return (
       <div className="space-y-6 animate-fadeIn">
-        <h2 className="text-2xl font-bold mb-4">Character Preview</h2>
+        <h2 className="text-2xl font-bold mb-4">Preview Character</h2>
         
-        <div className="text-center mb-6">
-          <h3 className="text-xl font-medium mb-1">{characterData.name}</h3>
-          <p className="text-gray-600">
-            {initialRole === 'custom' && characterData.customRole 
-              ? characterData.customRole 
-              : CHARACTER_ROLES.find(r => r.id === initialRole)?.label || 'Character'}
-          </p>
-        </div>
-        
-        <div className="flex flex-col items-center">
-          {/* Display image */}
-          {characterData.stylePreview ? (
-            <>
-              <img
-                src={characterData.stylePreview}
-                alt="Character Preview"
-                className="max-w-full max-h-[85vh] object-contain shadow-xl"
-                onClick={() => openImagePreview(characterData.stylePreview)}
-              />
-              <p className="text-sm text-gray-500 mt-2">{generationMethod}</p>
-              <p className="text-sm font-medium mt-1">Style: {getArtStyleDisplayName()}</p>
-            </>
-          ) : (
-            <div className="w-64 h-64 bg-gray-200 flex items-center justify-center rounded-lg">
-              <p className="text-gray-500">No preview available</p>
+        {isGenerating ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
+            <p className="text-gray-600">{progressMessage || 'Creating your character...'}</p>
+          </div>
+        ) : characterData.stylePreview ? (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="p-4 flex flex-col items-center">
+              <div className="w-64 h-64 overflow-hidden rounded-lg mb-4 border-2 border-gray-200 shadow-inner">
+                <div className="relative w-full h-full">
+                  <div className="absolute inset-0 bg-white opacity-50"></div>
+                  <img 
+                    src={characterData.stylePreview} 
+                    alt={characterData.name} 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-bold">{characterData.name}</h3>
+              <p className="text-gray-600">
+                {characterData.age && `${characterData.age} years old • `}
+                {characterData.gender && `${characterData.gender} • `}
+                {characterData.type}
+              </p>
+              
+              {characterData.useTextToImage && characterData.generationPrompt && (
+                <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        {/* Generate button - allow regeneration */}
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={generateCharacterPreview}
-            disabled={isGenerating || !characterData.artStyle}
-            className={`px-6 py-2 rounded ${
-              isGenerating || !characterData.artStyle
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-700 text-white'
-            }`}
-          >
-            {isGenerating ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {progressMessage || 'Generating...'}
-              </span>
-            ) : characterData.stylePreview ? 'Regenerate Character' : 'Generate Character'}
-          </button>
-        </div>
-        
-        {/* Error message if any */}
-        {error && (
-          <div className="text-center text-red-500 mt-4">
-            {error}
+          </div>
+        ) : (
+          <div className="bg-gray-100 rounded-lg p-6 text-center">
+            <p className="text-gray-600">No preview available. Please go back and select an art style.</p>
           </div>
         )}
         
@@ -1592,10 +1560,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </button>
           <button
             onClick={handleComplete}
-            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-            disabled={!characterData.stylePreview}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+            disabled={!characterData.stylePreview || isGenerating}
           >
-            Add to Story
+            Confirm Character
           </button>
         </div>
       </div>
