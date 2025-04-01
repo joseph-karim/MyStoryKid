@@ -453,6 +453,27 @@ function ArtStyleStep() {
     setArtStyleCode(styleCode);
     setError(''); // Clear any errors when a style is selected
     
+    // Store the selected style name for easier reference later
+    let styleName = null;
+    
+    // Check if it's a direct style code from ART_STYLE_CATEGORIES_STRUCTURE
+    for (const category of ART_STYLE_CATEGORIES_STRUCTURE) {
+      const style = category.styleIds.find(s => s.apiCode === styleCode);
+      if (style) {
+        styleName = style.title;
+        break;
+      }
+    }
+    
+    // If we found a style name, save it in localStorage for easier reference
+    if (styleName) {
+      try {
+        localStorage.setItem('lastSelectedStyleName', styleName);
+      } catch (e) {
+        console.error("Failed to save style name to localStorage:", e);
+      }
+    }
+    
     // If it's the custom style, make sure the textarea is enabled
     if (styleCode === 'custom') {
       // Focus on the custom style textarea after a brief delay

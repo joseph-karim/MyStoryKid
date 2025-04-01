@@ -69,7 +69,7 @@ const CURATED_STYLES = [
     description: 'Timeless illustration styles',
     styles: [
       { id: 'golden_books', name: 'Golden Books', description: 'Classic mid-century illustration style', imageUrl: goldenBooksImg, keywordMatch: ['classic', 'golden', 'vintage', 'book'] },
-      { id: 'beatrix_potter', name: 'Beatrix Potter', description: 'Detailed watercolor with classic feel', imageUrl: beatrixPotterImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
+      { id: 'beatrix_potter', name: 'Warm Fables', description: 'Detailed watercolor with classic feel', imageUrl: beatrixPotterImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
       { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Fine line work with light color washes', imageUrl: pencilInkImg, keywordMatch: ['pencil', 'ink', 'sketch', 'line'] }
     ]
   },
@@ -84,27 +84,27 @@ const CURATED_STYLES = [
   }
 ];
 
-// Style ID to code map - using REAL Dzine API style codes from the API response
+// Map of style IDs to API style codes
 const styleIdToCodeMap = {
-  // Common styles with their proper Dzine API style codes
   watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823', // Classic Watercolor
-  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',     // Whimsical Coloring
+  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b', // Whimsical Coloring
   pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
   soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
-  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',  // Sketch Elegance
-  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512', // Golden Era Illustrations
-  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Warm Fables
-  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',    // Cartoon Anime
+  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0', // Sketch Elegance
+  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512', // Golden Era
+  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Old name - Warm Fables
+  warm_fables: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // New name - Warm Fables
+  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3', // Cartoon Anime
   flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280', // Simple Icon
   storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
-  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',   // Paper Cutout
+  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86', // Paper Cutout
   oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a', // Vibrant Impasto
   stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Structured Serenity
   digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
-  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',     // Everything Kawaii
+  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875', // Everything Kawaii
   scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60', // Scandi
   african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // Bold Collage
-  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2'      // No Style v2 (default)
+  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2' // Default "No Style"
 };
 
 // Fallback style code for when mapping fails - use "No Style v2" as fallback
@@ -1255,22 +1255,49 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       // If it's a full style code (starts with "Style-")
       if (characterData.artStyle.startsWith('Style-')) {
-        // Try to find a style in apiStyles that matches
+        // First check if this style code has a mapping in our styleIdToCodeMap
+        const styleId = Object.keys(styleIdToCodeMap).find(key => 
+          styleIdToCodeMap[key] === characterData.artStyle
+        );
+        
+        // If we found a known style ID, use its title from the CURATED_STYLES
+        if (styleId) {
+          // Handle the beatrix_potter/warm_fables special case
+          if (styleId === 'beatrix_potter') {
+            return 'Warm Fables';
+          }
+          
+          // Try to find the style in CURATED_STYLES
+          for (const category of CURATED_STYLES) {
+            const style = category.styles.find(s => s.id === styleId);
+            if (style) return style.name;
+          }
+        }
+        
+        // If not found in our curated styles, try the API data
         const matchingStyle = apiStyles.find(s => s.style_code === characterData.artStyle);
         if (matchingStyle) return matchingStyle.name;
         
-        return 'Custom Style'; // Fallback
+        return 'API Style'; // Fallback name
       }
       
-      // If it's a short code, try to find it in our style map
-      const styleId = Object.keys(styleIdToCodeMap).find(key => 
-        styleIdToCodeMap[key] === characterData.artStyle
-      );
+      // If it's a short code (not starting with Style-), try to find a readable name
+      // Check if it's the special case
+      if (characterData.artStyle === 'beatrix_potter') {
+        return 'Warm Fables';
+      }
       
-      // Return a formatted version of the ID if no better name is found
-      return styleId ? 
-        styleId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 
-        'Selected Style';
+      // Try to find it in our curated styles
+      for (const category of CURATED_STYLES) {
+        const style = category.styles.find(s => s.id === characterData.artStyle);
+        if (style) return style.name;
+      }
+      
+      // Format the ID as a last resort
+      return characterData.artStyle
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     };
     
     return (

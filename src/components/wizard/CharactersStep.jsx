@@ -31,7 +31,8 @@ const styleIdToCodeMap = {
   soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',  // Watercolor Whimsy
   pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',    // Sketch Elegance
   golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',  // Golden books style
-  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Potter-like
+  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Potter-like (old name)
+  warm_fables: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',   // New name for Beatrix Potter style
   cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',       // Cartoon
   flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',   // Flat vector
   storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook
@@ -112,75 +113,79 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
 // Add style descriptions to enrich the presentation
 const styleDescriptions = {
   watercolor: { 
-    title: 'Watercolor',
+    title: 'Classic Watercolor',
     description: 'Soft, expressive, and magical. Great for fairy tales and heartwarming journeys.'
   },
   pastel: { 
-    title: 'Pastel',
+    title: 'Whimsical Coloring',
     description: 'Soft-edged and calming, like chalk or crayon textures. Very kid-friendly and light.'
   },
   pencil_wash: { 
-    title: 'Pencil Wash',
+    title: 'Line & Wash',
     description: 'Combines pencil lines with light color washes. A subtle and intimate feel, often found in timeless books.'
   },
   soft_digital: { 
-    title: 'Soft Digital',
+    title: 'Watercolor Whimsy',
     description: 'Digital painting with a hand-drawn aesthetic. Looks painterly, but crisp enough for printing.'
   },
   
   pencil_ink: { 
-    title: 'Pencil & Ink',
+    title: 'Sketch Elegance',
     description: 'Monochrome or light inked outlines with shading. Great for a vintage feel.'
   },
   golden_books: { 
-    title: 'Golden Books',
+    title: 'Golden Era Illustrations',
     description: 'Inspired by mid-century illustrations (like Little Golden Books). Bright, detailed, with expressive faces.'
   },
   beatrix_potter: { 
-    title: 'Beatrix Potter',
+    title: 'Warm Fables',
     description: 'Classic English watercolor + fine detail. Excellent for animal tales and nature-based themes.'
+  },
+  warm_fables: { 
+    title: 'Warm Fables',
+    description: 'Charming, detailed watercolor illustrations in the style of classic children\'s tales'
   },
   
   cartoon: { 
-    title: 'Cartoon',
+    title: 'Cartoon Anime',
     description: 'Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories.'
   },
   flat_vector: { 
-    title: 'Flat Vector',
+    title: 'Simple Icon',
     description: 'Bold, clean, and simple. Often used in modern educational books.'
   },
   storybook_pop: { 
-    title: 'Storybook Pop',
-    description: 'Bright, slightly surreal, and energetic — think "Adventure Time" meets classic books. Ideal for space, monsters, and wacky themes.'
+    title: 'Storybook Charm',
+    description: 'Bright, slightly surreal, and energetic. Ideal for space, monsters, and wacky themes.'
   },
   papercut: { 
-    title: 'Papercut',
+    title: 'Paper Cutout',
     description: 'Looks like it was made with layers of paper or fabric. Textured and tactile feel, very charming.'
   },
   
   oil_pastel: { 
-    title: 'Oil Pastel',
+    title: 'Vibrant Impasto',
     description: 'Thick brush strokes, vivid color, tactile textures. Great for magical realism or emotional storytelling.'
   },
   stylized_realism: { 
-    title: 'Stylized Realism',
+    title: 'Structured Serenity',
     description: 'Semi-realistic faces and proportions with artistic lighting. Ideal if you want to "recognize" the child in the art.'
   },
   digital_painterly: { 
-    title: 'Digital Painterly',
+    title: 'Luminous Narratives',
     description: 'Mimics classical painting but created digitally. For dramatic lighting, beautiful spreads, and immersive scenes.'
   },
   
   kawaii: { 
-    title: 'Kawaii',
+    title: 'Everything Kawaii',
     description: 'Ultra-cute, rounded characters, soft palettes. Great for emotional and nurturing stories.'
   },
   scandinavian: { 
-    title: 'Scandinavian',
+    title: 'Scandi',
     description: 'Geometric shapes, bold color, often nature-themed. Feels minimalist but magical.'
   },
   african_pattern: { 
-    title: 'African Pattern',
+    title: 'Bold Collage',
     description: 'Bright colors, bold patterns, and symbolism. Vibrant and culturally rich visuals.'
   },
   
@@ -587,6 +592,17 @@ function CharactersStep() {
   const getStyleNameFromCode = (styleCode) => {
     if (!styleCode) return 'No Style Selected';
     
+    // First check if we have a stored style name from ArtStyleStep
+    try {
+      const storedStyleName = localStorage.getItem('lastSelectedStyleName');
+      if (storedStyleName && styleCode.startsWith('Style-21a75e9c-3ff8-4728-99c4-94d448a489a1')) {
+        // This is the Beatrix Potter/Warm Fables style code
+        return storedStyleName;
+      }
+    } catch (e) {
+      console.error("Failed to check localStorage:", e);
+    }
+    
     // If it's a full style code (starts with "Style-")
     if (styleCode.startsWith('Style-')) {
       // First check if we have a direct mapping in our styleIdToCodeMap
@@ -594,14 +610,26 @@ function CharactersStep() {
         styleIdToCodeMap[key] === styleCode
       );
       
-      if (styleKey && styleDescriptions[styleKey]) {
-        return styleDescriptions[styleKey].title || styleKey.split('_')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
+      if (styleKey) {
+        // Special case for the renamed style
+        if (styleKey === 'beatrix_potter' || styleKey === 'warm_fables') {
+          return 'Warm Fables';
+        }
+        
+        if (styleDescriptions[styleKey]) {
+          return styleDescriptions[styleKey].title || styleKey.split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        }
       }
       
       // If no mapping found, return a generic label
       return 'API Style';
+    }
+    
+    // Special case for the renamed style ID
+    if (styleCode === 'beatrix_potter' || styleCode === 'warm_fables') {
+      return 'Warm Fables';
     }
     
     // It's not a full code, so it might be one of our short keys
@@ -804,11 +832,15 @@ function CharactersStep() {
       ) : (
         <>
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">Add Your Story Characters</h2>
+            <h1 className="text-2xl font-bold">Add Your Story Characters</h1>
             <p className="text-gray-600">Create the characters that will appear in your story</p>
+            
             {artStyleCode && (
               <div className="mt-2 inline-block px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm">
-                Using art style: {getStyleNameFromCode(artStyleCode)}
+                Using art style: {
+                  artStyleCode === 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1' ? 'Warm Fables' :
+                  getStyleNameFromCode(artStyleCode)
+                }
               </div>
             )}
           </div>
