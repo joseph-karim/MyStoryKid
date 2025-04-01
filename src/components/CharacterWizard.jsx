@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import { createImg2ImgTask, getTaskProgress, checkApiAccess } from '../services/dzineService';
+import { createImg2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
 
 // Style ID to code map - using REAL Dzine API style codes from the API response
 const styleIdToCodeMap = {
@@ -190,10 +190,19 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [step, forcedArtStyle]);
   
   const handleChange = (field, value) => {
-    setCharacterData({
-      ...characterData,
-      [field]: value,
-    });
+    // If changing art style, reset the style preview
+    if (field === 'artStyle' && value !== characterData.artStyle) {
+      setCharacterData({
+        ...characterData,
+        [field]: value,
+        stylePreview: null // Reset the preview when style changes
+      });
+    } else {
+      setCharacterData({
+        ...characterData,
+        [field]: value,
+      });
+    }
   };
   
   const handlePhotoSelect = (photoUrl) => {
@@ -252,12 +261,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const handleBack = () => {
-    // If we're on the art style step and forcedArtStyle is provided, go back to photo step
-    if (step === 3 && forcedArtStyle) {
+    // Don't allow going back from the first step
+    if (step <= 1) return;
+    
+    // If we're on the preview step and user goes back
+    if (step === 4) {
+      // If forcedArtStyle is provided, go back to photo upload (skip style selection)
+      if (forcedArtStyle) {
+        setStep(2);
+      } else {
+        // Otherwise go back to style selection
+        setStep(3);
+      }
+      return;
+    }
+    
+    // If we're in the art style step, go back to photo upload
+    if (step === 3) {
       setStep(2);
       return;
     }
     
+    // Regular step regression
     setStep(Math.max(1, step - 1));
   };
   
@@ -273,13 +298,22 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       return;
     }
     
-    // If moving from step 3 to step 4, generate the preview
+    // If moving from step 3 (art style) to step 4 (preview), generate the preview
     if (step === 3 || (step === 2 && forcedArtStyle)) {
       const nextStep = forcedArtStyle ? 4 : step + 1;
+      
+      // Reset the preview if we're changing styles
+      if (step === 3 && characterData.stylePreview) {
+        setCharacterData(prev => ({
+          ...prev,
+          stylePreview: null
+        }));
+      }
+      
       setStep(nextStep);
       
       // If moving to preview step, generate the character preview
-      if (nextStep === 4 && !characterData.stylePreview) {
+      if (nextStep === 4 && (!characterData.stylePreview || !isGenerating)) {
         generateCharacterPreview();
       }
       return;
@@ -567,48 +601,90 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (characterData.age) prompt += `, ${characterData.age} years old`;
       if (characterData.gender) prompt += `, ${characterData.gender}`;
       
-      // Try to get actual API styles first
+      // REVISED STYLE CODE SELECTION - prioritize getting styles from API
       let styleCode = "";
       
       try {
-        // If styleIdToUse looks like a valid Dzine API style code (contains UUID-like string)
-        if (styleIdToUse && (styleIdToUse.includes('-') && styleIdToUse.length > 10)) {
-          // It might be a direct style code from the API, use it as is
-          styleCode = styleIdToUse;
-          console.log("Using direct style code from API:", styleCode);
-        } else {
-          // Fall back to a safe style - we'll use whatever we can get from the API
-          // This might fail, we'll handle the error and use a fallback
-          console.log("Attempting to fetch style list from API...");
-          const stylesData = await getDzineStyles();
+        // First try to get fresh style list from the API
+        console.log("Fetching current available styles from API...");
+        const stylesData = await getDzineStyles();
+        
+        if (stylesData?.list?.length > 0) {
+          console.log(`Got ${stylesData.list.length} styles from the API`);
           
-          if (stylesData?.list?.length > 0) {
-            // Find a default style - prefer "cartoon" style or similar
-            const defaultStyle = stylesData.list.find(s => 
-              s.name.toLowerCase().includes('cartoon') || 
-              s.name.toLowerCase().includes('2d') ||
-              s.name.toLowerCase().includes('basic')
-            );
-            
-            if (defaultStyle) {
-              styleCode = defaultStyle.style_code;
-              console.log("Using API style:", defaultStyle.name, styleCode);
+          // If styleIdToUse is already a full style code, verify it exists in the API list
+          if (styleIdToUse && styleIdToUse.startsWith('Style-')) {
+            const styleExists = stylesData.list.some(s => s.style_code === styleIdToUse);
+            if (styleExists) {
+              styleCode = styleIdToUse;
+              console.log("Direct style code verified in API list:", styleCode);
             } else {
-              // Just use the first available style
-              styleCode = stylesData.list[0].style_code;
-              console.log("Using first available API style:", stylesData.list[0].name, styleCode);
+              console.log("Style code not found in API list, will select an alternative");
             }
-          } else {
-            // If no API styles available, use our best guess
-            styleCode = styleIdToCodeMap[styleIdToUse] || SAFE_STYLE_CODE;
-            console.log("Using mapped style code:", styleCode);
           }
+          
+          // If we don't have a valid style code yet, try matching by name/category
+          if (!styleCode) {
+            let matchedStyle = null;
+            
+            // Try different matching strategies
+            if (styleIdToUse === 'cartoon') {
+              matchedStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes('cartoon') || 
+                s.name.toLowerCase().includes('anime') ||
+                s.name.toLowerCase().includes('2d')
+              );
+            } else if (styleIdToUse === 'watercolor') {
+              matchedStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes('watercolor') || 
+                s.name.toLowerCase().includes('water color') ||
+                s.name.toLowerCase().includes('whimsy')
+              );
+            } else if (styleIdToUse === 'golden_books') {
+              matchedStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes('golden') || 
+                s.name.toLowerCase().includes('classic') ||
+                s.name.toLowerCase().includes('illustration') ||
+                s.name.toLowerCase().includes('storybook')
+              );
+            } else if (styleIdToUse === 'beatrix_potter') {
+              matchedStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes('fable') || 
+                s.name.toLowerCase().includes('classic') ||
+                s.name.toLowerCase().includes('warm')
+              );
+            } else {
+              // Generic search based on style ID
+              const searchTerm = styleIdToUse.replace(/_/g, ' ');
+              matchedStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes(searchTerm)
+              );
+            }
+            
+            if (matchedStyle) {
+              styleCode = matchedStyle.style_code;
+              console.log(`Found matching style "${matchedStyle.name}" with code:`, styleCode);
+            } else {
+              // Default to a safe style - always use 3D cartoon by default
+              const defaultStyle = stylesData.list.find(s => 
+                s.name.toLowerCase().includes('3d') || 
+                s.name.toLowerCase().includes('cartoon') ||
+                s.name.toLowerCase().includes('pixie')
+              ) || stylesData.list[0];
+              
+              styleCode = defaultStyle.style_code;
+              console.log(`Using default style "${defaultStyle.name}" with code:`, styleCode);
+            }
+          }
+        } else {
+          throw new Error('No styles available from the API');
         }
       } catch (styleError) {
         console.error("Error getting styles from API:", styleError);
-        // Just use our style mapping
-        styleCode = styleIdToCodeMap[styleIdToUse] || SAFE_STYLE_CODE;
-        console.log("Using fallback mapped style code:", styleCode);
+        
+        // Fall back to "No Style" if all else fails - this is the last resort
+        styleCode = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+        console.log("Using fallback 'No Style' code:", styleCode);
       }
       
       // Add additional description to enhance the prompt
@@ -641,6 +717,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         ...payload,
         images: [{ base64_data: "data:image/*;base64,..." }]
       });
+      console.log("Style selected:", styleCode);
       
       try {
         // Call the Dzine API to create an img2img task
@@ -992,16 +1069,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {/* Navigation */}
       <div className="flex justify-between">
         <button
-          onClick={() => {
-            if (step > 1) {
-              // Special case for forced art style - skip style selection step
-              if (forcedArtStyle && step === 4) {
-                setStep(2); // Go back to photo upload
-              } else {
-                setStep(step - 1);
-              }
-            }
-          }}
+          onClick={handleBack}
           className={`px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 ${
             step === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
           }`}
