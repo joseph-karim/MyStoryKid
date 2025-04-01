@@ -190,8 +190,8 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
       { 
         id: 'cute_exaggeration',
         apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
-        title: 'Cute Exaggeration',
-        description: 'Playful, exaggerated features with bright colors and clean lines'
+        title: 'Cartoon Anime',
+        description: 'Bright, colorful anime-inspired style with clean lines.'
       },
       { 
         id: 'glossy_elegance',

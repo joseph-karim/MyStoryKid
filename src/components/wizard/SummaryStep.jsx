@@ -65,7 +65,7 @@ function SummaryStep() {
         'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': 'Ancient China',
         
         // Modern & Colorful styles
-        'Style-b484beb8-143e-4776-9a87-355e0456cfa3': 'Cute Exaggeration',
+        'Style-b484beb8-143e-4776-9a87-355e0456cfa3': 'Cartoon Anime',
         'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': 'Glossy Elegance',
         'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': 'Starlit Fantasy',
         'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': 'Fantasy Hero',
