@@ -634,36 +634,36 @@ export const styleCodeMap = {
   // Whimsical & Soft styles
   watercolor_whimsy: "Style-7f3f81ad-1c2d-4a15-944d-66bf549641de",
   whimsical_coloring: "Style-206baa8c-5bbe-4299-b984-9243d05dce9b",
-  enchanted_character: "Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7",
-  minimalist_cutesy: "Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895",
-  soft_radiance: "Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2",
+  enchanted_character: "Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e",
+  minimalist_cutesy: "Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7",
+  soft_radiance: "Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41",
 
   // Classic & Timeless styles
-  cheerful_storybook: "Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf",
-  pleasantly_warm: "Style-21a75e9c-3ff8-4728-99c4-94d448a489a1",
-  storytime_whimsy: "Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a",
+  cheerful_storybook: "Style-a941aee9-7964-4445-b76a-7c3ff912f926",
+  pleasantly_warm: "Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c",
+  storytime_whimsy: "Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5",
   line_and_wash: "Style-bc151055-fd2b-4650-acd7-52e8e8818eb9",
-  golden_hour: "Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512",
-  ancient_china: "Style-5aebfb83-ff06-48ae-a8df-1560a32eded1",
+  golden_hour: "Style-90a8d36d-9a67-4619-a995-4036fda8474d",
+  ancient_china: "Style-666d19e1-2e33-4e64-95e8-588c8e20b02c",
 
   // Modern & Colorful styles
-  cute_exaggeration: "Style-b484beb8-143e-4776-9a87-355e0456cfa3",
-  glossy_elegance: "Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280",
+  cute_exaggeration: "Style-11393e3a-ec40-402f-82cf-57c19bea8d12",
+  glossy_elegance: "Style-04d8cbcf-6496-4d68-997e-516303502507",
   starlit_fantasy: "Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0",
-  fantasy_hero: "Style-7a23990c-65f7-4300-b2a1-f5a97263e66f",
-  joyful_clay: "Style-455da805-d716-4bc8-a960-4ac505aa7875",
-  ceramic_lifelike: "Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833",
-  yarn_realism: "Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a",
-  mystical_sovereignty: "Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6",
+  fantasy_hero: "Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf",
+  joyful_clay: "Style-7729f1f6-578b-4035-8514-edaa0637dd6d",
+  ceramic_lifelike: "Style-3f616e35-6423-4c53-aa27-be28860a4a7d",
+  yarn_realism: "Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb",
+  mystical_sovereignty: "Style-04329eae-1af6-4f06-a97c-f4b2b48516de",
 
   // Realistic & Artistic styles
-  enchanted_elegance: "Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347",
-  warm_portrait: "Style-12325d6b-f0c2-4570-a8a3-1c15124ea703",
-  magic_portrait: "Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c",
-  vivid_tableaux: "Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a",
+  enchanted_elegance: "Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25",
+  warm_portrait: "Style-4ab783c7-2955-4092-878e-965162241bf7",
+  magic_portrait: "Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4",
+  vivid_tableaux: "Style-589373f8-1283-4570-baf9-61d02eb13391",
   luminous_narratives: "Style-ce7b4279-1398-4964-882c-19911e12aef3",
-  dreamlike_portraiture: "Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d",
-  aquarelle_life: "Style-4cc27c59-8418-41c3-acc1-6fef4518b14b"
+  dreamlike_portraiture: "Style-c0bde410-94f1-42d1-a1f6-d968aabbf689",
+  aquarelle_life: "Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333"
 };
 
 // Function to get the proper style code when creating a task
