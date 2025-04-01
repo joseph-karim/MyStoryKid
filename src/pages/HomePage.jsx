@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import toddlerImage from '../assets/toddler.jpg';
 import toddlerTransformed from '../assets/toddler transformed.png';
 import spaceAdventureCover from '../assets/space-adventure-cover.png';
-import magicalForestCover from '../assets/magical-forest-cover.png';
-import underseaQuestCover from '../assets/undersea-quest-cover.png';
+import magicalForestCover from '../assets/dzine-styles/Enchanted-Character.png';
+import underseaQuestCover from '../assets/dzine-styles/Watercolor-Whimsy.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
@@ -168,9 +168,9 @@ function HomePage() {
                   />
                   <div className="absolute bottom-1 left-0 right-0 text-center text-xs text-white font-semibold bg-black/40 rounded-b py-0.5">
                     Storybook Hero
-                  </div>
+                      </div>
                 </div>
-                                
+                
                 {/* Background blur effect */}
                 <div 
                   className="absolute -z-10 w-full h-full bg-gradient-to-r from-purple-200 to-pink-200 rounded-full blur-3xl"
@@ -314,12 +314,12 @@ function HomePage() {
 
       {/* Privacy Section */}
       <section className="py-16 bg-blue-50">
-         <div className="container mx-auto px-4">
-             <motion.div
-               initial={{ opacity: 0, y: 20 }}
-               whileInView={{ opacity: 1, y: 0 }}
-               transition={{ duration: 0.7 }}
-               viewport={{ once: true, margin: "-100px" }}
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            viewport={{ once: true, margin: "-100px" }}
                className="flex flex-col md:flex-row items-center bg-white rounded-lg shadow-lg p-8 border border-blue-200"
              >
                   <div className="text-blue-500 text-6xl mr-8 mb-4 md:mb-0">🔒</div>
@@ -333,9 +333,9 @@ function HomePage() {
                          <li>Your original photo is <strong className='font-semibold'>never stored</strong> on our servers after the style is confirmed.</li>
                          <li>We are committed to protecting your data and ensuring a safe experience.</li>
                      </ul>
-                  </div>
-             </motion.div>
-         </div>
+              </div>
+            </motion.div>
+        </div>
       </section>
 
       {/* Sample Books */}
@@ -354,47 +354,47 @@ function HomePage() {
           
           <div className="grid md:grid-cols-3 gap-8">
              {/* Sample Book 1 */}
-             <motion.div
+            <motion.div
                initial={{ opacity: 0, scale: 0.9 }}
                whileInView={{ opacity: 1, scale: 1 }}
                transition={{ duration: 0.5, delay: 0.1 }}
-               viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, margin: "-100px" }}
                 className="bg-white rounded-lg shadow-lg overflow-hidden group"
              >
                <img src={spaceAdventureCover} alt="Space Adventure Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
                <div className="p-4">
                  <h3 className="font-bold text-lg mb-2">Leo's Cosmic Quest</h3>
                  <p className="text-sm text-gray-600">A journey through the stars to find a friendly alien.</p>
-               </div>
-             </motion.div>
+              </div>
+            </motion.div>
              {/* Sample Book 2 */}
-             <motion.div
+            <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, margin: "-100px" }}
                 className="bg-white rounded-lg shadow-lg overflow-hidden group"
              >
                <img src={magicalForestCover} alt="Magical Forest Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
                <div className="p-4">
                  <h3 className="font-bold text-lg mb-2">Maya and the Whispering Woods</h3>
                  <p className="text-sm text-gray-600">Discovering secrets with magical forest creatures.</p>
-               </div>
-             </motion.div>
+              </div>
+            </motion.div>
              {/* Sample Book 3 */}
-             <motion.div
+            <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, margin: "-100px" }}
                 className="bg-white rounded-lg shadow-lg overflow-hidden group"
              >
                <img src={underseaQuestCover} alt="Undersea Quest Book Cover" className="w-full h-64 object-cover transform transition duration-500 group-hover:scale-110"/>
                <div className="p-4">
                  <h3 className="font-bold text-lg mb-2">Sammy's Submarine Surprise</h3>
                  <p className="text-sm text-gray-600">Exploring coral reefs and meeting colorful fish.</p>
-               </div>
-             </motion.div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -413,25 +413,25 @@ function HomePage() {
           </motion.h2>
           <motion.p 
             className="text-xl mb-8 max-w-xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
             viewport={{ once: true, margin: "-50px" }}
           >
             Start crafting a unique storybook today and give a gift that lasts a lifetime.
-          </motion.p>
-          <motion.div
+              </motion.p>
+              <motion.div
              initial={{ opacity: 0, scale: 0.8 }}
              whileInView={{ opacity: 1, scale: 1 }}
              transition={{ duration: 0.5, delay: 0.2 }}
              viewport={{ once: true, margin: "-50px" }}
-          >
-             <Link 
-              to="/create" 
+              >
+                <Link 
+                  to="/create" 
               className="px-10 py-4 bg-white text-purple-600 font-bold rounded-full shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-            >
+                >
               Start Creating Now
-            </Link>
+                </Link>
           </motion.div>
         </div>
       </section>

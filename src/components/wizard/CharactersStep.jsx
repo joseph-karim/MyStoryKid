@@ -746,7 +746,11 @@ function CharactersStep() {
             {character.photoUrl && isBase64DataUrl(character.photoUrl) && status.status !== 'confirmed' && (
               <div className='flex-1 text-center'>
                 <p className="text-xs text-gray-500 mb-1">Original Photo</p>
-                <img src={character.photoUrl} alt={`${character.name} - Original`} className="w-32 h-32 object-cover rounded mx-auto border" />
+                <img 
+                  src={character.photoUrl} 
+                  alt={`${character.name} - Original`} 
+                  className="w-28 h-28 object-cover rounded mx-auto border high-quality"
+                />
               </div>
             )}
 
@@ -754,14 +758,14 @@ function CharactersStep() {
             {status.status === 'previewReady' && status.previewUrl && (
                <div className='flex-1 text-center'>
                  <p className="text-xs text-green-600 mb-1 font-medium">Generated Preview</p>
-                 <img src={status.previewUrl} alt={`${character.name} - Style Preview`} className="w-32 h-32 object-cover rounded mx-auto border border-green-300" />
+                 <img src={status.previewUrl} alt={`${character.name} - Style Preview`} className="w-28 h-28 object-cover rounded mx-auto border border-green-300 high-quality character-preview-image" />
                </div>
             )}
             {/* Confirmed Preview (shown when original is discarded) */}
              {status.status === 'confirmed' && character.stylePreview && (
                <div className='flex-1 text-center'>
                   <p className="text-xs text-green-600 mb-1 font-medium">Confirmed Style</p>
-                  <img src={character.stylePreview} alt={`${character.name} - Confirmed Style`} className="w-32 h-32 object-cover rounded mx-auto border border-green-300" />
+                  <img src={character.stylePreview} alt={`${character.name} - Confirmed Style`} className="w-28 h-28 object-cover rounded mx-auto border border-green-300 high-quality character-preview-image" />
                </div>
              )}
              {/* Placeholder if no photo was uploaded */}

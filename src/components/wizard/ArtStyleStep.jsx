@@ -613,13 +613,13 @@ function ArtStyleStep() {
   // Render the art styles in a grid layout by category
   const renderArtStyles = () => {
     return (
-      <div className="space-y-8 mt-6 mb-4">
+      <div className="space-y-4 mt-2 mb-4">
         {ART_STYLE_CATEGORIES_STRUCTURE.map((category, idx) => (
-          <div key={idx} className="space-y-3">
+          <div key={idx} className="space-y-1">
             <h3 className="text-lg font-medium mb-1">{category.category}</h3>
-            <p className="text-sm text-gray-600 mb-3">{category.description}</p>
+            <p className="text-sm text-gray-600 mb-1">{category.description}</p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {category.styleIds.map((style) => {
                 // We'll use the direct API code from our curated list
                 const styleCode = style.apiCode;
@@ -629,17 +629,17 @@ function ArtStyleStep() {
                   <div 
                     key={style.id}
                     onClick={() => handleStyleSelect(styleCode)}
-                    className={`border rounded-lg overflow-hidden transition-all hover:shadow-md ${
+                    className={`border rounded-md overflow-hidden transition-all shadow-sm hover:shadow-md ${
                       artStyleCode === styleCode 
                         ? 'ring-2 ring-blue-500 border-blue-500' 
                         : 'border-gray-200 hover:border-blue-300'
                     } cursor-pointer`}
                   >
-                    <div className={`aspect-[4/3] bg-gray-100 relative`}>
+                    <div className={`aspect-[4/3] bg-gray-100 relative card-image-container`}>
                       <img 
                         src={styleImageMap[style.id] || '/placeholder-style.jpg'} 
                         alt={style.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain sm:object-cover max-h-48 art-style-image high-quality"
                         onError={(e) => {
                           // Fallback if image isn't available
                           e.target.src = 'https://placehold.co/400x300/e5e7eb/a3a3a3?text=Style+Image';
@@ -653,9 +653,9 @@ function ArtStyleStep() {
                         </div>
                       )}
                     </div>
-                    <div className="p-3">
-                      <h4 className="font-medium mb-1">{style.title}</h4>
-                      <p className="text-sm text-gray-600">{style.description}</p>
+                    <div className="p-2">
+                      <h4 className="font-medium mb-1 text-sm style-card-title">{style.title}</h4>
+                      <p className="text-xs text-gray-600 style-card-description">{style.description}</p>
                     </div>
                   </div>
                 );
@@ -665,21 +665,21 @@ function ArtStyleStep() {
         ))}
         
         {/* Custom style option */}
-        <div className="mt-6">
+        <div className="mt-4">
           <div 
             onClick={() => handleStyleSelect(noStyleCode)}
-            className={`border rounded-lg overflow-hidden transition-all p-4 ${
+            className={`border rounded-md overflow-hidden transition-all p-3 ${
               artStyleCode === noStyleCode 
                 ? 'ring-2 ring-blue-500 border-blue-500' 
                 : 'border-gray-200 hover:border-blue-300'
             } cursor-pointer`}
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full"></div>
-              <h4 className="font-medium">Custom Style Description</h4>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-5 h-5 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full"></div>
+              <h4 className="font-medium text-sm">Custom Style Description</h4>
             </div>
             
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-xs text-gray-600 mb-2">
               Describe a specific art style not listed above, or combine elements from multiple styles.
             </p>
             
@@ -687,10 +687,10 @@ function ArtStyleStep() {
               value={customStyleDescription}
               onChange={(e) => setCustomStyleDescription(e.target.value)}
               placeholder="Example: Vibrant watercolor with fine ink details, dreamy pastel colors, and a slight glow effect around characters."
-              className={`w-full border rounded-md p-3 text-sm ${
+              className={`w-full border rounded-md p-2 text-xs ${
                 artStyleCode === noStyleCode ? 'border-blue-400' : 'border-gray-300'
               }`}
-              rows={3}
+              rows={2}
               disabled={artStyleCode !== noStyleCode}
             />
           </div>

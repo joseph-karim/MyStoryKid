@@ -634,7 +634,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                       <img 
                         src={photoPreview} 
                         alt="Character preview" 
-                className="w-32 h-32 object-cover mx-auto rounded-lg"
+                        className="w-28 h-28 object-cover mx-auto rounded-lg"
                       />
                       <button 
                 onClick={() => {
@@ -740,7 +740,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                           <img 
                             src={style.imageUrl} 
                           alt={style.name}
-                            className="w-full h-32 object-cover rounded"
+                            className="w-full h-28 object-contain rounded hover:shadow-lg transition-shadow"
                           />
                           <div>
                             <div className="font-medium flex justify-between">
@@ -788,7 +788,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                           <img 
                             src={style.cover_url} 
                             alt={style.name}
-                            className="w-full h-20 object-cover rounded"
+                            className="w-full h-16 object-contain rounded"
                           />
                         )}
                         <div className="font-medium truncate">{style.name}</div>
@@ -1240,7 +1240,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <img
                   src={imageUrl}
                   alt="Character Preview"
-                  className="max-w-full max-h-[85vh] object-contain"
+                  className="max-w-full max-h-[85vh] object-contain shadow-xl"
                 />
             </div>
             </motion.div>

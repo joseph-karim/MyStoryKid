@@ -1,0 +1,88 @@
+/**
+ * Image optimization styles
+ * These styles help improve the rendering of images throughout the application
+ */
+
+/* Enhanced image quality for art style cards */
+.art-style-image {
+  image-rendering: auto;
+  object-fit: contain;
+  background-color: #fff;
+  padding: 2px;
+  transition: transform 0.2s ease-in-out;
+  max-height: 100px;
+  position: relative;
+  z-index: 1;
+}
+
+.art-style-image:hover {
+  transform: scale(1.05);
+}
+
+/* Enhanced image quality for character previews */
+.character-preview-image {
+  object-fit: contain;
+  max-height: 180px;
+  width: auto;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+/* High quality image scaling for all app images */
+img.high-quality {
+  image-rendering: -webkit-optimize-contrast; /* For webkit browsers */
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor; /* For IE */
+  backface-visibility: hidden; /* Prevents blurry images during transforms */
+}
+
+/* Prevent image stretching in cards */
+.card-image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #fff;
+  height: 100px;
+  position: relative;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Image overlay to hide dark spots */
+.card-image-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 4px solid #fff;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.card-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Text wrapping for style cards */
+.style-card-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.style-card-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 2.5em;
+} 
