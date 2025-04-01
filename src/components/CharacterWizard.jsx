@@ -640,46 +640,116 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the appearance step to use curated categories with API style mapping
   const renderAppearanceStep = () => {
-    // TODO: This function MUST be updated to render styles from the `apiStyles` state
-    // It should display apiStyle.name and set characterData.artStyle = apiStyle.style_code on selection
-    // Keeping placeholder return for now
     return (
-      <div>
-        <h2>Select Appearance / Art Style</h2>
-        <p>TODO: Update this section to list styles from the API (`apiStyles` state).</p>
-        {/* Example of how to potentially map over apiStyles:
-        {isLoadingStyles ? (
-          <p>Loading styles...</p>
-        ) : (
-          apiStyles.map(style => (
-            <button 
-              key={style.style_code}
-              onClick={() => handleChange('artStyle', style.style_code)} // Set the actual style_code
-              className={characterData.artStyle === style.style_code ? 'selected' : ''}
-            >
-              <img src={style.cover_url} alt={style.name} width="100" />
-              {style.name}
-            </button>
-          ))
-        )}
-        */}
-        <input 
-          type="text"
-          placeholder="Or enter custom API Style Code (Optional)"
-          value={characterData.artStyle} // Reflects the selected API style code
-          onChange={(e) => handleChange('artStyle', e.target.value)}
-        />
-        {/* Rest of appearance step UI... Photo Upload etc. */}
-        <div>
+      <div className="space-y-6 animate-fadeIn">
+        <h2 className="text-2xl font-bold mb-2">Select Art Style</h2>
+        <p className="text-sm text-gray-600 mb-4">Choose an art style for your character.</p>
+
+        {/* Style Selection Grid - Powered by API */}
+        <div className="mb-6">
+          {isLoadingStyles ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+              <p className="ml-3 text-gray-600">Loading styles...</p>
+            </div>
+          ) : apiStyles.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {apiStyles.map(style => (
+                <div
+                  key={style.style_code}
+                  onClick={() => handleChange('artStyle', style.style_code)} // Set the actual style_code
+                  className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ease-in-out transform hover:scale-105 
+                    ${characterData.artStyle === style.style_code 
+                      ? 'border-blue-500 ring-2 ring-blue-500 shadow-md' 
+                      : 'border-gray-200 hover:border-blue-400 hover:shadow'}`}
+                  title={style.name} // Tooltip for style name
+                >
+                  <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={style.cover_url} 
+                      alt={style.name} 
+                      className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90" 
+                      loading="lazy" // Lazy load images
+                      onError={(e) => { e.target.style.display = 'none'; /* Hide if image fails */ }}
+                    />
+                  </div>
+                  <p className="text-xs text-center p-2 truncate bg-white text-gray-700">
+                    {style.name}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-red-600">Could not load art styles. Please try refreshing.</p>
+          )}
+        </div>
+        
+        {/* Photo Upload Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <h3 className="text-lg font-semibold mb-3">Upload Photo</h3>
+          <p className="text-sm text-gray-600 mb-4">Upload a clear photo of the character's face. This will be used with the selected art style.</p>
+          <div 
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+          >
+            {photoPreview ? (
+              <div className="flex flex-col items-center">
+                <img 
+                  src={photoPreview} 
+                  alt="Character Preview" 
+                  className="w-32 h-32 object-cover rounded-md mb-2 shadow"
+                />
+                <button 
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering the outer div's click
+                    setPhotoPreview(null);
+                    handleChange('photoUrl', null);
+                  }}
+                >
+                  Remove Photo
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center text-gray-500">
+                <svg className="mx-auto h-12 w-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 10v6m3-3h-6"></path>
+                </svg>
+                <span className="mt-2 block text-sm font-medium">
+                  Click to upload a photo
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</span>
+              </div>
+            )}
+          </div>
           <input 
             type="file" 
-            accept="image/*" 
+            accept="image/png, image/jpeg, image/webp" // Be specific
             ref={fileInputRef} 
             onChange={handlePhotoUpload} 
             style={{ display: 'none' }} 
           />
-          <button onClick={() => fileInputRef.current.click()}>Upload Photo</button>
-          {photoPreview && <img src={photoPreview} alt="Preview" style={{ width: '100px', height: '100px' }} />}          
+        </div>
+
+        {/* Navigation Buttons - Copied from renderDetailsStep structure */}
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            // Enable Next only if an art style AND a photo are selected
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${(!characterData.artStyle || !characterData.photoUrl) 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-blue-700'}`}
+            disabled={!characterData.artStyle || !characterData.photoUrl}
+          >
+            Next
+          </button>
         </div>
       </div>
     );
