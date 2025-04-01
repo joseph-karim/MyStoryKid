@@ -191,7 +191,7 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
   }
 ];
 
-// Detailed descriptions for each art style
+// Detailed descriptions for each art style - for legacy compatibility only
 const styleDescriptions = {
   watercolor: { 
     title: 'Watercolor',
@@ -267,28 +267,6 @@ const styleDescriptions = {
   }
 };
 
-// A fallback map for API-to-internal style mapping
-const styleIdToCodeMap = {
-  watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823', // Classic Watercolor
-  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',     // Whimsical Coloring
-  pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
-  soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
-  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',  // Sketch Elegance
-  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512', // Golden Era Illustrations
-  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Warm Fables
-  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',    // Cartoon Anime
-  flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280', // Simple Icon
-  storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
-  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',   // Paper Cutout
-  oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a', // Vibrant Impasto
-  stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Structured Serenity
-  digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
-  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',     // Everything Kawaii
-  scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60', // Scandi
-  african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // Bold Collage
-  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2'      // No Style v2 (default)
-};
-
 function ArtStyleStep() {
   const { wizardState, updateStoryData, setWizardStep } = useBookStore();
   
@@ -304,7 +282,7 @@ function ArtStyleStep() {
   
   // UPDATED: Create a hard-coded style map for internal testing
   // This guarantees styles will display even if API is unavailable
-  const FALLBACK_STYLE_MAP = { ...styleIdToCodeMap };
+  const FALLBACK_STYLE_MAP = { ...styleDescriptions };
 
   // Find best matching API style for a given internal style ID
   const findBestMatchingStyle = (styleItem, apiStyles) => {
@@ -402,6 +380,23 @@ function ArtStyleStep() {
     setCustomStyleDescription(wizardState.storyData.customStyleDescription || '');
   }, [wizardState.storyData]);
   
+  // Special handling for Warm Fables style
+  useEffect(() => {
+    try {
+      // Make sure Warm Fables is always available by ID in localStorage
+      const existingNames = localStorage.getItem('styleCodeNames') || '{}';
+      const namesMap = JSON.parse(existingNames);
+      
+      // Hard-code the Warm Fables style
+      const warmFablesStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+      namesMap[warmFablesStyleCode] = 'Warm Fables';
+      
+      localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
+    } catch (e) {
+      console.error("Failed to ensure Warm Fables style is in localStorage:", e);
+    }
+  }, []);
+  
   const handleBack = () => {
     setWizardStep(1); // Go back to the Introduction step
   };
@@ -437,13 +432,7 @@ function ArtStyleStep() {
   // Instead of actually checking the availability from the API (which might fail),
   // we'll now determine availability based on if the style exists in our predefined list
   const isStyleAvailable = (styleId) => {
-    // If we have actual API data, check if this style exists there
-    if (dzineStyles.length > 0) {
-      const styleCode = styleIdToCodeMap[styleId];
-      return !!styleCode && styleCode !== 'unavailable';
-    }
-    
-    // Always show styles as available for better UX when API isn't working
+    // Just return true since we're using our curated list from ART_STYLE_CATEGORIES_STRUCTURE
     return true;
   };
 
@@ -461,16 +450,22 @@ function ArtStyleStep() {
       const style = category.styleIds.find(s => s.apiCode === styleCode);
       if (style) {
         styleName = style.title;
+        
+        // Store this style name in localStorage
+        try {
+          // First for this specific style
+          localStorage.setItem('lastSelectedStyleName', styleName);
+          
+          // Then store all style names for lookup by other components
+          const existingNames = localStorage.getItem('styleCodeNames') || '{}';
+          const namesMap = JSON.parse(existingNames);
+          namesMap[styleCode] = styleName;
+          localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
+        } catch (e) {
+          console.error("Failed to save style name to localStorage:", e);
+        }
+        
         break;
-      }
-    }
-    
-    // If we found a style name, save it in localStorage for easier reference
-    if (styleName) {
-      try {
-        localStorage.setItem('lastSelectedStyleName', styleName);
-      } catch (e) {
-        console.error("Failed to save style name to localStorage:", e);
       }
     }
     

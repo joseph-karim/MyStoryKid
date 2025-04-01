@@ -23,29 +23,6 @@ import kawaiiImg from '../../assets/japanese-kawaii.png';
 import scandinavianImg from '../../assets/scandinavian-folk-art.png';
 import africanPatternImg from '../../assets/african-patterned-illustration.png';
 
-// A fallback map for API-to-internal style mapping
-const styleIdToCodeMap = {
-  watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823',    // Classic Watercolor
-  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',        // Pastel style
-  pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',   // Line & Wash
-  soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',  // Watercolor Whimsy
-  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',    // Sketch Elegance
-  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',  // Golden books style
-  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Potter-like (old name)
-  warm_fables: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',   // New name for Beatrix Potter style
-  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',       // Cartoon
-  flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',   // Flat vector
-  storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook
-  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',      // Papercut style
-  oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',    // Oil pastel
-  stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Stylized realism
-  digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Digital painterly
-  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',        // Kawaii style
-  scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60',  // Scandinavian
-  african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // African patterns
-  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2'         // No Style v2
-};
-
 // Character roles
 const CHARACTER_ROLES = [
   { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
@@ -55,7 +32,7 @@ const CHARACTER_ROLES = [
   { id: 'magical', label: 'Magical Friend', description: 'A fairy, creature or magical being' },
 ];
 
-// Map our internal IDs to the preview images
+// Map our internal IDs to the preview images for legacy support
 const styleImageMap = {
   watercolor: watercolorImg,
   pastel: pastelImg,
@@ -74,6 +51,68 @@ const styleImageMap = {
   kawaii: kawaiiImg,
   scandinavian: scandinavianImg,
   african_pattern: africanPatternImg,
+};
+
+// Find any SAFE_STYLE_CODE constant and update it with the correct style code
+const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+
+// Helper function to get a safe style code for API use
+const getSafeStyleCode = (styleCode) => {
+  // If it's a valid style code, use it directly
+  if (styleCode && styleCode.startsWith('Style-')) {
+    return styleCode;
+  }
+  
+  // Fallback to the safe style code
+  return SAFE_STYLE_CODE;
+};
+
+// Special mapping for the warm fables style code
+const WARM_FABLES_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+
+// --- NEW: Helper function to get style name from API style code ---
+const getStyleNameFromCode = (styleCode) => {
+  if (!styleCode) return 'No Style Selected';
+  
+  // First check if we have a stored style name from ArtStyleStep
+  try {
+    const storedStyleName = localStorage.getItem('lastSelectedStyleName');
+    if (storedStyleName && styleCode === WARM_FABLES_STYLE_CODE) {
+      // This is the Warm Fables style code
+      return storedStyleName;
+    }
+  } catch (e) {
+    console.error("Failed to check localStorage:", e);
+  }
+  
+  // Special case for the Warm Fables style
+  if (styleCode === WARM_FABLES_STYLE_CODE) {
+    return 'Warm Fables';
+  }
+  
+  // For style codes, look up the name in the imported styles or return a default
+  if (styleCode.startsWith('Style-')) {
+    // Try to get the style name from localStorage as a fallback
+    try {
+      const allStyleNames = localStorage.getItem('styleCodeNames');
+      if (allStyleNames) {
+        const namesMap = JSON.parse(allStyleNames);
+        if (namesMap[styleCode]) {
+          return namesMap[styleCode];
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check localStorage for style names:", e);
+    }
+    
+    // If nothing works, return a generic label
+    return 'API Style';
+  }
+  
+  // It's not a style code, so it might be some legacy ID - just format it
+  return styleCode.split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 // Enhance ART_STYLE_CATEGORIES_STRUCTURE with rich descriptions
@@ -371,20 +410,6 @@ function CharactersStep() {
     setWizardStep(3);
   };
 
-  // Find any SAFE_STYLE_CODE constant and update it with the correct style code
-  const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
-
-  // Update any getSafeStyleCode function if it exists
-  const getSafeStyleCode = (styleId) => {
-    // Check if the styleId is already a full style code (starts with "Style-")
-    if (styleId && styleId.startsWith('Style-')) {
-      return styleId;
-    }
-    
-    // Simple fallback
-    return SAFE_STYLE_CODE;
-  };
-  
   // New function to generate previews for all characters at once
   const handleGenerateAllPreviews = () => {
     if (!artStyleCode) {
@@ -417,9 +442,14 @@ function CharactersStep() {
       return;
     }
     
-    // Get the selected style ID and description from the store
-    const selectedStyleId = Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode) || 'cartoon';
-    const selectedStyleDescription = styleDescriptions[selectedStyleId]?.description || '';
+    // Use the art style code directly
+    if (!artStyleCode) {
+      setError('No art style is selected. Please go back and select an art style.');
+      return;
+    }
+    
+    // Get a display name for the style
+    const styleName = getStyleNameFromCode(artStyleCode);
     
     updateGenStatus(characterId, { status: 'generating', taskId: null, previewUrl: null, errorMessage: null });
 
@@ -432,22 +462,12 @@ function CharactersStep() {
         // Use custom style description directly
         prompt += `, ${customStyleDescription}`;
       } else {
-        // Use our rich style descriptions instead of relying solely on the style code
-        prompt += `, ${selectedStyleDescription}`;
+        // Add style description
+        prompt += `, in the ${styleName} style`;
         
-        // Add specific style cues based on the category
-        if (selectedStyleId === 'watercolor') {
-          prompt += `, soft watercolor painting with gentle brush strokes and dreamy quality`;
-        } else if (selectedStyleId === 'pastel') {
-          prompt += `, soft pastel illustration with gentle colors and soothing tones`;
-        } else if (selectedStyleId === 'cartoon') {
-          prompt += `, vibrant cartoon style with clean lines and expressive features`;
-        } else if (selectedStyleId === 'pencil_ink') {
-          prompt += `, classic pencil and ink drawing with fine linework`;
-        } else if (selectedStyleId === 'beatrix_potter') {
-          prompt += `, classic storybook illustration in the style of Beatrix Potter`;
-        } else if (selectedStyleId === 'digital_painterly') {
-          prompt += `, digital painting with rich textures and detailed lighting`;
+        // Special handling for known styles to enhance prompt
+        if (artStyleCode === WARM_FABLES_STYLE_CODE) {
+          prompt += `, charming detailed watercolor illustrations in the style of classic children's tales`;
         }
         
         // If there's additional custom description, append it for further refinement
@@ -455,6 +475,9 @@ function CharactersStep() {
           prompt += `, ${customStyleDescription}`;
         }
       }
+      
+      // Add instructions for a clean background
+      prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
       
       // Always use a safe style code that we know works with the API
       const safeStyleCode = getSafeStyleCode(artStyleCode);
@@ -588,56 +611,6 @@ function CharactersStep() {
        }
    };
 
-  // --- NEW: Helper function to map full style codes to friendly names ---
-  const getStyleNameFromCode = (styleCode) => {
-    if (!styleCode) return 'No Style Selected';
-    
-    // First check if we have a stored style name from ArtStyleStep
-    try {
-      const storedStyleName = localStorage.getItem('lastSelectedStyleName');
-      if (storedStyleName && styleCode.startsWith('Style-21a75e9c-3ff8-4728-99c4-94d448a489a1')) {
-        // This is the Beatrix Potter/Warm Fables style code
-        return storedStyleName;
-      }
-    } catch (e) {
-      console.error("Failed to check localStorage:", e);
-    }
-    
-    // If it's a full style code (starts with "Style-")
-    if (styleCode.startsWith('Style-')) {
-      // First check if we have a direct mapping in our styleIdToCodeMap
-      const styleKey = Object.keys(styleIdToCodeMap).find(key => 
-        styleIdToCodeMap[key] === styleCode
-      );
-      
-      if (styleKey) {
-        // Special case for the renamed style
-        if (styleKey === 'beatrix_potter' || styleKey === 'warm_fables') {
-          return 'Warm Fables';
-        }
-        
-        if (styleDescriptions[styleKey]) {
-          return styleDescriptions[styleKey].title || styleKey.split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-        }
-      }
-      
-      // If no mapping found, return a generic label
-      return 'API Style';
-    }
-    
-    // Special case for the renamed style ID
-    if (styleCode === 'beatrix_potter' || styleCode === 'warm_fables') {
-      return 'Warm Fables';
-    }
-    
-    // It's not a full code, so it might be one of our short keys
-    return styleCode.split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
   // --- NEW: Confirm Character Style ---
   const handleConfirmStyle = (characterId) => {
     const status = generationStatus[characterId];
@@ -647,16 +620,15 @@ function CharactersStep() {
       console.log('Confirming style for character:', character.name);
       console.log('Using art style code:', artStyleCode);
       
-      // Determine what to store as artStyle
-      let styleToStore = artStyleCode;
-      let styleName = getStyleNameFromCode(artStyleCode);
+      // Get the style name
+      const styleName = getStyleNameFromCode(artStyleCode);
       
-      console.log(`Storing style ${styleToStore} (${styleName}) for character ${character.name}`);
+      console.log(`Storing style ${artStyleCode} (${styleName}) for character ${character.name}`);
       
       // Update the character in the store with both style preview and art style code
       updateCharacter(characterId, { 
         stylePreview: status.previewUrl, // Save the generated preview
-        artStyle: styleToStore, // Save the selected art style code
+        artStyle: artStyleCode, // Save the selected art style code
         artStyleName: styleName, // Optional: save a friendly name too
         photoUrl: null // DISCARD the original photo for privacy
       }); 
@@ -668,7 +640,7 @@ function CharactersStep() {
             ? { 
                 ...char, 
                 stylePreview: status.previewUrl,
-                artStyle: styleToStore,
+                artStyle: artStyleCode,
                 artStyleName: styleName,
                 photoUrl: null 
               } 
@@ -837,10 +809,7 @@ function CharactersStep() {
             
             {artStyleCode && (
               <div className="mt-2 inline-block px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm">
-                Using art style: {
-                  artStyleCode === 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1' ? 'Warm Fables' :
-                  getStyleNameFromCode(artStyleCode)
-                }
+                Using art style: {getStyleNameFromCode(artStyleCode)}
               </div>
             )}
           </div>

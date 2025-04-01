@@ -84,49 +84,21 @@ const CURATED_STYLES = [
   }
 ];
 
-// Map of style IDs to API style codes
-const styleIdToCodeMap = {
-  watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823', // Classic Watercolor
-  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b', // Whimsical Coloring
-  pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
-  soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
-  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0', // Sketch Elegance
-  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512', // Golden Era
-  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Old name - Warm Fables
-  warm_fables: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // New name - Warm Fables
-  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3', // Cartoon Anime
-  flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280', // Simple Icon
-  storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
-  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86', // Paper Cutout
-  oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a', // Vibrant Impasto
-  stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Structured Serenity
-  digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
-  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875', // Everything Kawaii
-  scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60', // Scandi
-  african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // Bold Collage
-  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2' // Default "No Style"
-};
+// Map of style IDs to API style codes - no longer needed, using direct API codes
+const WARM_FABLES_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
 
 // Fallback style code for when mapping fails - use "No Style v2" as fallback
 const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; 
 
 // Helper to get a safe style code for API use
-const getSafeStyleCode = (styleId) => {
-  // Check if the styleId is already a full style code (starts with "Style-")
-  if (styleId && styleId.startsWith('Style-')) {
-    return styleId;
+const getSafeStyleCode = (styleCode) => {
+  // If it's already a full style code, use it
+  if (styleCode && styleCode.startsWith('Style-')) {
+    return styleCode;
   }
   
-  // Get the style code from the map
-  const styleCode = styleIdToCodeMap[styleId];
-  
-  // If no valid style code is available, use the default "No Style"
-  if (!styleCode) {
-    console.log("Using default safe style code:", SAFE_STYLE_CODE);
-    return SAFE_STYLE_CODE;
-  }
-  
-  return styleCode;
+  // Fallback to the default "No Style" code
+  return SAFE_STYLE_CODE;
 };
 
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null }) {
@@ -401,16 +373,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       // Make sure we have the basic info needed for a character
       if (!characterData.name) {
         setError('Please provide a name for your character.');
-        return;
-      }
-      
+      return;
+    }
+    
       // Explicitly log current stylePreview for debugging
       console.log('Style preview before completion:', characterData.stylePreview);
       console.log('Art style before completion:', characterData.artStyle);
       
       // Create the final character object, ensuring we have the style preview
       const finalCharacter = {
-        ...characterData,
+      ...characterData,
         id: characterData.id || uuidv4(), // Ensure we have an ID
         // Set a default type if none is specified
         type: characterData.type || 'child',
@@ -1253,47 +1225,40 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     const getArtStyleDisplayName = () => {
       if (!characterData.artStyle) return 'No style selected';
       
+      // Special case for the Warm Fables style code
+      if (characterData.artStyle === WARM_FABLES_STYLE_CODE) {
+        return 'Warm Fables';
+      }
+      
       // If it's a full style code (starts with "Style-")
       if (characterData.artStyle.startsWith('Style-')) {
-        // First check if this style code has a mapping in our styleIdToCodeMap
-        const styleId = Object.keys(styleIdToCodeMap).find(key => 
-          styleIdToCodeMap[key] === characterData.artStyle
-        );
-        
-        // If we found a known style ID, use its title from the CURATED_STYLES
-        if (styleId) {
-          // Handle the beatrix_potter/warm_fables special case
-          if (styleId === 'beatrix_potter') {
-            return 'Warm Fables';
+        // Check if we have a stored name in localStorage
+        try {
+          const allStyleNames = localStorage.getItem('styleCodeNames');
+          if (allStyleNames) {
+            const namesMap = JSON.parse(allStyleNames);
+            if (namesMap[characterData.artStyle]) {
+              return namesMap[characterData.artStyle];
+            }
           }
           
-          // Try to find the style in CURATED_STYLES
-          for (const category of CURATED_STYLES) {
-            const style = category.styles.find(s => s.id === styleId);
-            if (style) return style.name;
+          // Also check the lastSelectedStyleName for Warm Fables style
+          const lastStyleName = localStorage.getItem('lastSelectedStyleName');
+          if (lastStyleName && characterData.artStyle === WARM_FABLES_STYLE_CODE) {
+            return lastStyleName;
           }
+        } catch (e) {
+          console.error("Failed to retrieve style name from localStorage:", e);
         }
         
-        // If not found in our curated styles, try the API data
+        // If we have a matching style in the API styles, use its name
         const matchingStyle = apiStyles.find(s => s.style_code === characterData.artStyle);
         if (matchingStyle) return matchingStyle.name;
         
         return 'API Style'; // Fallback name
       }
       
-      // If it's a short code (not starting with Style-), try to find a readable name
-      // Check if it's the special case
-      if (characterData.artStyle === 'beatrix_potter') {
-        return 'Warm Fables';
-      }
-      
-      // Try to find it in our curated styles
-      for (const category of CURATED_STYLES) {
-        const style = category.styles.find(s => s.id === characterData.artStyle);
-        if (style) return style.name;
-      }
-      
-      // Format the ID as a last resort
+      // Format the style ID as a last resort
       return characterData.artStyle
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -1378,7 +1343,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <p className="text-sm font-medium text-blue-600">
             Art Style: {getArtStyleDisplayName()}
           </p>
-        </div>
+            </div>
       </div>
     );
   };
