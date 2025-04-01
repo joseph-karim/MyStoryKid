@@ -534,18 +534,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please upload a photo for your character.');
         return;
       }
-    }
-    
-    // Art style selection validation (step 3)
-    if (step === 3 && !characterData.artStyle) {
-      setError('Please select an art style for your character.');
-      return;
-    }
-    
-    // If we're in step 3 (art style) and moving to step 4 (preview),
-    // we need to generate the preview
-    if (step === 3) {
-      const nextStep = 4; // Preview step
+      
+      // When moving from step 2 (appearance) to step 3 (preview),
+      // we need to generate the preview
+      const nextStep = 3; // Preview step
       
       // Unlock the next step if not already unlocked
       if (!unlockedSteps.includes(nextStep)) {
@@ -561,7 +553,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       return;
     }
     
-    if (step === 4) {
+    if (step === 3) {
       // This is the final step
       handleComplete();
       return;
@@ -720,8 +712,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 2:
         return "Photo/Description";
       case 3:
-        return "Select Art Style";
-      case 4:
         return "Confirm";
       default:
         return `Step ${stepNumber}`;
@@ -870,92 +860,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  // Step 3: Select Art Style
-  const renderArtStyleStep = () => {
-    return (
-      <div className="space-y-6 animate-fadeIn">
-        <h2 className="text-2xl font-bold mb-4">Select Art Style</h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2">
-          {Object.entries(styleImageMap).map(([styleId, imageUrl]) => {
-            // Convert from snake_case to Display Name
-            const displayName = styleId
-              .split('_')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-              
-            return (
-              <div 
-                key={styleId}
-                onClick={() => handleChange('artStyle', styleId)}
-                className={`border rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md ${
-                  characterData.artStyle === styleId 
-                    ? 'ring-2 ring-blue-500 border-blue-500 shadow-md' 
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="h-32 overflow-hidden bg-gray-50">
-                  <img 
-                    src={imageUrl} 
-                    alt={displayName}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="p-2 bg-white">
-                  <p className="text-sm font-medium text-center truncate">{displayName}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
-            onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-          >
-            Back
-          </button>
-          <button
-            onClick={handleNext}
-            className={`px-6 py-2 bg-blue-600 text-white rounded ${
-              !characterData.artStyle ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-            }`}
-            disabled={!characterData.artStyle}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
-  };
-  
   // Modified renderStep to avoid adding duplicate navigation buttons
   const renderStep = () => {
-    // If we have a forced art style, skip step 3 (art style selection)
-    if (forcedArtStyle && step === 3) {
-      console.log("Skipping style selection because forcedArtStyle is set:", forcedArtStyle);
-      // Jump directly to preview step (with a slight delay for smoothness)
-      setTimeout(() => {
-        generateCharacterPreview();
-      }, 100);
-      return (
-        <div className="text-center p-8">
-          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Applying the story's art style to your character...</p>
-        </div>
-      );
-    }
-    
     switch (step) {
       case 1:
         return renderDetailsStep();
       case 2:
         return renderAppearanceStep();
       case 3:
-        return renderArtStyleStep();
-      case 4:
-        return renderPreviewStep();
+        return renderPreviewStep(); // Preview is now step 3 (no art style step)
       default:
         return null;
     }
@@ -965,6 +878,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
     setError('');
+    
+    // Create fallback image right away to ensure we have something to show
+    const bgColor = stringToColor(characterData.name + (forcedArtStyle || 'default'));
+    const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
     
     // Display a warning if API check failed
     if (apiStatus.checked && !apiStatus.working) {
@@ -983,7 +900,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
       
       // Ensure we have a valid art style - use API default style if none provided
-      let styleId = characterData.artStyle || forcedArtStyle;
+      // Priority: forcedArtStyle (from the story) > characterData.artStyle > default style
+      let styleId = forcedArtStyle || characterData.artStyle;
       if (!styleId) {
         // If no style is set, use a safe default
         styleId = 'starlit_fantasy'; // Default to a popular style
@@ -992,7 +910,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       // Convert from our style IDs to actual API style codes
       const styleCode = getStyleCode(styleId);
-      console.log(`STYLE DEBUG: Converting style ID "${styleId}" to API code "${styleCode}"`);
+      console.log(`STYLE DEBUG: Using style ID "${styleId}" (API code "${styleCode}") from ${forcedArtStyle ? 'story' : 'character selection'}`);
       
       // Handle text-to-image generation
       if (characterData.useTextToImage) {
@@ -1034,8 +952,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           name: characterData.name // Add name for better tracking
         };
         
-        console.log("PAYLOAD DEBUG:", JSON.stringify(txt2imgPayload));
-        
         try {
           // Create the text-to-image task
           const taskResult = await createTxt2ImgTask(txt2imgPayload);
@@ -1047,7 +963,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           console.log("Task created successfully with style:", styleCode);
           
           // Start polling for this task
-          startPollingTask(taskResult.task_id);
+          startPollingTask(taskResult.task_id, fallbackPreview);
         } catch (apiError) {
           console.error("API error in text-to-image:", apiError);
           
@@ -1061,18 +977,22 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               style_code: SAFE_STYLE_CODE // Use the safe default
             };
             
-            console.log("RETRY PAYLOAD:", JSON.stringify(retryPayload));
-            
-            // Retry with the default style code
-            const retryResult = await createTxt2ImgTask(retryPayload);
-            
-            if (!retryResult || !retryResult.task_id) {
-              throw new Error('Failed to start text-to-image generation with fallback style');
+            try {
+              // Retry with the default style code
+              const retryResult = await createTxt2ImgTask(retryPayload);
+              
+              if (!retryResult || !retryResult.task_id) {
+                throw new Error('Failed to start text-to-image generation with fallback style');
+              }
+              
+              startPollingTask(retryResult.task_id, fallbackPreview);
+            } catch (retryError) {
+              console.error("Even retry failed:", retryError);
+              useFallbackImage(fallbackPreview);
             }
-            
-            startPollingTask(retryResult.task_id);
           } else {
-            throw apiError; // Re-throw if it's not a style issue
+            console.error("Using fallback due to API error:", apiError);
+            useFallbackImage(fallbackPreview);
           }
         }
       }
@@ -1118,12 +1038,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           name: characterData.name // Add name for better tracking
         };
         
-        // Log the payload structure (without the full base64 data)
-        console.log('PAYLOAD DEBUG:', {
-          ...img2imgPayload,
-          images: [{ base64_data: "data:image/*;base64,..." }]
-        });
-        
         try {
           // Call the Dzine API to create an img2img task
           const result = await createImg2ImgTask(img2imgPayload);
@@ -1148,8 +1062,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           console.log("Task created successfully with style:", styleCode);
           
-          // Start polling for this task
-          startPollingTask(taskId);
+          // Start polling for this task with fallback
+          startPollingTask(taskId, fallbackPreview);
         } catch (apiError) {
           console.error("API error in image-to-image:", apiError);
           
@@ -1163,57 +1077,59 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               style_code: SAFE_STYLE_CODE // Use the safe default
             };
             
-            console.log("RETRY PAYLOAD:", JSON.stringify({
-              ...retryPayload,
-              images: [{ base64_data: "data:image/*;base64,..." }]
-            }));
-            
-            // Retry with the default style code
-            const retryResult = await createImg2ImgTask(retryPayload);
-            
-            if (!retryResult || !retryResult.task_id) {
-              throw new Error('Failed to create image-to-image task with fallback style');
+            try {
+              // Retry with the default style code
+              const retryResult = await createImg2ImgTask(retryPayload);
+              
+              if (!retryResult || !retryResult.task_id) {
+                throw new Error('Failed to create image-to-image task with fallback style');
+              }
+              
+              // Check for task_id
+              let retryTaskId = null;
+              if (retryResult.task_id) {
+                retryTaskId = retryResult.task_id;
+              } else if (retryResult.data && retryResult.data.task_id) {
+                retryTaskId = retryResult.data.task_id;
+              } else {
+                throw new Error('Invalid response from API with fallback style');
+              }
+              
+              startPollingTask(retryTaskId, fallbackPreview);
+            } catch (retryError) {
+              console.error("Even retry failed:", retryError);
+              useFallbackImage(fallbackPreview);
             }
-            
-            // Check for task_id
-            let retryTaskId = null;
-            if (retryResult.task_id) {
-              retryTaskId = retryResult.task_id;
-            } else if (retryResult.data && retryResult.data.task_id) {
-              retryTaskId = retryResult.data.task_id;
-            } else {
-              throw new Error('Invalid response from API with fallback style');
-            }
-            
-            startPollingTask(retryTaskId);
           } else {
-            throw apiError; // Re-throw if it's not a style issue
+            console.error("Using fallback due to API error:", apiError);
+            useFallbackImage(fallbackPreview);
           }
         }
       }
     } catch (error) {
       console.error('Error creating Dzine task:', error);
-      
-      // Always fall back to placeholder on error
-      const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
-      const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-      
-      setCharacterData(prev => ({
-        ...prev,
-        stylePreview: fallbackPreview
-      }));
-      
-      setError(`Failed to generate character: ${error.message}. Using placeholder instead.`);
-      setIsGenerating(false);
+      useFallbackImage(fallbackPreview);
     }
   };
   
+  // Helper function to use fallback image
+  const useFallbackImage = (fallbackImage) => {
+    setCharacterData(prev => ({
+      ...prev,
+      stylePreview: fallbackImage
+    }));
+    
+    setProgressMessage('Using placeholder image due to API issues');
+    setIsGenerating(false);
+  };
+  
   // Start polling for task progress
-  const startPollingTask = (taskId) => {
+  const startPollingTask = (taskId, fallbackImage) => {
     if (!taskId) {
       console.error('Invalid task ID for polling');
       setProgressMessage('Error: Invalid task ID');
       setIsGenerating(false);
+      useFallbackImage(fallbackImage);
       return;
     }
     
@@ -1223,15 +1139,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Generate a unique ID for this polling session to avoid conflicts
     const pollingId = `poll_${Date.now()}`;
     let pollCount = 0;
-    const maxPolls = 30; // Maximum number of polling attempts (30 seconds)
+    const maxPolls = 20; // Reduced maximum polling attempts to 20 seconds
     
-    // Count consecutive errors
+    // Count consecutive errors and 404s
     let consecutiveErrors = 0;
-    const maxConsecutiveErrors = 5; // Max consecutive errors before fallback
-    
-    // Create initial fallback image URL just in case
-    const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
-    const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+    let consecutive404s = 0;
+    const maxConsecutiveErrors = 3; // Reduced for faster fallback
+    const maxConsecutive404s = 5; // Tolerance for 404s before using fallback
     
     // Store the interval in a ref so we can clear it from anywhere
     pollingSessionRef.current[pollingId] = setInterval(async () => {
@@ -1247,20 +1161,34 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         delete pollingSessionRef.current[pollingId];
         
         // Use fallback on timeout
-        setCharacterData(prev => ({
-          ...prev,
-          stylePreview: fallbackPreview
-        }));
+        useFallbackImage(fallbackImage);
         return;
       }
       
       try {
         // Fetch the task progress with a light wrapper for safety
         let progressData;
+        let is404 = false;
+        
         try {
           progressData = await getTaskProgress(taskId);
-          // Reset consecutive errors counter on success
-          consecutiveErrors = 0;
+          
+          // Check if it's a pending status due to 404
+          if (progressData.status === 'pending' && progressData.message === 'Task is still initializing') {
+            consecutive404s++;
+            is404 = true;
+            console.warn(`Got 404 (${consecutive404s}/${maxConsecutive404s}) for task ${taskId}`);
+            
+            if (consecutive404s >= maxConsecutive404s) {
+              // Too many 404s usually means the task ID is invalid or the API is having issues
+              console.error(`Too many 404s (${consecutive404s}), task may not exist`);
+              throw new Error('Task ID not found after multiple attempts');
+            }
+          } else {
+            // Reset counters on success
+            consecutiveErrors = 0;
+            consecutive404s = 0;
+          }
         } catch (fetchError) {
           consecutiveErrors++;
           console.warn(`Fetch error (${consecutiveErrors}/${maxConsecutiveErrors}):`, fetchError);
@@ -1273,10 +1201,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             setIsGenerating(false);
             delete pollingSessionRef.current[pollingId];
             
-            setCharacterData(prev => ({
-              ...prev,
-              stylePreview: fallbackPreview
-            }));
+            useFallbackImage(fallbackImage);
             return;
           }
           
@@ -1311,7 +1236,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           setProgressMessage(`Generating image... (${pollCount}s)`);
           
           // If we're taking too long, show a hopeful message
-          if (pollCount > 15) {
+          if (pollCount > 10) {
             setProgressMessage(`Almost there... (${pollCount}s)`);
           }
         } else if (status === 'success' || status === 'completed') {
@@ -1418,10 +1343,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           delete pollingSessionRef.current[pollingId];
           
           // Use the fallback
-          setCharacterData(prev => ({
-            ...prev,
-            stylePreview: fallbackPreview
-          }));
+          useFallbackImage(fallbackImage);
         } else if (status === 'failed' || status === 'error') {
           // Task failed
           console.error('Task failed:', progressData);
@@ -1431,10 +1353,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           delete pollingSessionRef.current[pollingId];
           
           // Use the fallback
-          setCharacterData(prev => ({
-            ...prev,
-            stylePreview: fallbackPreview
-          }));
+          useFallbackImage(fallbackImage);
           return;
         }
       } catch (error) {
@@ -1449,10 +1368,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           delete pollingSessionRef.current[pollingId];
           
           // Use the fallback
-          setCharacterData(prev => ({
-            ...prev,
-            stylePreview: fallbackPreview
-          }));
+          useFallbackImage(fallbackImage);
         }
       }
     }, 1000); // Poll every second
@@ -1715,21 +1631,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     : 'text-gray-400 cursor-not-allowed border-transparent'
               }`}
               disabled={!unlockedSteps.includes(3)}
-            >
-              Select Art Style
-            </button>
-          </li>
-          <li className="mr-2">
-            <button
-              onClick={() => handleTabClick(4)}
-              className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                step === 4 
-                  ? 'text-blue-600 border-blue-600' 
-                  : unlockedSteps.includes(4)
-                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                    : 'text-gray-400 cursor-not-allowed border-transparent'
-              }`}
-              disabled={!unlockedSteps.includes(4)}
             >
               Confirm
             </button>

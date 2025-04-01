@@ -320,14 +320,18 @@ export const getTaskProgress = async (taskId) => {
     
     // Use a more robust approach with direct fetch and timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // Reduced timeout (4 seconds)
     
     try {
+      // Add specific user agent and headers to avoid issues
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': API_KEY
+          'Authorization': API_KEY,
+          'User-Agent': 'MyStoryKid/1.0',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         signal: controller.signal
       });
@@ -338,7 +342,11 @@ export const getTaskProgress = async (taskId) => {
       // or that the task doesn't exist yet, return a "pending" status
       if (response.status === 404) {
         console.warn(`Task ${taskId} returned 404 - returning pending status`);
-        return { status: 'pending', message: 'Task is still initializing' };
+        // Return an object that looks like a pending status
+        return { 
+          status: 'pending', 
+          message: 'Task is still initializing'
+        };
       }
       
       // For other non-200 responses, try to get error information
@@ -354,33 +362,75 @@ export const getTaskProgress = async (taskId) => {
       
       // Process successful response
       const responseText = await response.text();
-      let data;
+      if (!responseText || responseText.trim() === '') {
+        console.warn(`Task ${taskId} returned empty response`);
+        return { status: 'pending', message: 'Empty response from server' };
+      }
       
+      let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error(`Task ${taskId} JSON parse error:`, parseError);
+        console.error(`Raw response: "${responseText}"`);
         return { status: 'error', message: 'Invalid response format' };
       }
       
       // Handle different response structures
       if (data) {
-        // Debug log
-        console.log(`Task ${taskId} progress data:`, JSON.stringify(data));
+        // Debug log - truncate if too large to avoid console spam
+        const logData = JSON.stringify(data).length > 1000 
+          ? JSON.stringify(data).substring(0, 1000) + '...' 
+          : JSON.stringify(data);
+        console.log(`Task ${taskId} progress data:`, logData);
+        
+        // Check for common error codes in the data
+        if (data.code && data.code !== 200) {
+          console.error(`Task ${taskId} returned error code:`, data.code, data.msg || 'Unknown error');
+          return { 
+            status: 'error',
+            error: `API error code ${data.code}`,
+            message: data.msg || 'Unknown error'
+          };
+        }
         
         // Check if the response is in the data field
         if (data.data) {
+          // Normalize response structure
+          if (data.data.status) {
+            return {
+              ...data.data,
+              status: normalizeStatus(data.data.status)
+            };
+          }
           return data.data;
         }
         
         // Check if the response is directly in the root
         if (data.status !== undefined) {
-          return data;
+          return {
+            ...data,
+            status: normalizeStatus(data.status)
+          };
         }
         
         // If response doesn't match either pattern, log it and return raw data
         console.warn('Unexpected response structure:', data);
-        return data;
+        // Try to extract status from various possible fields
+        const extractedStatus = extractStatus(data);
+        if (extractedStatus) {
+          return {
+            status: normalizeStatus(extractedStatus),
+            raw_data: data
+          };
+        }
+        
+        // Default to returning the data with 'pending' status
+        return { 
+          status: 'pending',
+          message: 'Unrecognized response format',
+          raw_data: data
+        };
       } else {
         console.error('Empty response from task progress check');
         return { status: 'pending', message: 'Empty response' };
@@ -404,6 +454,71 @@ export const getTaskProgress = async (taskId) => {
     return { status: 'pending', message: 'Error occurred, retrying' };
   }
 };
+
+// Helper function to normalize status values from different API responses
+function normalizeStatus(status) {
+  if (!status) return 'pending';
+  
+  const statusStr = String(status).toLowerCase();
+  
+  // Map various status values to standard ones
+  if (['success', 'completed', 'done', 'finish', 'finished'].includes(statusStr)) {
+    return 'success';
+  }
+  
+  if (['running', 'processing', 'in_progress', 'pending', 'waiting', 'queued'].includes(statusStr)) {
+    return 'running';
+  }
+  
+  if (['failed', 'error', 'failure', 'exception'].includes(statusStr)) {
+    return 'failed';
+  }
+  
+  // Default to original status if not recognized
+  return statusStr;
+}
+
+// Helper function to extract status from various response formats
+function extractStatus(data) {
+  // Try common paths where status might be found
+  const possiblePaths = [
+    'status', 'state', 'task_status', 'taskStatus',
+    'result.status', 'data.status', 'task.status',
+    'info.status', 'response.status'
+  ];
+  
+  for (const path of possiblePaths) {
+    // Navigate through the object using the path
+    const parts = path.split('.');
+    let value = data;
+    let found = true;
+    
+    for (const part of parts) {
+      if (value && typeof value === 'object' && part in value) {
+        value = value[part];
+      } else {
+        found = false;
+        break;
+      }
+    }
+    
+    if (found && value) {
+      return value;
+    }
+  }
+  
+  // Check if any property contains status-like keywords
+  for (const key in data) {
+    if (typeof data[key] === 'string') {
+      const val = data[key].toLowerCase();
+      if (val.includes('success') || val.includes('complete')) return 'success';
+      if (val.includes('fail') || val.includes('error')) return 'failed';
+      if (val.includes('run') || val.includes('process')) return 'running';
+    }
+  }
+  
+  return null;
+}
 
 // Check API access - to diagnose issues with API connectivity
 export const checkApiAccess = async () => {
