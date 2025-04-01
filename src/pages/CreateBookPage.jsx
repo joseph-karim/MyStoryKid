@@ -35,55 +35,72 @@ function CreateBookPage() {
     }
   }, [wizardState.step, unlockedSteps]);
   
-  // Define wizard steps
+  // Define wizard steps (Updated 6-Step Flow)
   const steps = [
     { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
-    { id: 3, name: 'Characters' },
-    { id: 4, name: 'Story Details' },
-    { id: 5, name: 'Summary' }
+    { id: 3, name: 'Main Character' },
+    { id: 4, name: 'Other Characters' },
+    { id: 5, name: 'Story Details' },
+    { id: 6, name: 'Summary' }
   ];
   
   // Handle tab click to navigate between steps
   const handleTabClick = (stepId) => {
-    // Only allow navigation to unlocked steps
     if (unlockedSteps.includes(stepId)) {
       setWizardStep(stepId);
     }
   };
   
-  // Render the current wizard step
+  // Render the current wizard step (Updated 6-Step Flow)
   const renderStep = () => {
-    switch (wizardState.step) {
+    console.log(`[Render] CreateBookPage - Rendering step: ${wizardState.currentStep}`); 
+    switch (wizardState.currentStep) {
       case 1:
         return <CategoryStep />;
       case 2:
         return <ArtStyleStep />;
       case 3:
-        return <CharacterWizard />;
+        // Render CharacterWizard for the main character
+        return (
+          <CharacterWizard 
+            key="main-char-wizard"
+            initialRole="main" 
+            forcedArtStyle={wizardState.storyData.artStyleCode}
+            onComplete={(character) => {
+              if (character) {
+                // Update store with main character and move to next step
+                updateStoryData({ bookCharacters: [character] }); 
+                setWizardStep(4); // Go to Other Characters step
+              } else {
+                // Handle cancellation: Go back to Art Style
+                setWizardStep(2); 
+              }
+            }}
+          />
+        );
       case 4:
-        return <StoryDetailsStep />;
+        // Render CharactersStep to manage additional characters
+        return <CharactersStep />;
       case 5:
+        return <StoryDetailsStep />;
+      case 6:
         return <SummaryStep />;
       default:
-        console.warn(`Unknown wizard step: ${wizardState.step}, returning to step 1.`);
+        console.warn(`Unknown wizard step: ${wizardState.currentStep}, returning to step 1.`);
+        // Reset to step 1 if state is invalid
+        setWizardStep(1);
         return <CategoryStep />;
     }
   };
   
   // Calculate current step number for display
-  const displayStepNumber = wizardState.step;
-  const totalDisplaySteps = 5;
+  const displayStepNumber = wizardState.currentStep;
+  const totalDisplaySteps = steps.length;
   
   const getStepName = (step) => {
-     switch (step) {
-         case 1: return 'Category & Scene';
-         case 2: return 'Art Style';
-         case 3: return 'Characters';
-         case 4: return 'Story Details';
-         case 5: return 'Summary';
-         default: return '';
-     }
+     // Find step name from the steps array
+     return steps.find(s => s.id === step)?.name || '';
   };
   
   return (
@@ -104,7 +121,7 @@ function CreateBookPage() {
               <button
                 onClick={() => handleTabClick(step.id)}
                 className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                  wizardState.step === step.id 
+                  wizardState.currentStep === step.id 
                     ? 'text-blue-600 border-blue-600' 
                     : unlockedSteps.includes(step.id)
                       ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
@@ -119,14 +136,14 @@ function CreateBookPage() {
         </ul>
       </div>
       
-      {/* Progress Bar - Updated for 4 steps */}
+      {/* Progress Bar - Updated for new total steps */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
             Step {displayStepNumber} of {totalDisplaySteps}
           </span>
           <span className="text-sm font-medium">
-            {getStepName(wizardState.step)}
+            {getStepName(wizardState.currentStep)}
           </span>
         </div>
         <div className="w-full bg-gray-200 h-2 rounded-full">
