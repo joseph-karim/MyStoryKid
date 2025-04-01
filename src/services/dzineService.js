@@ -6,50 +6,87 @@ export const fetchDzine = async (endpoint, options = {}) => {
   try {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    // Make sure headers are included and API key is set
-    const defaultHeaders = {
-      'Content-Type': 'application/json',
-      'Authorization': API_KEY
-    };
-    
-    console.log(`Calling Dzine API: ${url}`);
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...defaultHeaders,
-        ...options.headers
-      }
-    });
-    
-    if (!response.ok) {
-      // Try to get error info from response
-      try {
-        const errorText = await response.text();
+    // Try with direct key first
+    try {
+      const apiKey = getFormattedApiKey();
+      const defaultHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': apiKey
+      };
+      
+      console.log(`Calling Dzine API: ${url}`);
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...defaultHeaders,
+          ...options.headers
+        }
+      });
+      
+      if (!response.ok) {
+        // Try to get error info from response
         try {
-          const errorData = JSON.parse(errorText);
-          console.error('Dzine API error response:', errorData);
-          throw new Error(`API error (Code: ${errorData.code || response.status}): ${errorData.msg || response.statusText}`);
-        } catch (parseError) {
-          // If we can't parse the error as JSON
-          console.error('Error response (not JSON):', errorText);
+          const errorText = await response.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            console.error('Dzine API error response:', errorData);
+            throw new Error(`API error (Code: ${errorData.code || response.status}): ${errorData.msg || response.statusText}`);
+          } catch (parseError) {
+            // If we can't parse the error as JSON
+            console.error('Error response (not JSON):', errorText);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+        } catch (e) {
+          // If we can't read the error as text
           throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
-      } catch (e) {
-        // If we can't read the error as text
+      }
+      
+      // Read and parse response text manually to catch JSON errors
+      const responseText = await response.text();
+      
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError);
+        console.error('Response text:', responseText.slice(0, 500) + '...');
+        throw new Error(`Failed to parse API response: ${parseError.message}`);
+      }
+    } catch (firstAttempt) {
+      // If failed, try with Bearer prefix
+      console.warn('First attempt failed, trying with Bearer prefix:', firstAttempt.message);
+      
+      const bearerKey = `Bearer ${API_KEY}`;
+      const bearerHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': bearerKey
+      };
+      
+      console.log(`Retrying with Bearer prefix: ${url}`);
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...bearerHeaders,
+          ...options.headers
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error with Bearer prefix:', response.status, errorText);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
-    }
-    
-    // Read and parse response text manually to catch JSON errors
-    const responseText = await response.text();
-    
-    try {
-      return JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse JSON response:', parseError);
-      console.error('Response text:', responseText.slice(0, 500) + '...');
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
+      
+      const responseText = await response.text();
+      
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response (Bearer attempt):', parseError);
+        throw new Error(`Failed to parse API response: ${parseError.message}`);
+      }
     }
   } catch (error) {
     console.error('Error in fetchDzine:', error);
@@ -266,6 +303,73 @@ export const getTaskProgress = async (taskId) => {
   }
   
   throw new Error(`Failed to get task progress after ${maxRetries} retries`);
+};
+
+// Check API access - to diagnose issues with API connectivity
+export const checkApiAccess = async () => {
+  try {
+    console.log('Performing Dzine API connectivity check...');
+    console.log('API key exists:', !!API_KEY);
+    console.log('API key length:', API_KEY ? API_KEY.length : 0);
+    
+    // Test with a simple endpoint
+    try {
+      const response = await fetch(`${API_BASE_URL}/style/list?page_no=0&page_size=1`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': API_KEY
+        }
+      });
+      
+      console.log('API connectivity test - status code:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('API connectivity successful:', data.code, data.msg);
+        return {
+          success: true,
+          message: 'API connection successful',
+          status: response.status
+        };
+      } else {
+        const text = await response.text();
+        console.error('API connectivity failed:', response.status, text);
+        return {
+          success: false,
+          message: `API returned error: ${response.status}`,
+          status: response.status,
+          details: text
+        };
+      }
+    } catch (error) {
+      console.error('API connectivity error:', error);
+      return {
+        success: false,
+        message: `API connection error: ${error.message}`,
+        error
+      };
+    }
+  } catch (error) {
+    console.error('Error in API check:', error);
+    return {
+      success: false,
+      message: `API check error: ${error.message}`,
+      error
+    };
+  }
+};
+
+// Helper function to determine if we need to prefix the API key
+// Some APIs require "Bearer " prefix, others don't
+export const getFormattedApiKey = () => {
+  if (!API_KEY) return '';
+  
+  // If already has a prefix, use as is
+  if (API_KEY.startsWith('Bearer ')) return API_KEY;
+  
+  // Otherwise, try both formats
+  return API_KEY;
 };
 
 // --- Potentially add other functions like face detect/swap later if needed --- 

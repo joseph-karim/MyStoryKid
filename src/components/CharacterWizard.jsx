@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import { createImg2ImgTask, getTaskProgress } from '../services/dzineService';
+import { createImg2ImgTask, getTaskProgress, checkApiAccess } from '../services/dzineService';
 
 // Style ID to code map - using REAL Dzine API style codes from the API response
 const styleIdToCodeMap = {
@@ -57,6 +57,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressMessage, setProgressMessage] = useState('');
+  const [apiStatus, setApiStatus] = useState({ checked: false, working: false, message: '' });
   const fileInputRef = useRef(null);
   
   // Character data
@@ -73,6 +74,37 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     stylePreview: null,
     description: '',
   });
+  
+  // Run API diagnostic check on mount
+  useEffect(() => {
+    const checkApi = async () => {
+      try {
+        console.log('Checking Dzine API connectivity...');
+        const status = await checkApiAccess();
+        console.log('API check result:', status);
+        
+        setApiStatus({
+          checked: true,
+          working: status.success,
+          message: status.message,
+          details: status.details || ''
+        });
+        
+        if (!status.success) {
+          console.warn('Dzine API check failed:', status.message);
+        }
+      } catch (error) {
+        console.error('Error checking API:', error);
+        setApiStatus({
+          checked: true,
+          working: false,
+          message: `API check error: ${error.message}`
+        });
+      }
+    };
+    
+    checkApi();
+  }, []);
   
   // Character types
   const CHARACTER_TYPES = [
@@ -400,6 +432,23 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       <div className="space-y-4 text-center">
         <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
         
+        {/* API Status Indicator for troubleshooting */}
+        {apiStatus.checked && (
+          <div className={`text-sm p-2 rounded-md mb-4 ${apiStatus.working ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <p className="font-semibold">API Status: {apiStatus.working ? 'Connected' : 'Connection Issue'}</p>
+            {!apiStatus.working && (
+              <p className="text-xs mt-1">{apiStatus.message}</p>
+            )}
+            {process.env.NODE_ENV === 'development' && (
+              <p className="text-xs mt-1 opacity-70">Developer info: {JSON.stringify({
+                checked: apiStatus.checked,
+                working: apiStatus.working,
+                details: apiStatus.details?.substring(0, 100)
+              })}</p>
+            )}
+          </div>
+        )}
+        
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
           {photoPreview && (
             <div className="text-center">
@@ -449,6 +498,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
     setError('');
+    
+    // Display a warning if API check failed
+    if (apiStatus.checked && !apiStatus.working) {
+      console.warn('Attempting to generate character with failing API:', apiStatus.message);
+      setProgressMessage(`Warning: API check failed (${apiStatus.message}). Trying anyway...`);
+    }
     
     // Always use the forced art style if provided, otherwise use the one from character data
     const styleIdToUse = forcedArtStyle || characterData.artStyle;
