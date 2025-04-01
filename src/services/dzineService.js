@@ -9,7 +9,7 @@ export const fetchDzine = async (endpoint, options = {}) => {
     // Make sure headers are included and API key is set
     const defaultHeaders = {
       'Content-Type': 'application/json',
-      'Authorization': process.env.VITE_DZINE_API_KEY || ''
+      'Authorization': API_KEY
     };
     
     console.log(`Calling Dzine API: ${url}`);
@@ -60,32 +60,11 @@ export const fetchDzine = async (endpoint, options = {}) => {
 // Fetch all styles from Dzine API
 export const getDzineStyles = async () => {
   try {
-    // Using the correct endpoint from the curl command
-    const response = await fetch('https://papi.dzine.ai/openapi/v1/style/list', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': process.env.VITE_DZINE_API_KEY || ''
-      }
+    console.log('Attempting to fetch Dzine styles...');
+    // Using fetchDzine function with the correct endpoint and query parameters
+    const data = await fetchDzine('/style/list?page_no=0&page_size=100', { 
+      method: 'GET'
     });
-
-    if (!response.ok) {
-      // Get the response as text first to see what we're dealing with
-      const errorText = await response.text();
-      console.error('Error fetching Dzine styles - raw response:', errorText);
-      throw new Error(`Failed to fetch styles: ${response.statusText}`);
-    }
-
-    // Try to parse the response as JSON safely
-    let data;
-    try {
-      const responseText = await response.text();
-      console.log('Raw API response (first 100 chars):', responseText.substring(0, 100) + '...');
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
-    }
     
     // Log available styles for debugging
     if (data && data.data && data.data.list) {
@@ -176,17 +155,39 @@ export const createImg2ImgTask = async (payload) => {
   try {
     console.log('Sending to Dzine API:', JSON.stringify(payload, null, 2));
     
-    const response = await fetchDzine('/img2img', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    
-    console.log('Full Dzine API response:', response);
-    
-    if (response && response.code === 200 && response.data) {
-      return response.data;
-    } else {
-      throw new Error('Invalid response structure from API');
+    // Try direct POST first - this matches the log of successful calls
+    try {
+      // Send the payload directly using the fetchDzine helper
+      const data = await fetchDzine('/img2img/create_task', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('Full Dzine API response:', data);
+      
+      if (data && data.code === 200 && data.data) {
+        return data.data;
+      } else {
+        console.error('Invalid API response structure:', data);
+        throw new Error('Invalid response structure from API');
+      }
+    } catch (firstAttemptError) {
+      console.warn('First attempt failed:', firstAttemptError);
+      
+      // Try with different path format as fallback
+      const data = await fetchDzine('/img2img', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('Fallback API response:', data);
+      
+      if (data && data.code === 200 && data.data) {
+        return data.data;
+      } else {
+        console.error('Invalid API response structure from fallback:', data);
+        throw new Error('Invalid response structure from API');
+      }
     }
   } catch (error) {
     console.error('Error in createImg2ImgTask:', error);
@@ -205,33 +206,48 @@ export const getTaskProgress = async (taskId) => {
   
   while (retries <= maxRetries) {
     try {
-      const response = await fetchDzine(`/task/query?task_id=${taskId}`, {
-        method: 'GET'
-      });
-      
-      if (response && response.code === 200 && response.data) {
-        return response.data;
-      } else {
-        console.warn(`Invalid response structure from API (attempt ${retries + 1}/${maxRetries + 1}):`, response);
+      // Try different endpoint formats
+      try {
+        // First try the primary endpoint format
+        const data = await fetchDzine(`/task/query?task_id=${taskId}`, {
+          method: 'GET'
+        });
         
-        if (retries === maxRetries) {
-          throw new Error('Invalid response structure from API after retries');
+        if (data && data.code === 200 && data.data) {
+          return data.data;
+        } else {
+          console.warn(`Invalid response structure from API (attempt ${retries + 1}/${maxRetries + 1}):`, data);
+          throw new Error('Invalid response structure');
+        }
+      } catch (firstEndpointError) {
+        console.warn('Primary task endpoint failed:', firstEndpointError);
+        
+        // Try alternate endpoint format
+        const data = await fetchDzine(`/img2img/query_task?task_id=${taskId}`, {
+          method: 'GET'
+        });
+        
+        if (data && data.code === 200 && data.data) {
+          return data.data;
+        } else {
+          console.warn(`Invalid response from alternate endpoint (attempt ${retries + 1}/${maxRetries + 1}):`, data);
+          throw new Error('Invalid response structure from alternate endpoint');
         }
       }
     } catch (error) {
-      console.error(`Error checking task progress (attempt ${retries + 1}/${maxRetries + 1}):`, error);
+      console.error(`Error in getTaskProgress (attempt ${retries + 1}/${maxRetries + 1}):`, error);
       
       if (retries === maxRetries) {
         throw error;
       }
+      
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
     }
-    
-    retries++;
-    // Add a small delay before retry
-    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
-  throw new Error('Failed to get task progress after retries');
+  throw new Error(`Failed to get task progress after ${maxRetries} retries`);
 };
 
 // --- Potentially add other functions like face detect/swap later if needed --- 
