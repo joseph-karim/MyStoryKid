@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
@@ -159,6 +159,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     stylePreview: null,
     description: '',
   }));
+  
+  // Add state for image preview modal
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
   
   // Fetch styles from API on mount
   useEffect(() => {
@@ -393,22 +397,44 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const handleComplete = () => {
-    if (!characterData.name) {
-      setError('Please enter a name for your character.');
-      return;
+    try {
+      // Make sure we have the basic info needed for a character
+      if (!characterData.name) {
+        setError('Please provide a name for your character.');
+        return;
+      }
+      
+      // Create the final character object, ensuring we have the style preview
+      const finalCharacter = {
+        ...characterData,
+        id: characterData.id || uuidv4(), // Ensure we have an ID
+        // Set a default type if none is specified
+        type: characterData.type || 'child',
+        // If we have a photoUrl but no stylePreview, copy photo to preview as fallback
+        stylePreview: characterData.stylePreview || characterData.photoUrl
+      };
+      
+      console.log('Completing character creation with data:', finalCharacter);
+      
+      // If this is a new character, add it
+      if (!currentCharacter) {
+        console.log('Adding new character');
+        addCharacter(finalCharacter);
+      } else {
+        // Otherwise update the existing character
+        console.log('Updating existing character:', currentCharacter.id);
+        updateCharacter(currentCharacter.id, finalCharacter);
+      }
+      
+      // If we have a callback, invoke it
+      if (onComplete) {
+        console.log('Invoking completion callback');
+        onComplete(finalCharacter);
+      }
+    } catch (err) {
+      console.error('Error completing character:', err);
+      setError('Failed to save character. Please try again.');
     }
-    
-    const newCharacter = {
-      ...characterData,
-      id: characterData.id || uuidv4(),
-      // Ensure we use the forced art style if provided
-      artStyle: forcedArtStyle || characterData.artStyle
-    };
-    
-    // Reset for next use
-    resetCharacterState();
-    
-    onComplete(newCharacter);
   };
   
   const handleCancel = () => {
@@ -500,6 +526,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       setCharacterData(prev => ({ ...prev, photoUrl: reader.result }));
     };
     reader.readAsDataURL(file);
+  };
+  
+  // Function to open the image preview modal
+  const openImagePreview = (imageUrl) => {
+    if (!imageUrl) return;
+    setPreviewImageUrl(imageUrl);
+    setShowImagePreview(true);
+  };
+  
+  // Function to close the image preview modal
+  const closeImagePreview = () => {
+    setShowImagePreview(false);
   };
   
   // Render functions for each step
@@ -758,73 +796,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  const renderPreviewStep = () => {
-    return (
-      <div className="space-y-4 text-center">
-        <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
-        
-        {/* API Status Indicator for troubleshooting */}
-        {apiStatus.checked && (
-          <div className={`text-sm p-2 rounded-md mb-4 ${apiStatus.working ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            <p className="font-semibold">API Status: {apiStatus.working ? 'Connected' : 'Connection Issue'}</p>
-            {!apiStatus.working && (
-              <p className="text-xs mt-1">{apiStatus.message}</p>
-            )}
-            {process.env.NODE_ENV === 'development' && (
-              <p className="text-xs mt-1 opacity-70">Developer info: {JSON.stringify({
-                checked: apiStatus.checked,
-                working: apiStatus.working,
-                details: apiStatus.details?.substring(0, 100)
-              })}</p>
-            )}
-          </div>
-        )}
-        
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-          {photoPreview && (
-          <div className="text-center">
-              <p className="text-sm text-gray-500 mb-2">Original Photo</p>
-              <img 
-                src={photoPreview} 
-                alt="Original" 
-                className="w-32 h-32 object-cover rounded-lg border border-gray-300" 
-                    />
-                  </div>
-                )}
-                
-          <div className="text-center">
-            <p className="text-sm text-gray-500 mb-2">Character Preview</p>
-            {isGenerating ? (
-              <div className="flex flex-col items-center justify-center p-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2"></div>
-                <span className="text-sm text-center">{progressMessage || 'Generating preview...'}</span>
-              </div>
-            ) : characterData.stylePreview ? (
-              <img 
-                src={characterData.stylePreview} 
-                alt="Style preview" 
-                className="w-32 h-32 object-cover rounded-lg border border-blue-300" 
-              />
-            ) : (
-              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg text-sm text-gray-400">
-                No preview yet
-              </div>
-            )}
-          </div>
-                </div>
-                
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium">{characterData.name}</h4>
-          <p className="text-sm text-gray-600">
-            {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || 'Character'} 
-            {characterData.age && `, ${characterData.age} years old`}
-            {characterData.gender && `, ${characterData.gender}`}
-          </p>
-              </div>
-            </div>
-    );
-  };
-  
   // Update the generateCharacterPreview function to use the selected API style directly
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
@@ -858,6 +829,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       let prompt = `${characterData.name}`;
       if (characterData.age) prompt += `, ${characterData.age} years old`;
       if (characterData.gender) prompt += `, ${characterData.gender}`;
+      
+      // Add instructions for a neutral background with no distractions
+      prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
       
       // Use the style code directly from character data (which is now set to the API style code)
       const styleCode = characterData.artStyle;
@@ -937,7 +911,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             }
             
             pollCount++;
-            setProgressMessage(`Checking progress... (attempt ${pollCount}/${maxPolls})`);
+            // Simplify progress message - just show "Generating..." instead of polling details
+            setProgressMessage(`Generating...`);
             
             // Check task progress
             const progressData = await getTaskProgress(taskId);
@@ -1032,7 +1007,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             } else if (status === 'failed' || status === 'error') {
               // Task failed
               console.error('Task failed:', progressData);
-              setProgressMessage('The image generation task failed ❌');
+              setProgressMessage('Generation failed');
               clearInterval(pollInterval);
               setIsGenerating(false);
               delete pollingSessionRef.current[pollingId];
@@ -1050,16 +1025,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               if (progress !== null) {
                 const percent = Math.round(progress * 100);
-                setProgressMessage(`Generating preview... ${percent}%`);
+                setProgressMessage(`Generating... ${percent}%`);
               } else {
-                setProgressMessage(`Generating preview... (poll ${pollCount}/${maxPolls})`);
+                // Just show "Generating..." without poll count details
+                setProgressMessage(`Generating...`);
               }
             }
             
             // If we've reached the maximum polling attempts, stop polling
             if (pollCount >= maxPolls) {
               console.log(`Reached maximum polling attempts (${maxPolls}), stopping`);
-              setProgressMessage('Generation taking longer than expected, please try again');
+              setProgressMessage('Generation taking longer than expected');
               clearInterval(pollInterval);
               setIsGenerating(false);
               delete pollingSessionRef.current[pollingId];
@@ -1069,12 +1045,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             console.error(`Error in polling attempt ${pollCount}:`, error);
             
             if (pollCount >= maxPolls) {
-              setProgressMessage('Error checking progress, please try again');
+              setProgressMessage('Error occurred');
               clearInterval(pollInterval);
               setIsGenerating(false);
               delete pollingSessionRef.current[pollingId];
             } else {
-              setProgressMessage(`Error checking progress, retrying... (${pollCount}/${maxPolls})`);
+              // Just show "Generating..." without error details
+              setProgressMessage(`Generating...`);
             }
           }
         }, 2000);
@@ -1227,6 +1204,123 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   }, [step]);
   
+  // Image Preview Modal Component
+  const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="relative max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg shadow-xl"
+            >
+              <button
+                onClick={onClose}
+                className="absolute top-2 right-2 z-10 p-2 bg-white bg-opacity-70 rounded-full text-gray-800 hover:bg-opacity-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="overflow-hidden flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt="Character Preview"
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  };
+  
+  const renderPreviewStep = () => {
+    return (
+      <div className="space-y-4 text-center">
+        <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
+        
+        {/* API Status Indicator for troubleshooting */}
+        {apiStatus.checked && (
+          <div className={`text-sm p-2 rounded-md mb-4 ${apiStatus.working ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <p className="font-semibold">API Status: {apiStatus.working ? 'Connected' : 'Connection Issue'}</p>
+            {!apiStatus.working && (
+              <p className="text-xs mt-1">{apiStatus.message}</p>
+            )}
+            {process.env.NODE_ENV === 'development' && (
+              <p className="text-xs mt-1 opacity-70">Developer info: {JSON.stringify({
+                checked: apiStatus.checked,
+                working: apiStatus.working,
+                details: apiStatus.details?.substring(0, 100)
+              })}</p>
+            )}
+          </div>
+        )}
+        
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          {photoPreview && (
+            <div className="text-center">
+              <p className="text-sm text-gray-500 mb-2">Original Photo</p>
+              <div 
+                className="w-32 h-32 overflow-hidden rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => openImagePreview(photoPreview)}
+              >
+                <img 
+                  src={photoPreview} 
+                  alt="Original" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
+            </div>
+          )}
+              
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-2">Character Preview</p>
+            {isGenerating ? (
+              <div className="flex flex-col items-center justify-center p-4 w-32 h-32 border border-gray-300 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2"></div>
+                <span className="text-sm text-center">{progressMessage}</span>
+              </div>
+            ) : characterData.stylePreview ? (
+              <div className="text-center">
+                <div 
+                  className="w-32 h-32 overflow-hidden rounded-lg border border-blue-300 cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => openImagePreview(characterData.stylePreview)}
+                >
+                  <img 
+                    src={characterData.stylePreview} 
+                    alt="Style preview" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
+              </div>
+            ) : (
+              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg text-sm text-gray-400">
+                No preview yet
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-medium">{characterData.name}</h4>
+          <p className="text-sm text-gray-600">
+            {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || 'Character'} 
+            {characterData.age && `, ${characterData.age} years old`}
+            {characterData.gender && `, ${characterData.gender}`}
+          </p>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -1290,6 +1384,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           {step === 4 ? 'Complete' : 'Next'}
               </button>
       </div>
+      
+      {/* Render Image Preview Modal */}
+      <ImagePreviewModal 
+        isOpen={showImagePreview} 
+        imageUrl={previewImageUrl}
+        onClose={closeImagePreview} 
+      />
     </div>
   );
 }
