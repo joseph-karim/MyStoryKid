@@ -1707,9 +1707,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       // Create the API payload with the correct structure
       const payload = {
         style_code: styleCode,
-        images: [{
-          base64_data: characterData.photoUrl
-        }],
+        image: characterData.photoUrl, // Send as single image field
         prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`,
         color_match: 0.5,
         face_match: 1.0,
@@ -1720,10 +1718,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       };
 
       console.log('PAYLOAD DEBUG:', {
-        hasImages: !!payload.images,
-        imagesLength: payload.images?.length,
-        hasBase64Data: !!payload.images?.[0]?.base64_data,
-        base64DataLength: payload.images?.[0]?.base64_data?.length,
+        hasImage: !!payload.image,
+        imageType: typeof payload.image,
+        imageLength: payload.image?.length,
         styleCode: payload.style_code,
         prompt: payload.prompt,
         colorMatch: payload.color_match,
