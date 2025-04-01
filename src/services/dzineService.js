@@ -194,26 +194,44 @@ export const createImg2ImgTask = async (payload) => {
   }
 };
 
-// 7. Get Task Progress
+// Check task progress with retry logic
 export const getTaskProgress = async (taskId) => {
   if (!taskId) {
     throw new Error('Task ID is required');
   }
   
-  try {
-    const response = await fetchDzine(`/task/query?task_id=${taskId}`, {
-      method: 'GET'
-    });
-    
-    if (response && response.code === 200 && response.data) {
-      return response.data;
-    } else {
-      throw new Error('Invalid response structure from API');
+  let retries = 0;
+  const maxRetries = 3;
+  
+  while (retries <= maxRetries) {
+    try {
+      const response = await fetchDzine(`/task/query?task_id=${taskId}`, {
+        method: 'GET'
+      });
+      
+      if (response && response.code === 200 && response.data) {
+        return response.data;
+      } else {
+        console.warn(`Invalid response structure from API (attempt ${retries + 1}/${maxRetries + 1}):`, response);
+        
+        if (retries === maxRetries) {
+          throw new Error('Invalid response structure from API after retries');
+        }
+      }
+    } catch (error) {
+      console.error(`Error checking task progress (attempt ${retries + 1}/${maxRetries + 1}):`, error);
+      
+      if (retries === maxRetries) {
+        throw error;
+      }
     }
-  } catch (error) {
-    console.error('Error checking task progress:', error);
-    throw error;
+    
+    retries++;
+    // Add a small delay before retry
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
+  
+  throw new Error('Failed to get task progress after retries');
 };
 
 // --- Potentially add other functions like face detect/swap later if needed --- 

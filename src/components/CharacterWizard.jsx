@@ -56,6 +56,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [currentCharacter, setCurrentCharacter] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progressMessage, setProgressMessage] = useState('');
   const fileInputRef = useRef(null);
   
   // Character data
@@ -414,8 +415,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-2">Character Preview</p>
             {isGenerating ? (
-              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg">
-                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2"></div>
+                <span className="text-sm text-center">{progressMessage || 'Generating preview...'}</span>
               </div>
             ) : characterData.stylePreview ? (
               <img 
@@ -555,21 +557,45 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         }
         
         const taskId = result.task_id;
+        let pollCount = 0;
+        let maxPolls = 20; // Maximum number of polling attempts (40 seconds at 2 second intervals)
         
         // Set up polling to check task progress
         const pollInterval = setInterval(async () => {
           try {
+            pollCount++;
+            
+            if (pollCount > maxPolls) {
+              clearInterval(pollInterval);
+              setProgressMessage('Generation is taking longer than expected...');
+              throw new Error(`Generation timed out after ${maxPolls * 2} seconds`);
+            }
+            
+            setProgressMessage(`Generating preview... (attempt ${pollCount}/${maxPolls})`);
+            console.log(`Polling attempt ${pollCount}/${maxPolls} for task ${taskId}`);
             const progress = await getTaskProgress(taskId);
             console.log('Task progress:', progress);
             
-            if (progress.status === 'succeeded') { // Note: API returns "succeeded" not "done"
+            // Check if progress is valid
+            if (!progress || typeof progress !== 'object') {
+              console.error('Invalid progress response:', progress);
+              if (pollCount > 10) { // After 20 seconds of invalid responses, give up
+                clearInterval(pollInterval);
+                throw new Error('Invalid progress data from API');
+              }
+              return; // Skip this polling cycle
+            }
+            
+            if (progress.status === 'succeeded') {
               clearInterval(pollInterval);
+              setProgressMessage('Preview ready!');
               
               if (progress.generate_result_slots && progress.generate_result_slots.length > 0) {
                 // Get the first non-empty URL from the slots
                 const imageUrl = progress.generate_result_slots.find(url => url);
                 
                 if (imageUrl) {
+                  console.log('Preview generation completed successfully', imageUrl);
                   setCharacterData(prev => ({
                     ...prev,
                     artStyle: styleIdToUse,
@@ -586,26 +612,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             } else if (progress.status === 'failed') {
               clearInterval(pollInterval);
               throw new Error(`Generation failed: ${progress.error_reason || 'Unknown error'}`);
+            } else if (progress.status === 'processing') {
+              // Still processing - continue polling
+              setProgressMessage(`Creating character... (${Math.min(90, pollCount * 5)}%)`);
+              console.log(`Processing: poll ${pollCount}/${maxPolls}`);
+            } else {
+              console.log(`Unknown status: ${progress.status} (poll ${pollCount}/${maxPolls})`);
+              if (pollCount > 15) { // After 30 seconds of unknown status, give up
+                clearInterval(pollInterval);
+                throw new Error(`Unknown task status: ${progress.status}`);
+              }
             }
-            // Continue polling for other status values
           } catch (pollError) {
+            console.error('Polling error:', pollError);
             clearInterval(pollInterval);
-            // Fall through to placeholder
+            
+            // Generate a fallback even on polling errors
             throw pollError;
           }
         }, 2000); // Poll every 2 seconds
         
-        // Set a timeout to stop polling after 30 seconds
+        // Set a guaranteed timeout fallback
         setTimeout(() => {
-          if (pollInterval) {
+          if (isGenerating) {
             clearInterval(pollInterval);
+            console.log('Forced timeout - generating fallback');
             
-            // Check if we're still generating (didn't get a result)
-            if (isGenerating) {
-              throw new Error('Generation timed out');
-            }
+            // Create a colorful placeholder as fallback
+            const bgColor = stringToColor(characterData.name + styleIdToUse);
+            const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+            
+            setCharacterData(prev => ({
+              ...prev,
+              artStyle: styleIdToUse,
+              stylePreview: fallbackPreview
+            }));
+            
+            setError('Generation timed out. Using placeholder instead.');
+            setIsGenerating(false);
           }
-        }, 30000); // 30 second timeout
+        }, 45000); // Absolute maximum timeout - 45 seconds
       } catch (apiError) {
         console.error('API Error:', apiError);
         throw new Error(`Dzine API error: ${apiError.message}`);
