@@ -409,8 +409,8 @@ export const getTaskProgress = async (taskId) => {
         console.log(`Extracted status: ${status}, Normalized status: ${normalizedStatus}`);
 
         if (normalizedStatus === 'success') {
-           console.log(`Task ${taskId} completed successfully`);
-           clearInterval(intervalId);
+          console.log(`Task ${taskId} completed successfully`);
+          clearInterval(intervalId); // Clear interval
           
           // Find the first valid image URL in generate_result_slots
           let imageUrl = null;
@@ -435,16 +435,17 @@ export const getTaskProgress = async (taskId) => {
           
           if (!imageUrl) {
              console.error(`Task ${taskId} succeeded but no image URL found in response.`);
-             reject(new Error('Task succeeded but no image URL found.'));
+             reject(new Error('Task succeeded but no image URL found.')); // Reject if no URL
           } else {
              console.log(`Using image URL: ${imageUrl}`);
-             resolve({ status: 'success', imageUrl });
+             resolve({ status: 'success', imageUrl }); // Resolve with URL
           }
+          return; // Exit poll function
           
         } else if (normalizedStatus === 'failed') {
           const reason = errorReason || 'Unknown reason';
           console.error(`Task ${taskId} failed. Reason: ${reason}`);
-          clearInterval(intervalId);
+          clearInterval(intervalId); // Clear interval
           
           // Specifically handle "No face detected" error more gracefully
           if (reason.toLowerCase().includes('no face detected')) {
@@ -452,50 +453,37 @@ export const getTaskProgress = async (taskId) => {
           } else {
              reject(new Error(`Task failed: ${reason}`));
           }
+          return; // Exit poll function
           
         } else if (retryCount >= maxRetries) {
           console.error(`Task ${taskId} timed out after ${maxRetries} retries.`);
-          clearInterval(intervalId);
+          clearInterval(intervalId); // Clear interval
           reject(new Error('Task timed out'));
+          return; // Exit poll function
           
         } else {
           console.log(`Task ${taskId} is still running (Status: ${normalizedStatus})`);
-          // Continue polling if still running and within retry limit
+          // Continue polling - interval will trigger next call
         }
       } catch (error) {
         // Handle network errors or errors from fetchDzine
         console.error(`Polling failed for task ${taskId}:`, error);
+        clearInterval(intervalId); // Clear interval
         
         // Check if the error is a rate limit error thrown by fetchDzine
         if (error.message.includes('API error in response body (Code: 108009)')) {
-           clearInterval(intervalId);
            reject(new Error('API Rate Limit Exceeded: Too many requests'));
-           return; // Stop polling
+        } else {
+           // For other errors, reject with the error message
+           reject(new Error(`Polling failed: ${error.message}`));
         }
-        
-        // For other errors, stop polling and reject
-        clearInterval(intervalId);
-        reject(new Error(`Polling failed: ${error.message}`));
+        return; // Exit poll function
       }
     };
 
     // Initial poll, then set interval
     poll(); 
     intervalId = setInterval(poll, retryInterval);
-    
-    // Add logging to confirm interval is cleared on success/failure/timeout
-    const originalResolve = resolve;
-    const originalReject = reject;
-    resolve = (value) => {
-      console.log(`Success: Cleared polling interval ${pollId}`);
-      clearInterval(intervalId);
-      originalResolve(value);
-    };
-    reject = (reason) => {
-      console.log(`Failed: Cleared polling interval ${pollId}`);
-      clearInterval(intervalId);
-      originalReject(reason);
-    };
   });
 };
 
