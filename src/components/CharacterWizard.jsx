@@ -1226,7 +1226,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             quality_mode: 1, 
             generate_slots: [1, 1], 
             output_format: 'webp', 
-            negative_prompt: payload.negative_prompt || '', // Keep original negative prompt from first try
+            negative_prompt: characterData.negative_prompt || 'ugly, deformed, disfigured, poor quality, blurry, nsfw', // Get from state or use default
             seed: Math.floor(Math.random() * 2147483647) + 1, // Use a new seed for retry
           };
           
