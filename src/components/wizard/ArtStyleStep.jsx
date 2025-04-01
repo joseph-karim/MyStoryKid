@@ -89,7 +89,16 @@ const dzineStyleImageMap = {
   'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': warmPortraitImg,
   'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': magicPortraitImg,
   'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': vividTableauxImg,
-  'Style-ce7b4279-1398-4964-882c-19911e12aef3': luminousNarrativesImg
+  'Style-ce7b4279-1398-4964-882c-19911e12aef3': luminousNarrativesImg,
+  
+  // Additional styles that were missing
+  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': ancientChinaImg,
+  'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': dreamlikePortraitureImg,
+  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': aquarelleLifeImg,
+  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': ceramicLifelikeImg,
+  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': yarnRealismImg,
+  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': mysticalSovereigntyImg,
+  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg
 };
 
 // Updated Art Style Categories with direct API styles and CORRECT names
@@ -121,6 +130,12 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         apiCode: 'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895',
         title: 'Minimalist Cutesy',
         description: 'Simple, cute designs with minimal details and soft colors'
+      },
+      { 
+        id: 'soft_radiance',
+        apiCode: 'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2',
+        title: 'Soft Radiance',
+        description: 'Gentle, glowing artwork with soft lighting and delicate details'
       }
     ]
   },
@@ -157,6 +172,12 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         apiCode: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',
         title: 'Golden Hour',
         description: 'Nostalgic illustrations with warm, golden lighting inspired by classic picture books'
+      },
+      { 
+        id: 'ancient_china',
+        apiCode: 'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1',
+        title: 'Ancient China',
+        description: 'Traditional Chinese painting style with elegant brushwork and composition'
       }
     ]
   },
@@ -193,6 +214,24 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         apiCode: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
         title: 'Joyful Clay',
         description: 'Cheerful characters that look like they are made of colorful clay'
+      },
+      { 
+        id: 'ceramic_lifelike',
+        apiCode: 'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833',
+        title: 'Ceramic Lifelike',
+        description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+      },
+      { 
+        id: 'yarn_realism',
+        apiCode: 'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a',
+        title: 'Yarn Realism',
+        description: 'Textures and styling that mimic yarn and textile elements'
+      },
+      { 
+        id: 'mystical_sovereignty',
+        apiCode: 'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6',
+        title: 'Mystical Sovereignty',
+        description: 'Majestic, mystical scenes with an air of fantasy and elegance'
       }
     ]
   },
@@ -229,6 +268,18 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         apiCode: 'Style-ce7b4279-1398-4964-882c-19911e12aef3',
         title: 'Luminous Narratives',
         description: 'Rich digital illustrations with painterly effects and detailed lighting'
+      },
+      { 
+        id: 'dreamlike_portraiture',
+        apiCode: 'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d',
+        title: 'Dreamlike Portraiture',
+        description: 'Portraits with a dreamy, ethereal quality and soft focus'
+      },
+      { 
+        id: 'aquarelle_life',
+        apiCode: 'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b',
+        title: 'Aquarelle Life',
+        description: 'Vibrant watercolor style with flowing colors and rich textures'
       }
     ]
   }
@@ -311,6 +362,35 @@ const styleDescriptions = {
   luminous_narratives: { 
     title: 'Luminous Narratives',
     description: 'Rich digital illustrations with painterly effects and detailed lighting'
+  },
+  // Additional styles
+  ancient_china: {
+    title: 'Ancient China',
+    description: 'Traditional Chinese painting style with elegant brushwork and composition'
+  },
+  dreamlike_portraiture: {
+    title: 'Dreamlike Portraiture',
+    description: 'Portraits with a dreamy, ethereal quality and soft focus'
+  },
+  aquarelle_life: {
+    title: 'Aquarelle Life',
+    description: 'Vibrant watercolor style with flowing colors and rich textures'
+  },
+  ceramic_lifelike: {
+    title: 'Ceramic Lifelike',
+    description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+  },
+  yarn_realism: {
+    title: 'Yarn Realism',
+    description: 'Textures and styling that mimic yarn and textile elements'
+  },
+  mystical_sovereignty: {
+    title: 'Mystical Sovereignty',
+    description: 'Majestic, mystical scenes with an air of fantasy and elegance'
+  },
+  soft_radiance: {
+    title: 'Soft Radiance',
+    description: 'Gentle, glowing artwork with soft lighting and delicate details'
   },
   custom: {
     title: 'Custom Style',

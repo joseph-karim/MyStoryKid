@@ -63,6 +63,34 @@ const styleImageMap = {
   kawaii: joyfulClayImg,
   scandinavian: softRadianceImg,
   african_pattern: vividTableauxImg,
+  
+  // Direct mapping to new styles
+  watercolor_whimsy: watercolorWhimsyImg,
+  whimsical_coloring: whimsicalColoringImg,
+  enchanted_character: enchantedCharacterImg,
+  minimalist_cutesy: minimalistCuteImg,
+  cheerful_storybook: cheerfulStorybookImg,
+  pleasantly_warm: pleasantlyWarmImg,
+  storytime_whimsy: storytimeWhimsyImg,
+  line_and_wash: lineAndWashImg,
+  golden_hour: goldenHourImg,
+  cute_exaggeration: cuteExaggerationImg,
+  glossy_elegance: glossyEleganceImg,
+  starlit_fantasy: starlitFantasyImg,
+  fantasy_hero: fantasyHeroImg,
+  joyful_clay: joyfulClayImg,
+  enchanted_elegance: enchantedEleganceImg,
+  warm_portrait: warmPortraitImg,
+  magic_portrait: magicPortraitImg,
+  vivid_tableaux: vividTableauxImg,
+  luminous_narratives: luminousNarrativesImg,
+  ancient_china: ancientChinaImg,
+  dreamlike_portraiture: dreamlikePortraitureImg,
+  aquarelle_life: aquarelleLifeImg,
+  ceramic_lifelike: ceramicLifelikeImg,
+  yarn_realism: yarnRealismImg,
+  mystical_sovereignty: mysticalSovereigntyImg,
+  soft_radiance: softRadianceImg
 };
 
 // Find any SAFE_STYLE_CODE constant and update it with the correct style code
@@ -200,6 +228,35 @@ const styleDescriptions = {
   luminous_narratives: { 
     title: 'Luminous Narratives',
     description: 'Rich digital illustrations with painterly effects and detailed lighting'
+  },
+  // Additional styles
+  ancient_china: {
+    title: 'Ancient China',
+    description: 'Traditional Chinese painting style with elegant brushwork and composition'
+  },
+  dreamlike_portraiture: {
+    title: 'Dreamlike Portraiture',
+    description: 'Portraits with a dreamy, ethereal quality and soft focus'
+  },
+  aquarelle_life: {
+    title: 'Aquarelle Life',
+    description: 'Vibrant watercolor style with flowing colors and rich textures'
+  },
+  ceramic_lifelike: {
+    title: 'Ceramic Lifelike',
+    description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+  },
+  yarn_realism: {
+    title: 'Yarn Realism',
+    description: 'Textures and styling that mimic yarn and textile elements'
+  },
+  mystical_sovereignty: {
+    title: 'Mystical Sovereignty',
+    description: 'Majestic, mystical scenes with an air of fantasy and elegance'
+  },
+  soft_radiance: {
+    title: 'Soft Radiance',
+    description: 'Gentle, glowing artwork with soft lighting and delicate details'
   },
   custom: {
     title: 'Custom Style',
