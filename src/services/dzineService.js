@@ -204,7 +204,7 @@ export const uploadFileToDzine = async (file) => {
 };
 
 // 5. Image-to-Image Task Creation (Corrected Implementation)
-export const createImg2ImgTask = async (payload, characterType = 'human') => {
+export const createImg2ImgTask = async (payload, applyFaceMatch = true) => {
   try {
     // --- Start Validation based on Documentation ---
     if (!payload.style_code) throw new Error('style_code is required');
@@ -221,12 +221,11 @@ export const createImg2ImgTask = async (payload, characterType = 'human') => {
     }
     // --- End Validation ---
 
-    // Determine face_match based on character type
-    const faceMatchValue = (characterType === 'pet' || characterType === 'creature') ? 0 : 1;
-    console.log(`Setting face_match based on type "${characterType}": ${faceMatchValue}`); // Log decision
+    // Determine face_match based on the flag
+    const faceMatchValue = applyFaceMatch ? 1 : 0;
+    console.log(`Setting face_match based on applyFaceMatch flag: ${faceMatchValue}`); // Log decision
 
     // Prepare the payload exactly as per documentation
-    // We don't need to upload manually, the API accepts base64_data directly
     let apiPayload = {
       prompt: payload.prompt.substring(0, 800), // Ensure prompt length limit
       style_code: payload.style_code,
@@ -359,132 +358,106 @@ export const createTxt2ImgTask = async (payload) => {
   }
 };
 
-// 7. Get Task Progress (improved error handling and debugging)
+// 7. Get Task Progress (Reverted to simpler polling handled by component)
 export const getTaskProgress = async (taskId) => {
-  const maxRetries = 40; // Max retries (approx 2 minutes with 3 sec interval)
-  const retryInterval = 3000; // 3 seconds interval
-  let retryCount = 0;
-  let intervalId;
+  if (!taskId) {
+    console.error('No task ID provided to getTaskProgress');
+    throw new Error('Task ID is required');
+  }
   
-  // Create a unique ID for this poll operation for logging
-  const pollId = `poll_${Date.now()}`;
-  
-  console.log(`Starting to poll for task: ${taskId}`);
-
-  return new Promise((resolve, reject) => {
-    const poll = async () => {
-      retryCount++;
-      console.log(`Polling attempt ${retryCount} for task ${taskId}`);
-      
-      // Use the fetchDzine function directly, as it handles base URL and headers
-      try {
-        const data = await fetchDzine(`/get_task_progress/${taskId}`, { 
-          method: 'GET' 
-        });
-        
-        // Debug: Log the raw progress data
-        console.log(`Task ${taskId} progress data (attempt ${retryCount}):`, data.data);
-        
-        // --- Error Handling ---
-        if (data.code && data.code !== 200) {
-          // Handle specific API errors like rate limiting
-          if (data.code === 108009) { // Rate limit error
-            console.error(`Task ${taskId} failed due to rate limiting. Code: ${data.code}, Message: ${data.msg}`);
-            clearInterval(intervalId);
-            reject(new Error(`API Rate Limit Exceeded: ${data.msg || 'Too many requests'}`));
-            return; // Stop polling
-          }
-          // Handle other potential API errors reported in the body
-          console.error(`Task ${taskId} API error. Code: ${data.code}, Message: ${data.msg}`);
-          clearInterval(intervalId);
-          reject(new Error(`API Error (Code ${data.code}): ${data.msg || 'Unknown API error'}`));
-          return; // Stop polling
-        }
-
-        // Extract status using helper function
-        const { status, errorReason } = extractStatus(data);
-        
-        // Use normalized status
-        const normalizedStatus = normalizeStatus(status);
-        console.log(`Extracted status: ${status}, Normalized status: ${normalizedStatus}`);
-
-        if (normalizedStatus === 'success') {
-          console.log(`Task ${taskId} completed successfully`);
-          clearInterval(intervalId); // Clear interval
-          
-          // Find the first valid image URL in generate_result_slots
-          let imageUrl = null;
-          if (data.data && data.data.generate_result_slots) {
-            for (const slot of data.data.generate_result_slots) {
-              if (slot && typeof slot === 'string' && slot.startsWith('http')) {
-                imageUrl = slot;
-                console.log(`Found potential image URL at slot: ${slot}`);
-                break; // Use the first valid URL found
-              }
-            }
-          }
-          
-          // If no valid URL found in slots, try fallback extraction (if applicable)
-          if (!imageUrl) {
-            const fallbackUrls = extractFallbackUrls(data.data); // Assuming extractFallbackUrls exists or is added
-            if (fallbackUrls && fallbackUrls.length > 0) {
-              imageUrl = fallbackUrls[0];
-              console.log('Used fallback URL extraction:', fallbackUrls);
-            }
-          }
-          
-          if (!imageUrl) {
-             console.error(`Task ${taskId} succeeded but no image URL found in response.`);
-             reject(new Error('Task succeeded but no image URL found.')); // Reject if no URL
-          } else {
-             console.log(`Using image URL: ${imageUrl}`);
-             resolve({ status: 'success', imageUrl }); // Resolve with URL
-          }
-          return; // Exit poll function
-          
-        } else if (normalizedStatus === 'failed') {
-          const reason = errorReason || 'Unknown reason';
-          console.error(`Task ${taskId} failed. Reason: ${reason}`);
-          clearInterval(intervalId); // Clear interval
-          
-          // Specifically handle "No face detected" error more gracefully
-          if (reason.toLowerCase().includes('no face detected')) {
-             reject(new Error('No face detected in the uploaded image. Please try a different photo.'));
-          } else {
-             reject(new Error(`Task failed: ${reason}`));
-          }
-          return; // Exit poll function
-          
-        } else if (retryCount >= maxRetries) {
-          console.error(`Task ${taskId} timed out after ${maxRetries} retries.`);
-          clearInterval(intervalId); // Clear interval
-          reject(new Error('Task timed out'));
-          return; // Exit poll function
-          
-        } else {
-          console.log(`Task ${taskId} is still running (Status: ${normalizedStatus})`);
-          // Continue polling - interval will trigger next call
-        }
-      } catch (error) {
-        // Handle network errors or errors from fetchDzine
-        console.error(`Polling failed for task ${taskId}:`, error);
-        clearInterval(intervalId); // Clear interval
-        
-        // Check if the error is a rate limit error thrown by fetchDzine
-        if (error.message.includes('API error in response body (Code: 108009)')) {
-           reject(new Error('API Rate Limit Exceeded: Too many requests'));
-        } else {
-           // For other errors, reject with the error message
-           reject(new Error(`Polling failed: ${error.message}`));
-        }
-        return; // Exit poll function
+  try {
+    console.log(`Checking progress for task: ${taskId}`);
+    
+    // Construct the correct endpoint according to docs
+    const endpoint = `/get_task_progress/${taskId}`;
+    console.log(`Polling task progress using endpoint: GET ${API_BASE_URL}${endpoint}`);
+    
+    // Use a direct fetch call here, as the component will handle the interval
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY,
+        'User-Agent': 'MyStoryKid/1.0',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       }
-    };
+    });
+  
+    // Handle 404 specifically
+    if (response.status === 404) {
+      console.warn(`Task ${taskId} returned 404 - treating as pending`);
+      return { status: 'pending', message: 'Task not found or initializing' };
+    }
+    
+    // Handle other non-OK statuses
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Could not read error text');
+      console.error(`Task ${taskId} API error: ${response.status} ${errorText}`);
+      // Return an error object compatible with the component's polling logic
+      return { 
+        status: 'error', 
+        error: `API error: ${response.status}`,
+        message: errorText || `API Error ${response.status}` // Provide fallback message
+      };
+    }
+    
+    // Process successful response
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      console.warn(`Task ${taskId} returned empty response - treating as pending`);
+      return { status: 'pending', message: 'Empty response from server' };
+    }
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`Task ${taskId} JSON parse error:`, parseError);
+      console.error(`Raw response: "${responseText}"`);
+      return { status: 'error', message: 'Invalid JSON response format' };
+    }
+    
+    // Process the JSON data
+    if (data) {
+      // Log truncated data
+      const logData = JSON.stringify(data).length > 1000 
+        ? JSON.stringify(data).substring(0, 1000) + '...' 
+        : JSON.stringify(data);
+      console.log(`Task ${taskId} progress data:`, logData);
+      
+      // Handle API error codes within the JSON response
+      if (data.code && data.code !== 200) {
+        console.error(`Task ${taskId} returned error code in JSON:`, data.code, data.msg || 'Unknown error');
+        return { 
+          status: 'error',
+          error: `API error code ${data.code}`,
+          message: data.msg || `API Error ${data.code}`
+        };
+      }
+      
+      // Normalize the status from various possible fields
+      const statusData = data.data || data; // Look in 'data' field or root
+      const normalizedStatus = normalizeStatus(statusData.status);
+      
+      return {
+        ...statusData, // Return all fields from the data part
+        status: normalizedStatus, // Ensure status is normalized
+        error_reason: statusData.error_reason || (normalizedStatus === 'failed' ? 'Unknown failure reason' : '') // Provide fallback error reason
+      };
 
-    // Initial poll, then set interval
-    poll(); 
-    intervalId = setInterval(poll, retryInterval);
-  });
+    } else {
+      // Should not happen if parsing succeeded, but handle defensively
+      console.error('Parsed JSON but data is null/undefined');
+      return { status: 'error', message: 'Invalid data structure after parsing' };
+    }
+
+  } catch (error) {
+    // Catch network errors or other fetch-related issues
+    console.error(`Error fetching progress for task ${taskId}:`, error);
+    // Return a pending status to allow component to retry polling
+    return { status: 'pending', message: `Network error: ${error.message}` };
+  }
 };
 
 // Helper function to normalize status strings
@@ -515,7 +488,7 @@ function normalizeStatus(status) {
 function extractStatus(data) {
   if (!data || !data.data) {
     console.error("Invalid data structure passed to extractStatus:", data);
-    return { status: 'unknown', errorReason: 'Invalid response data' };
+    return 'unknown';
   }
   
   const taskData = data.data;
@@ -525,7 +498,7 @@ function extractStatus(data) {
   // Debug log for status and reason
   // console.log(`[extractStatus] Raw Status: ${status}, Raw Reason: ${errorReason}`);
 
-  return { status, errorReason };
+  return status;
 }
 
 // Simple fallback URL extractor (adjust if needed based on actual failed response structure)
@@ -751,38 +724,22 @@ export const analyzeAllStyles = async () => {
             console.log(`   Our name: "${ourName}"`);
             console.log(`   API name: "${apiName}"`);
           } else {
-            console.log(`✅ "${ourName}" matches API name "${apiName}"`);
+            console.log(`✅ Style "${ourName}" matches API`);
           }
         }
       });
       
-      // Check API styles against ours
-      console.log('\n2. Checking API styles not in our mappings:');
+      // Check for API styles we don't have
+      console.log('\nChecking API styles not in our mappings:');
       apiStyles.forEach(apiStyle => {
-        if (!ourStyleMap[apiStyle.style_code]) {
-          console.log(`➕ Available API style: "${apiStyle.name}" (${apiStyle.style_code})`);
+        const ourStyleName = Object.entries(styleCodeMap)
+          .find(([_, code]) => code === apiStyle.style_code)?.[0];
+        if (!ourStyleName) {
+          console.log(`➕ New API style available: "${apiStyle.name}" (${apiStyle.style_code})`);
         }
       });
       
-      // Specific check for Starlit Fantasy
-      console.log('\n3. Detailed check for Starlit Fantasy:');
-      const ourStarlitCode = styleCodeMap.starlit_fantasy;
-      const apiStarlitStyle = apiStyles.find(s => 
-        s.style_code === ourStarlitCode || 
-        s.name.toLowerCase().includes('starlit') || 
-        s.name.toLowerCase().includes('fantasy')
-      );
-      
-      if (apiStarlitStyle) {
-        console.log('Found potential Starlit Fantasy style in API:');
-        console.log(JSON.stringify(apiStarlitStyle, null, 2));
-      } else {
-        console.log('No style found in API matching Starlit Fantasy criteria');
-      }
-      
       return {
-        totalApiStyles: apiStyles.length,
-        totalOurStyles: Object.keys(styleCodeMap).length,
         apiStyles,
         ourStyles: styleCodeMap
       };
@@ -796,4 +753,4 @@ export const analyzeAllStyles = async () => {
   }
 };
 
-// --- Potentially add other functions like face detect/swap later if needed --- 
+// --- Potentially add other functions like face detect/swap later if needed ---

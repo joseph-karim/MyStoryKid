@@ -565,8 +565,8 @@ function CharactersStep() {
         
         console.log("Image-to-Image Payload:", payload); // Log payload before sending
         
-        // Pass the character type to the API call
-        const taskData = await createImg2ImgTask(payload, character.type);
+        // Pass the isHuman flag to the API call
+        const taskData = await createImg2ImgTask(payload, character.isHuman);
         
         if (!taskData || !taskData.task_id) {
           throw new Error('Failed to start image-to-image generation task');
@@ -588,54 +588,107 @@ function CharactersStep() {
 
   // --- NEW: Polling Logic ---
   const startPolling = (characterId, taskId) => {
-    // Associate the taskId with the character status, reset error/preview
-    updateGenStatus(characterId, { 
-      taskId: taskId, 
-      status: 'polling', // Indicate polling has started
-      pollIntervalId: null, 
-      errorMessage: null, 
-      previewUrl: null // Clear previous preview if retrying
-    }); 
-
     const poll = async () => {
       try {
-        // getTaskProgress now returns a promise that resolves/rejects only on completion/error/timeout
-        console.log(`Awaiting final result for task ${taskId} (polling handled by getTaskProgress)`);
-        const result = await getTaskProgress(taskId); // This will wait until finished/failed/timeout
+        const progressData = await getTaskProgress(taskId);
+        
+        // Check if component might have unmounted or status changed
+         if (!generationStatus[characterId] || generationStatus[characterId].taskId !== taskId) {
+             console.log("Polling stopped for", characterId, "due to status change or removal.");
+             clearPollInterval(characterId); // Ensure interval is cleared if component state changed
+             return; 
+         }
 
-        // If we get here, getTaskProgress resolved successfully
-        console.log(`Polling successful for task ${taskId}:`, result);
-        if (result.status === 'success' && result.imageUrl) {
-          updateGenStatus(characterId, {
-            status: 'previewReady',
-            previewUrl: result.imageUrl,
-            errorMessage: null // Clear any previous error
-          });
-        } else {
-          // Should not happen if getTaskProgress resolves successfully, but handle defensively
-          console.error("Polling succeeded but result is unexpected:", result);
+        // Handle different status formats and nested data structures
+        const status = progressData.status || 
+                      (progressData.data && progressData.data.status) || 
+                      'unknown';
+        
+        console.log(`Task status: ${status} for character ${characterId}`);
+
+        if (status === 'succeed' || status === 'succeeded') {
+          // Look for image URL in generate_result_slots
+          let imageUrl = null;
+          
+          // Check in progressData.generate_result_slots
+          if (progressData.generate_result_slots && progressData.generate_result_slots.length > 0) {
+            imageUrl = progressData.generate_result_slots.find(url => url); // Find first non-empty string
+          } 
+          // Check in progressData.data.generate_result_slots (more common format)
+          else if (progressData.data && progressData.data.generate_result_slots && progressData.data.generate_result_slots.length > 0) {
+            imageUrl = progressData.data.generate_result_slots.find(url => url); // Find first non-empty string
+          }
+          
+          console.log("Found image URL:", imageUrl);
+          
+          if (imageUrl) {
+            console.log(`Setting preview URL for character ${characterId} to ${imageUrl}`);
+            updateGenStatus(characterId, { 
+              status: 'previewReady', 
+              previewUrl: imageUrl,
+              pollIntervalId: null 
+            });
+            clearPollInterval(characterId); // Stop polling on success
+          } else {
+            console.error("No valid image URL found in response:", progressData);
+            updateGenStatus(characterId, { 
+              status: 'error', 
+              errorMessage: 'Generation succeeded but no image URL found.', 
+              pollIntervalId: null 
+            });
+            clearPollInterval(characterId);
+          }
+        } else if (status === 'failed' || status === 'error') {
+          const errorReason = progressData.error_reason || progressData.data?.error_reason || progressData.message || 'Unknown error';
+          console.error(`Task ${taskId} failed:`, errorReason);
           updateGenStatus(characterId, { 
-             status: 'error', 
-             errorMessage: 'Unexpected success state.' 
-           });
+            status: 'error', 
+            errorMessage: errorReason || 'Image generation failed.', 
+            pollIntervalId: null 
+          });
+          clearPollInterval(characterId); // Stop polling on failure
+        } else {
+          // Still processing ('waiting', 'in_queue', 'processing', 'pending')
+          updateGenStatus(characterId, { status: 'polling' }); 
         }
-
-      } catch (error) { // getTaskProgress rejected (failure or timeout)
-        console.error(`Polling failed for task ${taskId}:`, error);
-        updateGenStatus(characterId, {
-          status: 'error',
-          errorMessage: error.message || 'Polling failed.'
+      } catch (error) {
+        console.error(`Error polling task ${taskId}:`, error);
+        updateGenStatus(characterId, { 
+          status: 'error', 
+          errorMessage: error.message || 'Failed to check progress.', 
+          pollIntervalId: null 
         });
-      } finally {
-        // Regardless of outcome, ensure intervalId is cleared in the state if it somehow existed
-        // (getTaskProgress handles its own interval, this is just cleanup for CharactersStep state)
-        updateGenStatus(characterId, { pollIntervalId: null }); 
+        clearPollInterval(characterId);
       }
     };
 
-    // Call poll() once to start the process managed by getTaskProgress.
+    // Clear existing interval just in case
+    clearPollInterval(characterId); 
+    
+    // Store task ID before starting the poll
+    updateGenStatus(characterId, { taskId: taskId, status: 'polling', errorMessage: null, previewUrl: null });
+
+    // Poll immediately, then set interval
     poll(); 
+    const intervalId = setInterval(poll, 3000); // Poll every 3 seconds (adjust interval as needed)
+    updateGenStatus(characterId, { pollIntervalId: intervalId }); 
   };
+
+  // --- NEW: Helper to clear poll interval ---
+  const clearPollInterval = (characterId) => {
+       const currentStatus = generationStatus[characterId];
+       if (currentStatus?.pollIntervalId) {
+           clearInterval(currentStatus.pollIntervalId);
+           // Update status only to remove the interval ID, keep other fields
+            setGenerationStatus(prev => ({
+              ...prev,
+              [characterId]: {
+                ...(prev[characterId]), 
+                pollIntervalId: null 
+              }
+            }));
+       }
+   };
 
   // --- NEW: Confirm Character Style ---
   const handleConfirmStyle = (characterId) => {

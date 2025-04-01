@@ -21,7 +21,8 @@ const defaultCharacterData = {
   photoUrl: null,
   stylePreview: null,
   useTextToImage: false,
-  generationPrompt: ''
+  generationPrompt: '',
+  isHuman: true
 };
 
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
@@ -171,7 +172,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       description: '',
       customRole: '',
       generationPrompt: '',
-      useTextToImage: false
+      useTextToImage: false,
+      isHuman: true
     });
   };
   
@@ -291,8 +293,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (styleToUse && hasPhotoOrDesc) {
         console.log(`[EFFECT] Step 3 reached & dependencies met, using style: ${styleToUse}`);
         // Ensure style is set in character data before generation
-        setCharacterData(prev => ({
-          ...prev,
+      setCharacterData(prev => ({
+        ...prev,
           artStyle: styleToUse
         }));
         generateCharacterPreview(styleToUse);
@@ -403,76 +405,138 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Step 1: Basic character details
   const renderDetailsStep = () => {
-  return (
+    // Determine default isHuman value based on type
+    const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
+    
+    // Effect to update isHuman if type changes and it hasn't been manually set
+    useEffect(() => {
+       // Only set if not explicitly set yet or if type dictates a change
+       if (characterData.isHuman === null || characterData.isHuman === undefined || 
+           (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman)) {
+            handleChange('isHuman', defaultIsHuman);
+       }
+    }, [characterData.type]); // Re-run only if type changes
+
+    return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
-        <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Character Name */}
           <div>
-            <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Character Name
-                      </label>
-                  <input
-                    type="text"
+            </label>
+            <input
+              type="text"
               id="name"
               value={characterData.name || ''}
               onChange={(e) => handleChange('name', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter character name"
+              placeholder="Enter character name"
               required
-                  />
-                </div>
-                
+            />
+          </div>
+
+          {/* Character Type Radio Buttons */}
           <div>
-            <label htmlFor="age" className="block font-medium text-gray-700 mb-1">
-              Age
-            </label>
-                  <input
-                    type="text"
-              id="age"
-              value={characterData.age || ''}
-              onChange={(e) => handleChange('age', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Character's age"
-                  />
-                </div>
-                
-          <div>
-            <label htmlFor="gender" className="block font-medium text-gray-700 mb-1">
-              Gender
-                      </label>
-            <select
-              id="gender"
-              value={characterData.gender || ''}
-              onChange={(e) => handleChange('gender', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select gender (optional)</option>
-              <option value="Boy">Boy</option>
-              <option value="Girl">Girl</option>
-              <option value="Non-binary">Non-binary</option>
-              <option value="Other">Other</option>
-            </select>
-              </div>
+             <label className="block text-sm font-medium text-gray-700 mb-2">Character Type</label>
+             <div className="space-y-2">
+               {CHARACTER_TYPES.map((charType) => (
+                 <label key={charType.id} className="flex items-center space-x-2 text-sm">
+                   <input 
+                     type="radio" 
+                     name="characterType" 
+                     value={charType.id} 
+                     checked={characterData.type === charType.id} 
+                     onChange={() => {
+                       handleChange('type', charType.id);
+                       // Automatically update isHuman based on the new type
+                       const isTypeHuman = !['pet', 'magical', 'animal'].includes(charType.id);
+                       handleChange('isHuman', isTypeHuman);
+                     }}
+                     className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                   />
+                   <span>{charType.name} <span className="text-gray-500">({charType.description})</span></span>
+                 </label>
+               ))}
+             </div>
+          </div>
+
+          {/* Is Human Toggle */}
+          <div className="mb-4 pt-2 border-t border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Use Face Matching?</label>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 text-sm">
+                <input 
+                  type="radio" 
+                  name="isHuman" 
+                  checked={characterData.isHuman === true} 
+                  onChange={() => handleChange('isHuman', true)} 
+                  className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <span>Yes (Try to keep facial features)</span>
+              </label>
+              <label className="flex items-center space-x-2 text-sm">
+                <input 
+                  type="radio" 
+                  name="isHuman" 
+                  checked={characterData.isHuman === false} 
+                  onChange={() => handleChange('isHuman', false)} 
+                  className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <span>No (e.g., Pet, Creature)</span>
+              </label>
             </div>
-            
-        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-              <button
-            onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-            disabled={step === 1}
+            <p className="text-xs text-gray-500 mt-1">Select 'No' for pets or fantasy creatures if face matching causes issues.</p>
+          </div>
+
+          {/* Age and Gender */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+                Age
+              </label>
+              <input
+                type="text"
+                id="age"
+                value={characterData.age || ''}
+                onChange={(e) => handleChange('age', e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., 5, Adult, Ancient"
+              />
+            </div>
+            <div>
+              <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+                Gender (Optional)
+              </label>
+              <select
+                id="gender"
+                value={characterData.gender || ''}
+                onChange={(e) => handleChange('gender', e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
-                Back
-              </button>
-              <button
-            onClick={handleNext}
-            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-                disabled={!characterData.name}
-              >
-                Next
-              </button>
+                <option value="">Select gender</option>
+                <option value="Boy">Boy</option>
+                <option value="Girl">Girl</option>
+                <option value="Non-binary">Non-binary</option>
+                <option value="Other">Other/Not applicable</option>
+              </select>
             </div>
           </div>
+        </div>
+
+        {/* Navigation Buttons for Step 1 */}
+        <div className="flex justify-end pt-4 mt-6 border-t border-gray-200">
+           <button
+             onClick={handleNext}
+             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+             disabled={!characterData.name}
+           >
+             Next: Appearance
+           </button>
+        </div>
+      </div>
     );
   };
   
