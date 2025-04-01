@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateCompleteBook } from '../services/storyGenerator.js';
 
 // Mock books data for testing
 const mockBooks = [
@@ -124,6 +125,7 @@ const useBookStore = create((set, get) => ({
     step: 1,
     storyData: {
       category: '', // e.g., Adventure, Bedtime Story, etc. - May become redundant if storyType is primary?
+      mainScene: '', // Main scene/setting for the story (e.g., Space, Enchanted Forest, etc.)
       bookCharacters: [], // Array of characters with roles
       artStyleCode: '', // API style_code or 'custom'
       customStyleDescription: '', // Description if artStyleCode is 'custom'
@@ -173,6 +175,7 @@ const useBookStore = create((set, get) => ({
       step: 1,
       storyData: {
         category: '', 
+        mainScene: '', // Main scene/setting field
         bookCharacters: [],
         artStyleCode: '', 
         customStyleDescription: '',
@@ -189,6 +192,7 @@ const useBookStore = create((set, get) => ({
         coreConcept: '',
         keyObjectsActions: '',
         interactiveElement: '',
+        customSceneDescription: '', // Custom scene description
       },
     },
   })),
@@ -422,61 +426,65 @@ const useBookStore = create((set, get) => ({
         throw new Error('A main character is required');
       }
       
+      if (!storyData.mainScene) {
+        throw new Error('Main scene/setting is required');
+      }
+      
+      console.log("Starting two-step book generation process...");
+      
+      // Use our new storyGenerator service to generate the book
+      const result = await generateCompleteBook(storyData);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate book');
+      }
+      
+      // Create a book structure from the generated content
+      const { book } = result;
+      
       // Find the main character to use as the book title
       const mainCharacter = storyData.bookCharacters.find(char => char.role === 'main');
       
-      // Generate a title based on category and main character name
-      const title = storyData.title || 
-        (storyData.category === 'adventure' ? `${mainCharacter.name}'s Space Adventure` :
-        storyData.category === 'fantasy' ? `${mainCharacter.name} and the Magic Forest` :
-        storyData.category === 'bedtime' ? `${mainCharacter.name}'s Bedtime Story` :
-        storyData.category === 'learning' ? `${mainCharacter.name} Learns the ABCs` :
-        storyData.category === 'birthday' ? `${mainCharacter.name}'s Birthday Surprise` :
-        `${mainCharacter.name}'s Story`);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Create a mock book
+      // Add additional book metadata
       const newBook = {
         id: `book-${Date.now()}`,
-        title,
+        title: book.title,
         status: 'draft',
         childName: mainCharacter.name,
         category: storyData.category,
+        mainScene: storyData.mainScene, // Store the selected scene
+        customSceneDescription: storyData.customSceneDescription, // Store custom scene description if any
         artStyle: storyData.artStyleCode,
         customStyleDescription: storyData.customStyleDescription,
-        characters: storyData.bookCharacters.map(char => ({
-          ...char,
-          // Ensure each character has style preview
-          stylePreview: char.stylePreview || 'https://via.placeholder.com/300x400?text=Character+Preview'
-        })),
-        // Create placeholder pages
+        characters: storyData.bookCharacters,
+        
+        // Create a pages array from the generated spreads
         pages: [
+          // Cover page
           {
             id: 'page-cover',
             type: 'cover',
-            text: title,
-            imageUrl: `https://via.placeholder.com/600x800?text=${encodeURIComponent(title)}`,
+            text: book.title,
+            imageUrl: 'https://via.placeholder.com/600x800?text=Cover+Image',
           },
+          // Title page
           {
             id: 'page-title',
             type: 'title',
-            text: `${title}\n\nA story about ${mainCharacter.name}`,
+            text: `${book.title}\n\nA story about ${mainCharacter.name}`,
             imageUrl: '',
           },
-          {
-            id: 'page-1',
+          // Content pages from the spreads
+          ...book.spreads.map((spread, index) => ({
+            id: `page-${index + 1}`,
             type: 'content',
-            text: `${mainCharacter.name} was excited for a new adventure.`,
-            imageUrl: `https://via.placeholder.com/600x400?text=Page+1+Illustration`,
-          },
-          {
-            id: 'page-2',
-            type: 'content',
-            text: `Today was going to be special.`,
-            imageUrl: `https://via.placeholder.com/600x400?text=Page+2+Illustration`,
-          },
+            text: spread.text,
+            imagePrompt: spread.imagePrompt, // Store the image prompt for future generation
+            imageUrl: `https://via.placeholder.com/600x400?text=Page+${spread.pageNumbers}+Illustration`,
+            spreadNumber: spread.spreadNumber,
+            pageNumbers: spread.pageNumbers
+          })),
+          // Back cover
           {
             id: 'page-back',
             type: 'back-cover',
@@ -484,6 +492,11 @@ const useBookStore = create((set, get) => ({
             imageUrl: '',
           }
         ],
+        
+        // Store the outline and raw content for reference
+        outline: book.outline,
+        generatedContent: book.spreads,
+        
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

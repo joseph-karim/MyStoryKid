@@ -623,39 +623,39 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
         <div className="space-y-6">
-          <div>
+              <div>
             <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
               Character Name
             </label>
-            <input
-              type="text"
+                  <input
+                    type="text"
               id="name"
               value={characterData.name || ''}
               onChange={(e) => handleChange('name', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter character name"
+                    placeholder="Enter character name"
               required
-            />
-          </div>
-          
+                  />
+                </div>
+                
           <div>
             <label htmlFor="age" className="block font-medium text-gray-700 mb-1">
               Age
             </label>
-            <input
-              type="text"
+                  <input
+                    type="text"
               id="age"
               value={characterData.age || ''}
               onChange={(e) => handleChange('age', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="Character's age"
-            />
-          </div>
-          
+                  />
+                </div>
+                
           <div>
             <label htmlFor="gender" className="block font-medium text-gray-700 mb-1">
               Gender
-            </label>
+                      </label>
             <select
               id="gender"
               value={characterData.gender || ''}
@@ -668,26 +668,26 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               <option value="Non-binary">Non-binary</option>
               <option value="Other">Other</option>
             </select>
-          </div>
-        </div>
-        
+              </div>
+            </div>
+            
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
+              <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
             disabled={step === 1}
-          >
-            Back
-          </button>
-          <button
+              >
+                Back
+              </button>
+              <button
             onClick={handleNext}
             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-            disabled={!characterData.name}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+                disabled={!characterData.name}
+              >
+                Next
+              </button>
+            </div>
+          </div>
     );
   };
   
@@ -744,35 +744,35 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                       e.stopPropagation();
                       fileInputRef.current && fileInputRef.current.click();
                     }}
-                  >
-                    {photoPreview ? (
+                >
+                  {photoPreview ? (
                       <div className="flex flex-col items-center">
-                        <img 
-                          src={photoPreview} 
+                      <img 
+                        src={photoPreview} 
                           alt="Character" 
                           className="w-32 h-32 object-cover rounded-md mb-2" 
-                        />
-                        <button 
+                      />
+                      <button 
                           className="text-sm text-blue-600 hover:text-blue-800"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPhotoPreview(null);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhotoPreview(null);
                             handleChange('photoUrl', null);
-                          }}
-                        >
+                        }}
+                      >
                           Remove Photo
-                        </button>
-                      </div>
-                    ) : (
+                      </button>
+                    </div>
+                  ) : (
                       <div className="flex flex-col items-center">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
+                      </svg>
                         <span className="mt-2 block text-sm font-medium text-gray-700">
                           Click to upload a photo
                         </span>
-                      </div>
-                    )}
+                    </div>
+                  )}
                   </div>
                   <input
                     ref={fileInputRef}
@@ -783,8 +783,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   />
                 </div>
               )}
-            </div>
-            
+              </div>
+              
             {/* Text Description Option */}
             <div 
               className={`border rounded-md p-4 ${characterData.useTextToImage ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
@@ -799,12 +799,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     checked={characterData.useTextToImage}
                     onChange={() => handleChange('useTextToImage', true)}
                     className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
-                  />
-                </div>
+                        />
+                      </div>
                 <div className="ml-3">
                   <label htmlFor="textDescription" className="font-medium text-gray-700">Generate from Description</label>
+                    </div>
                 </div>
-              </div>
               
               {characterData.useTextToImage && (
                 <div className="mt-4">
@@ -814,19 +814,19 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     placeholder="Describe your character in detail. For example: 'A 7-year-old girl with curly brown hair and green eyes, wearing a yellow dress with flower patterns, has a cheerful smile, and is holding a small teddy bear.'"
                     className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
+              </div>
               )}
             </div>
-          </div>
-        </div>
-        
+                  </div>
+            </div>
+            
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
+              <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-          >
-            Back
-          </button>
+              >
+                Back
+              </button>
           <button
             onClick={handleNext}
             className={`px-6 py-2 bg-blue-600 text-white rounded ${
@@ -842,8 +842,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           >
             Next
           </button>
-        </div>
-      </div>
+            </div>
+          </div>
     );
   };
   
@@ -890,8 +890,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 </div>
               </div>
             ))}
-          </div>
-        )}
+                  </div>
+                )}
       </div>
     );
   };
@@ -1406,8 +1406,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   src={imageUrl}
                   alt="Character Preview"
                   className="max-w-full max-h-[85vh] object-contain shadow-xl"
-                />
-              </div>
+                  />
+                </div>
             </motion.div>
           </div>
         )}
@@ -1436,9 +1436,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     alt={characterData.name} 
                     className="w-full h-full object-contain"
                   />
-                </div>
               </div>
-              
+            </div>
+            
               <h3 className="text-xl font-bold">{characterData.name}</h3>
               <p className="text-gray-600">
                 {characterData.age && `${characterData.age} years old • `}
@@ -1449,7 +1449,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
                   <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-                </div>
+            </div>
               )}
             </div>
           </div>
@@ -1460,12 +1460,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         )}
         
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
+                <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-          >
+                >
             Back
-          </button>
+                </button>
           <button
             onClick={handleComplete}
             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
@@ -1482,15 +1482,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-        <button
+              <button
           onClick={handleCancel}
           className="text-gray-400 hover:text-gray-600"
-        >
+              >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
-      </div>
+              </button>
+            </div>
       
       {/* Tab Navigation */}
       <div className="mb-6 border-b border-gray-200">
@@ -1546,8 +1546,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-        </div>
-      )}
+          </div>
+        )}
       
       {/* Step Content */}
       <div className="mb-8 min-h-[400px]">
