@@ -65,7 +65,7 @@ function SummaryStep() {
         'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': 'Ancient China',
         
         // Modern & Colorful styles
-        'Style-b484beb8-143e-4776-9a87-355e0456cfa3': 'Cartoon Anime',
+        'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f': 'Cutie 3D',
         'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': 'Glossy Elegance',
         'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': 'Starlit Fantasy',
         'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': 'Fantasy Hero',
@@ -84,7 +84,7 @@ function SummaryStep() {
         'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': 'Aquarelle Life'
       };
       
-      return styleMap[styleCode] || 'API Style';
+      return styleMap[styleCode] || styleCode;
     }
     
     // Otherwise format the code into a friendly name

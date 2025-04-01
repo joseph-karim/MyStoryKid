@@ -189,9 +189,9 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
     styleIds: [
       { 
         id: 'cute_exaggeration',
-        apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
-        title: 'Cartoon Anime',
-        description: 'Bright, colorful anime-inspired style with clean lines.'
+        apiCode: 'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f',
+        title: 'Cutie 3D',
+        description: 'Playful and cute 3D characters with slightly exaggerated features.'
       },
       { 
         id: 'glossy_elegance',
