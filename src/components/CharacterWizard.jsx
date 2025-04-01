@@ -639,28 +639,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </div>
           
           <div>
-            <label htmlFor="type" className="block font-medium text-gray-700 mb-1">
-              Character Type
-            </label>
-            <select
-              id="type"
-              value={characterData.type || ''}
-              onChange={(e) => handleChange('type', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select character type</option>
-              <option value="Child">Child</option>
-              <option value="Parent">Parent</option>
-              <option value="Friend">Friend</option>
-              <option value="Teacher">Teacher</option>
-              <option value="Pet">Pet</option>
-              <option value="Imaginary Friend">Imaginary Friend</option>
-              <option value="Hero">Hero</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          
-          <div>
             <label htmlFor="age" className="block font-medium text-gray-700 mb-1">
               Age
             </label>
@@ -947,7 +925,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update the generateCharacterPreview function to handle text-to-image generation
+  // Update the generateCharacterPreview function to handle API style errors better
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
     setError('');
@@ -968,12 +946,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         throw new Error('Please provide a description for text-to-image generation');
       }
       
-      if (!characterData.artStyle) {
-        throw new Error('Please select an art style');
+      // Ensure we have a valid art style - use API default style if none provided
+      let styleCode = characterData.artStyle || forcedArtStyle;
+      if (!styleCode) {
+        // If no style is set, use a safe default
+        styleCode = SAFE_STYLE_CODE;
+        console.log("No style selected, using safe default style:", SAFE_STYLE_CODE);
       }
       
-      // Get style code from character data
-      const styleCode = characterData.artStyle;
       console.log("Using style code:", styleCode);
       
       // Handle text-to-image generation
@@ -1000,24 +980,53 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
         
-        // Create the text-to-image task
-        const taskResult = await createTxt2ImgTask({
-          prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
-          style_code: styleCode,
-          style_intensity: 1, // Full style application
-          quality_mode: 1, // High quality
-          target_h: 1024, // Standard size
-          target_w: 1024,
-          generate_slots: [1, 1], // Generate 2 images
-          output_format: 'webp' // Use webp for better quality/size ratio
-        });
-        
-        if (!taskResult || !taskResult.task_id) {
-          throw new Error('Failed to start text-to-image generation task');
+        try {
+          // Create the text-to-image task
+          const taskResult = await createTxt2ImgTask({
+            prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
+            style_code: styleCode,
+            style_intensity: 1, // Full style application
+            quality_mode: 1, // High quality
+            target_h: 1024, // Standard size
+            target_w: 1024,
+            generate_slots: [1, 1], // Generate 2 images
+            output_format: 'webp' // Use webp for better quality/size ratio
+          });
+          
+          if (!taskResult || !taskResult.task_id) {
+            throw new Error('Failed to start text-to-image generation task');
+          }
+          
+          // Start polling for this task
+          startPollingTask(taskResult.task_id);
+        } catch (apiError) {
+          console.error("API error in text-to-image:", apiError);
+          
+          // If we got style invalid error, try with the default style
+          if (apiError.message && apiError.message.includes("Style are invalid")) {
+            console.log("Style code rejected by API, trying with default style");
+            
+            // Retry with the default style code
+            const retryResult = await createTxt2ImgTask({
+              prompt: enhancedPrompt.substring(0, 800),
+              style_code: SAFE_STYLE_CODE, // Use the safe default
+              style_intensity: 1,
+              quality_mode: 1,
+              target_h: 1024,
+              target_w: 1024,
+              generate_slots: [1, 1],
+              output_format: 'webp'
+            });
+            
+            if (!retryResult || !retryResult.task_id) {
+              throw new Error('Failed to start text-to-image generation with fallback style');
+            }
+            
+            startPollingTask(retryResult.task_id);
+          } else {
+            throw apiError; // Re-throw if it's not a style issue
+          }
         }
-        
-        // Start polling for this task
-        startPollingTask(taskResult.task_id);
       }
       // Handle image-to-image generation for photo uploads
       else {
@@ -1062,35 +1071,71 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           images: [{ base64_data: "data:image/*;base64,..." }]
         });
         
-        // Call the Dzine API to create an img2img task
-        const result = await createImg2ImgTask(payload);
-        console.log('Dzine task created:', result);
-        
-        if (!result) {
-          throw new Error('Empty response from image generation API');
+        try {
+          // Call the Dzine API to create an img2img task
+          const result = await createImg2ImgTask(payload);
+          console.log('Dzine task created:', result);
+          
+          if (!result) {
+            throw new Error('Empty response from image generation API');
+          }
+          
+          // Check for task_id in different possible locations
+          let taskId = null;
+          
+          if (result.task_id) {
+            taskId = result.task_id;
+          } else if (result.data && result.data.task_id) {
+            taskId = result.data.task_id;
+          } else if (typeof result === 'string' && result.includes('task')) {
+            taskId = result;
+          } else {
+            throw new Error('Invalid response from API: missing task_id');
+          }
+          
+          // Start polling for this task
+          startPollingTask(taskId);
+        } catch (apiError) {
+          console.error("API error in image-to-image:", apiError);
+          
+          // If we got style invalid error, try with the default style
+          if (apiError.message && apiError.message.includes("Style are invalid")) {
+            console.log("Style code rejected by API, trying with default style");
+            
+            // Update the payload with the default style code
+            const retryPayload = {
+              ...payload,
+              style_code: SAFE_STYLE_CODE // Use the safe default
+            };
+            
+            // Retry with the default style code
+            const retryResult = await createImg2ImgTask(retryPayload);
+            
+            if (!retryResult || !retryResult.task_id) {
+              throw new Error('Failed to create image-to-image task with fallback style');
+            }
+            
+            // Check for task_id
+            let retryTaskId = null;
+            if (retryResult.task_id) {
+              retryTaskId = retryResult.task_id;
+            } else if (retryResult.data && retryResult.data.task_id) {
+              retryTaskId = retryResult.data.task_id;
+            } else {
+              throw new Error('Invalid response from API with fallback style');
+            }
+            
+            startPollingTask(retryTaskId);
+          } else {
+            throw apiError; // Re-throw if it's not a style issue
+          }
         }
-        
-        // Check for task_id in different possible locations
-        let taskId = null;
-        
-        if (result.task_id) {
-          taskId = result.task_id;
-        } else if (result.data && result.data.task_id) {
-          taskId = result.data.task_id;
-        } else if (typeof result === 'string' && result.includes('task')) {
-          taskId = result;
-        } else {
-          throw new Error('Invalid response from API: missing task_id');
-        }
-        
-        // Start polling for this task
-        startPollingTask(taskId);
       }
     } catch (error) {
       console.error('Error creating Dzine task:', error);
       
       // Always fall back to placeholder on error
-      const bgColor = stringToColor(characterData.name + characterData.artStyle);
+      const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
       const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
