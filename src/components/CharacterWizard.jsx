@@ -1590,8 +1590,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     className="w-full h-full object-contain"
                   />
               </div>
-            </div>
-            
+                </div>
+                
               <h3 className="text-xl font-bold">{characterData.name}</h3>
               <p className="text-gray-600">
                 {characterData.age && `${characterData.age} years old • `}
@@ -1602,7 +1602,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
                   <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-            </div>
+              </div>
               )}
             </div>
           </div>
@@ -1688,21 +1688,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-              <button
+                <button
           onClick={handleCancel}
           className="text-gray-400 hover:text-gray-600"
-              >
+                >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-              </button>
+                </button>
             </div>
-      
+              
       {/* Tab Navigation */}
       <div className="mb-6 border-b border-gray-200">
         <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
           <li className="mr-2">
-            <button
+              <button
               onClick={() => handleTabClick(1)}
               className={`inline-block p-4 border-b-2 rounded-t-lg ${
                 step === 1 
@@ -1714,7 +1714,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               disabled={!unlockedSteps.includes(1)}
             >
               Details
-            </button>
+              </button>
           </li>
           <li className="mr-2">
             <button
@@ -1747,7 +1747,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             </button>
           </li>
         </ul>
-      </div>
+            </div>
       
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
