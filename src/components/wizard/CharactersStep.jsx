@@ -338,7 +338,7 @@ function CharactersStep() {
       };
     });
     setGenerationStatus(initialStatus);
-  }, [wizardState.storyData]);
+  }, [wizardState.storyData.bookCharacters]); // <-- DEPENDENCY CHANGED HERE
 
   const handleAddCharacter = (role) => {
     setSelectedRole(role);

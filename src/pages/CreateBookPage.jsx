@@ -69,8 +69,13 @@ function CreateBookPage() {
             forcedArtStyle={wizardState.storyData.artStyleCode}
             onComplete={(character) => {
               if (character) {
-                // Update store with main character and move to next step
-                updateStoryData({ bookCharacters: [character] }); 
+                // Add the role property before saving
+                const mainCharacterWithRole = {
+                  ...character,
+                  role: 'main' // Explicitly set the role
+                };
+                // Update store with main character (including role) and move to next step
+                updateStoryData({ bookCharacters: [mainCharacterWithRole] }); 
                 setWizardStep(4); // Go to Other Characters step
               } else {
                 // Handle cancellation: Go back to Art Style
