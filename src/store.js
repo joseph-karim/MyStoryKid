@@ -1,16 +1,67 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware'; // If you use persistence
+import { v4 as uuidv4 } from 'uuid'; // Needed if wizard uses it
+
+// --- Auth Store --- 
+export const useAuthStore = create(
+  persist(
+    (set) => ({
+      isAuthenticated: false,
+      user: null, // Store user info like name, email, uid
+      token: null, // Store auth token if needed
+      
+      // Placeholder login action
+      login: (userData, token) => set({
+        isAuthenticated: true,
+        user: userData,
+        token: token
+      }),
+      
+      // Placeholder logout action
+      logout: () => set({
+        isAuthenticated: false,
+        user: null,
+        token: null
+      }),
+    }),
+    {
+      name: 'auth-storage', // Name of the item in storage (must be unique)
+      // You might want to configure storage (e.g., localStorage or sessionStorage)
+      // getStorage: () => sessionStorage, // Example using sessionStorage
+    }
+  )
+);
+
+// --- Character Store --- 
+// (Assuming this exists or you might add it later)
+export const useCharacterStore = create((set) => ({
+  characters: [],
+  addCharacter: (character) => set((state) => ({ characters: [...state.characters, character] })),
+  updateCharacter: (id, updates) => set((state) => ({
+    characters: state.characters.map((char) => char.id === id ? { ...char, ...updates } : char),
+  })),
+  removeCharacter: (id) => set((state) => ({ characters: state.characters.filter((char) => char.id !== id) })),
+}));
+
+// --- Book Store --- 
 export const useBookStore = create((set, get) => ({
-  // ... existing state (wizardState, books, etc.) ...
-  
+  wizardState: { currentStep: 1, isComplete: false, storyData: {} },
+  books: [], // Array to hold generated books
+
+  setWizardStep: (step) => set((state) => ({ wizardState: { ...state.wizardState, currentStep: step } })),
+  updateStoryData: (data) => set((state) => ({
+    wizardState: { ...state.wizardState, storyData: { ...state.wizardState.storyData, ...data } }
+  })),
+  resetWizard: () => set({ wizardState: { currentStep: 1, isComplete: false, storyData: {} } }),
+
+  // Modified generateBook to return ID
   generateBook: async () => {
     const { wizardState } = get();
     const storyData = wizardState.storyData;
     console.log('Generating book with data:', storyData);
-    
-    // --- MOCK GENERATION & ID --- 
-    // Replace this with your actual API call to generate the book
-    // IMPORTANT: This mock assumes your API call returns an object like { success: true, bookId: 'new-book-123' }
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
-    
+
+    // MOCK GENERATION & ID
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
     const newBookId = `book-${Date.now()}`;
     const newBook = {
       id: newBookId,
@@ -18,29 +69,22 @@ export const useBookStore = create((set, get) => ({
       category: storyData.category,
       scene: storyData.mainScene,
       artStyleCode: storyData.artStyleCode,
-      artStyleName: getStyleNameFromCode(storyData.artStyleCode), // Use helper to get name
+      artStyleName: getStyleNameFromCode(storyData.artStyleCode), 
       characters: storyData.bookCharacters || [],
-      // ... add other relevant book properties like pages, generated text etc.
       createdAt: new Date().toISOString(),
     };
-    // --- END MOCK --- 
-    
-    // Add the new book to the library
+
     set((state) => ({
       books: [...state.books, newBook],
-      wizardState: { ...state.wizardState, isComplete: true } // Mark wizard as complete
+      wizardState: { ...state.wizardState, isComplete: true }
     }));
-    
-    console.log('Book added to store:', newBook);
-    
-    // --- RETURN THE NEW BOOK ID --- 
-    return newBookId;
-  },
-  
-// ... rest of the store actions ...
-}));
 
-// ... potentially other stores like useCharacterStore ...
+    console.log('Book added to store:', newBook);
+    return newBookId; // RETURN ID
+  },
+
+  // Add other book-related actions as needed (fetchBooks, getBookById, etc.)
+}));
 
 // --- Helper Function (ensure it's available or imported) ---
 // (This might need to be moved or imported if not already globally available)
