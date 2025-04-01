@@ -145,11 +145,24 @@ export const getAvailableStyles = async () => {
     const cachedStyles = localStorage.getItem('dzine_styles');
     
     if (cachedStyles) {
-      return JSON.parse(cachedStyles);
+      const styles = JSON.parse(cachedStyles);
+      // Debug: Print all available styles
+      console.log('All available styles:');
+      styles.forEach(style => {
+        console.log(`${style.name}: ${style.style_code}`);
+      });
+      return styles;
     }
     
     // If not in cache, fetch from API
     const data = await getDzineStyles();
+    if (data.list) {
+      // Debug: Print all available styles
+      console.log('All available styles:');
+      data.list.forEach(style => {
+        console.log(`${style.name}: ${style.style_code}`);
+      });
+    }
     return data.list || [];
   } catch (error) {
     console.error('Error getting available styles:', error);
@@ -174,6 +187,40 @@ export const createImg2ImgTask = async (payload) => {
       throw new Error('Style code is required');
     }
 
+    // Ensure style exists in available styles
+    const availableStyles = await getAvailableStyles();
+    const styleExists = availableStyles.some(style => style.style_code === payload.style_code);
+    
+    if (!styleExists) {
+      console.error(`Style code ${payload.style_code} not found in available styles`);
+      // Get a list of valid style codes for debugging
+      const validCodes = availableStyles.map(s => s.style_code).slice(0, 5);
+      console.log('First 5 valid style codes:', validCodes);
+      throw new Error('Invalid style code');
+    }
+
+    // Ensure all required fields are present
+    const requiredFields = {
+      prompt: 'string',
+      style_code: 'string',
+      images: 'array',
+      style_intensity: 'number',
+      structure_match: 'number',
+      face_match: 'number',
+      color_match: 'number'
+    };
+
+    for (const [field, type] of Object.entries(requiredFields)) {
+      if (!payload[field]) {
+        console.error(`Missing required field: ${field}`);
+        throw new Error(`${field} is required`);
+      }
+      if (typeof payload[field] !== type && !(type === 'array' && Array.isArray(payload[field]))) {
+        console.error(`Invalid type for ${field}: expected ${type}, got ${typeof payload[field]}`);
+        throw new Error(`Invalid type for ${field}`);
+      }
+    }
+
     // Log style details for debugging
     console.log('Style parameters for img2img:', {
       styleCode: payload.style_code,
@@ -183,10 +230,24 @@ export const createImg2ImgTask = async (payload) => {
       colorMatch: payload.color_match,
     });
     
-    console.log('Sending to Dzine API:', JSON.stringify({
-      ...payload,
-      images: payload.images ? [`${payload.images.length} images`] : []
-    }, null, 2));
+    // Clean the payload to ensure no extra fields
+    const cleanPayload = {
+      prompt: payload.prompt,
+      style_code: payload.style_code,
+      images: payload.images,
+      style_intensity: payload.style_intensity,
+      structure_match: payload.structure_match,
+      face_match: payload.face_match,
+      color_match: payload.color_match,
+      quality_mode: payload.quality_mode || 1,
+      prompt_strength: payload.prompt_strength || 0.8,
+      cfg_scale: payload.cfg_scale || 9,
+      generate_slots: payload.generate_slots || [1, 1],
+      output_format: payload.output_format || 'webp',
+      name: payload.name
+    };
+    
+    console.log('Sending to Dzine API:', JSON.stringify(cleanPayload, null, 2));
     
     // Use the EXACT endpoint from the documentation
     const endpoint = '/create_task_img2img';
@@ -194,47 +255,10 @@ export const createImg2ImgTask = async (payload) => {
     
     const data = await fetchDzine(endpoint, {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(cleanPayload)
     });
-    
-    // Log full response for debugging
-    console.log(`Raw response from API:`, JSON.stringify(data));
-    
-    // Check for task_id in different possible response structures
-    if (data) {
-      console.log(`Success with endpoint ${endpoint}:`, data);
-      
-      // Case 1: Standard structure with code 200
-      if (data.code === 200 && data.data && data.data.task_id) {
-        console.log(`Found task_id in standard structure:`, data.data.task_id);
-        return data.data;
-      }
-      
-      // Case 2: Direct task_id in data
-      if (data.task_id) {
-        console.log(`Found direct task_id:`, data.task_id);
-        return { task_id: data.task_id };
-      }
-      
-      // Case 3: Nested in a different structure
-      if (data.data && data.data.task) {
-        console.log(`Found task in nested structure:`, data.data.task);
-        return { task_id: data.data.task };
-      }
-      
-      // If we got here, log the structure for debugging
-      console.warn(`Could not find task_id in response structure:`, data);
-      
-      // Check for style-related errors
-      if (data.msg && data.msg.toLowerCase().includes('style')) {
-        throw new Error(`Style error: ${data.msg}`);
-      }
-      
-      throw new Error('Could not find task_id in API response');
-    } else {
-      console.error(`Empty response from ${endpoint}`);
-      throw new Error('Empty response from API');
-    }
+
+    return data;
   } catch (error) {
     console.error('Error in createImg2ImgTask:', error);
     throw error;

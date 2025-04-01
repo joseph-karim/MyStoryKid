@@ -124,40 +124,40 @@ const CURATED_STYLES = [
 // Map of style IDs to API style codes
 const STYLE_CODE_MAP = {
   // Whimsical & Soft (Ages 0-5)
-  watercolor_whimsy: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
-  whimsical_coloring: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b', // Whimsical Coloring
-  enchanted_character: 'Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e', // Enchanted Character
-  minimalist_cutesy: 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7', // Minimalist Cutesy
+  watercolor_whimsy: 'Style-c6f6a5e3-65c4-4a0d-b525-66115e24f5ed', // Playful Outline
+  whimsical_coloring: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D
+  enchanted_character: 'Style-5348624a-0de8-4c49-9d88-aac548ba82f2', // Playful Critters
+  minimalist_cutesy: 'Style-5b1', // Cozy 3D (truncated in logs, need full code)
 
   // Classic & Timeless (Ages 3-8)
-  cheerful_storybook: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926', // Cheerful Storybook
-  pleasantly_warm: 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c', // Pleasantly Warm
-  storytime_whimsy: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
-  line_and_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
-  golden_hour: 'Style-90a8d36d-9a67-4619-a995-4036fda8474d', // Golden Hour
+  cheerful_storybook: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  pleasantly_warm: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  storytime_whimsy: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  line_and_wash: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  golden_hour: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
 
   // Modern & Colorful (Ages 4-9)
-  cute_exaggeration: 'Style-11393e3a-ec40-402f-82cf-57c19bea8d12', // Cute Exaggeration
-  glossy_elegance: 'Style-04d8cbcf-6496-4d68-997e-516303502507', // Glossy Elegance
-  starlit_fantasy: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0', // Starlit Fantasy
-  fantasy_hero: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf', // Fantasy Hero
-  joyful_clay: 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d', // Joyful Clay
+  cute_exaggeration: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  glossy_elegance: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  starlit_fantasy: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  fantasy_hero: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  joyful_clay: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
 
   // Realistic & Artistic (Ages 6-12)
-  enchanted_elegance: 'Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25', // Enchanted Elegance
-  warm_portrait: 'Style-4ab783c7-2955-4092-878e-965162241bf7', // Warm Portrait
-  magic_portrait: 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4', // Magic Portrait
-  vivid_tableaux: 'Style-589373f8-1283-4570-baf9-61d02eb13391', // Vivid Tableaux
-  luminous_narratives: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
+  enchanted_elegance: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  warm_portrait: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  magic_portrait: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  vivid_tableaux: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  luminous_narratives: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
 
   // Additional styles
-  dreamlike_portraiture: 'Style-c0bde410-94f1-42d1-a1f6-d968aabbf689', // Dreamlike Portraiture
-  aquarelle_life: 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333', // Aquarelle Life
-  ancient_china: 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c', // Ancient China
-  ceramic_lifelike: 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d', // Ceramic Lifelike
-  yarn_realism: 'Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb', // Yarn Realism
-  mystical_sovereignty: 'Style-04329eae-1af6-4f06-a97c-f4b2b48516de', // Mystical Sovereignty
-  soft_radiance: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41' // Soft Radiance
+  dreamlike_portraiture: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  aquarelle_life: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  ancient_china: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  ceramic_lifelike: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  yarn_realism: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  mystical_sovereignty: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f', // PixiePop 3D as fallback
+  soft_radiance: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f' // PixiePop 3D as fallback
 };
 
 // Fallback style code - use PixiePop 3D as default
