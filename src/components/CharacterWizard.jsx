@@ -628,10 +628,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setStep(4); // Skip to preview
   };
   
-  // Photo handler to correctly process uploaded photos
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.error('No file selected');
+      return;
+    }
+    
+    // Debug log the file details
+    console.log('UPLOAD DEBUG:', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      lastModified: file.lastModified
+    });
     
     // Check file size
     if (file.size > 10 * 1024 * 1024) {
@@ -643,14 +653,42 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     reader.onload = (event) => {
       const imageData = event.target?.result;
       if (typeof imageData === 'string') {
+        // Debug log the image data
+        console.log('IMAGE DATA DEBUG:', {
+          dataLength: imageData.length,
+          dataType: typeof imageData,
+          isBase64: imageData.startsWith('data:image'),
+          preview: imageData.substring(0, 50) + '...'
+        });
+        
+        // Store the image data in both places to be safe
         setPhotoPreview(imageData);
-        handleChange('photoUrl', imageData);
+        setCharacterData(prev => ({
+          ...prev,
+          photoUrl: imageData,
+          // Also store in baseImage for backward compatibility
+          baseImage: imageData
+        }));
+        
         // Clear any existing generation prompt since we're using a photo
         handleChange('generationPrompt', '');
         // Set useTextToImage to false since we're using a photo
         handleChange('useTextToImage', false);
+        
+        // Debug log the final state
+        console.log('UPLOAD COMPLETE:', {
+          hasPhotoPreview: !!imageData,
+          photoUrlSet: true,
+          imageLength: imageData.length
+        });
       }
     };
+    
+    reader.onerror = (error) => {
+      console.error('Error reading file:', error);
+      setError('Error reading the uploaded file. Please try again.');
+    };
+    
     reader.readAsDataURL(file);
     
     // Clear the file input to allow uploading the same file again
@@ -1645,29 +1683,39 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         fromApi: styleId.startsWith('Style-')
       });
       
-      // Prepare the base64 image from the character data
-      const baseImage = characterData.photoUrl;
-      console.log('IMAGE DEBUG:', {
-        hasBaseImage: !!baseImage,
-        baseImageType: typeof baseImage,
-        baseImageLength: baseImage ? baseImage.length : 0,
-        isBase64: baseImage ? baseImage.startsWith('data:image') : false
+      // Get the image data from either photoUrl or baseImage
+      const imageData = characterData.photoUrl || characterData.baseImage;
+      
+      // Debug log all possible image sources
+      console.log('IMAGE SOURCE DEBUG:', {
+        hasPhotoUrl: !!characterData.photoUrl,
+        hasBaseImage: !!characterData.baseImage,
+        photoUrlType: typeof characterData.photoUrl,
+        baseImageType: typeof characterData.baseImage,
+        photoUrlLength: characterData.photoUrl?.length,
+        baseImageLength: characterData.baseImage?.length,
+        finalImageDataLength: imageData?.length
       });
 
-      if (!baseImage) {
-        throw new Error('No base image available');
+      // Validate that we have an image
+      if (!imageData) {
+        console.error('No image data available in character data');
+        throw new Error('Please upload a photo first');
       }
 
       // Validate base64 image format
-      if (!baseImage.startsWith('data:image')) {
+      if (!imageData.startsWith('data:image')) {
+        console.error('Invalid image format:', imageData.substring(0, 50));
         throw new Error('Invalid image format. Expected base64 data URL.');
       }
       
       // Create the API payload
       const payload = {
         style_code: styleCode,
-        image: baseImage,
-        prompt: prompt || 'Generate a character portrait in the selected style',
+        images: [{
+          base64_data: imageData
+        }],
+        prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`,
         color_match: 0.5,
         face_match: 1.0,
         style_intensity: 1.0,
@@ -1677,8 +1725,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       };
 
       console.log('PAYLOAD DEBUG:', {
-        hasImage: !!payload.image,
-        imageType: typeof payload.image,
+        hasImages: !!payload.images,
+        imagesLength: payload.images?.length,
+        hasBase64Data: !!payload.images?.[0]?.base64_data,
+        base64DataLength: payload.images?.[0]?.base64_data?.length,
         styleCode: payload.style_code,
         prompt: payload.prompt,
         colorMatch: payload.color_match,
@@ -1690,6 +1740,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       const taskResponse = await createImg2ImgTask(payload);
       
       if (!taskResponse || !taskResponse.data || !taskResponse.data.task_id) {
+        console.error('Invalid task response:', taskResponse);
         throw new Error('Failed to create image generation task');
       }
       
@@ -1701,7 +1752,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
     } catch (error) {
       console.error('API error in image-to-image:', error);
-      handleGenerationError(error, fallbackImage);
+      setProgressMessage(`Error: ${error.message}`);
+      useFallbackImage(fallbackImage);
     }
   };
   
