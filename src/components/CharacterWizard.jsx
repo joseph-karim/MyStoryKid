@@ -496,6 +496,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       return;
     }
     
+    // Add validation for step 2
+    if (step === 2) {
+      // Check if using text description but no description provided
+      if (characterData.useTextToImage && !characterData.generationPrompt) {
+        setError('Please provide a description for your character.');
+        return;
+      }
+      
+      // Check if using photo but no photo uploaded
+      if (!characterData.useTextToImage && !characterData.photoUrl) {
+        setError('Please upload a photo for your character.');
+        return;
+      }
+    }
+    
     if (step === 4) {
       // This is the final step
       handleComplete();
@@ -783,15 +798,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const matchStyleToAPIStyle = (curatedStyle, apiStyles) => {
     if (!apiStyles || apiStyles.length === 0) return null;
     
-    // First try direct keyword matching
-    const matchedStyle = apiStyles.find(style => {
-      const styleName = style.name.toLowerCase();
-      return curatedStyle.keywordMatch.some(keyword => 
-        styleName.includes(keyword.toLowerCase())
-      );
-    });
-    
-    if (matchedStyle) return matchedStyle;
+    // First try direct keyword matching if keywordMatch exists
+    if (curatedStyle.keywordMatch) {
+      const matchedStyle = apiStyles.find(style => {
+        const styleName = style.name.toLowerCase();
+        return curatedStyle.keywordMatch.some(keyword => 
+          styleName.includes(keyword.toLowerCase())
+        );
+      });
+      
+      if (matchedStyle) return matchedStyle;
+    }
     
     // Fallback to a default style (3D or cartoon preferably)
     const defaultStyle = apiStyles.find(style => 
@@ -806,98 +823,200 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the appearance step to use curated categories with API style mapping
   const renderAppearanceStep = () => {
-    // Skip photo upload step if using text-to-image
-    if (characterData.useTextToImage || !photoPreview) {
-      return (
-        <div className="space-y-6 animate-fadeIn">
-          <h2 className="text-2xl font-bold mb-4">Character Appearance</h2>
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <h2 className="text-2xl font-bold mb-4">Character Appearance</h2>
+        
+        {/* Character Generation Method Selection */}
+        <div className="mb-6">
+          <label className="block font-medium text-gray-700 mb-2">How would you like to create your character?</label>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
-            <h3 className="font-medium text-blue-800 mb-2">Text-to-Image Generation</h3>
-            <p className="text-sm text-blue-700">
-              Your character will be generated from your description:
-            </p>
-            <div className="mt-2 p-3 bg-white rounded border border-blue-100">
-              <p className="text-sm italic">
-                {characterData.generationPrompt || characterData.description || "No description provided. Please go back and add a description."}
-              </p>
+          <div className="space-y-4">
+            {/* Photo Upload Option */}
+            <div 
+              className={`border rounded-md p-4 ${!characterData.useTextToImage ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
+              onClick={() => handleChange('useTextToImage', false)}
+            >
+              <div className="flex items-start">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    checked={!characterData.useTextToImage}
+                    onChange={() => handleChange('useTextToImage', false)}
+                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                </div>
+                <div className="ml-3">
+                  <label className="font-medium text-gray-700">Upload a Photo</label>
+                  <p className="text-gray-500 text-sm">Upload a photo of your character and transform it into art</p>
+                </div>
+              </div>
+              
+              {!characterData.useTextToImage && (
+                <div className="mt-4">
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors"
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  >
+                    {photoPreview ? (
+                      <div className="flex flex-col items-center">
+                        <img 
+                          src={photoPreview} 
+                          alt="Character" 
+                          className="w-32 h-32 object-cover rounded-md mb-2" 
+                        />
+                        <button 
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPhotoPreview(null);
+                            handleChange('photoUrl', null);
+                          }}
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span className="mt-2 block text-sm font-medium text-gray-700">
+                          Click to upload a photo
+                        </span>
+                        <span className="mt-1 block text-xs text-gray-500">
+                          PNG, JPG, WEBP up to 10MB
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Photos are used only once for style conversion and then discarded for privacy.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Text Description Option */}
+            <div 
+              className={`border rounded-md p-4 ${characterData.useTextToImage ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
+              onClick={() => handleChange('useTextToImage', true)}
+            >
+              <div className="flex items-start">
+                <div className="flex items-center h-5">
+                  <input
+                    type="radio"
+                    checked={characterData.useTextToImage}
+                    onChange={() => handleChange('useTextToImage', true)}
+                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                </div>
+                <div className="ml-3">
+                  <label className="font-medium text-gray-700">Describe Your Character</label>
+                  <p className="text-gray-500 text-sm">Provide a detailed description and we'll generate your character</p>
+                </div>
+              </div>
+              
+              {characterData.useTextToImage && (
+                <div className="mt-4">
+                  <textarea
+                    value={characterData.generationPrompt}
+                    onChange={(e) => handleChange('generationPrompt', e.target.value)}
+                    placeholder="Describe your character in detail. For example: 'A 7-year-old girl with curly brown hair and green eyes, wearing a yellow dress with flower patterns, has a cheerful smile, and is holding a small teddy bear.'"
+                    className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Be specific about appearance, clothing, pose, and expression for best results.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          
-          {/* Art style selection */}
-          <div>
-            <h3 className="font-medium mb-2">Select Art Style</h3>
-            <p className="text-sm text-gray-600 mb-4">Choose how your character should be illustrated</p>
-            
-            {isLoadingStyles ? (
-              <div className="flex justify-center my-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Art style categories with styles */}
-                {getStyleCategories().map((category, index) => (
-                  <div key={index} className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-900">{category.category}</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {category.styles.map(style => {
-                        // Match curated style to API style
-                        const apiStyle = matchStyleToAPIStyle(style, apiStyles);
-                        
-                        return (
-                          <div 
-                            key={style.id}
-                            onClick={() => handleChange('artStyle', apiStyle?.style_code || style.id)}
-                            className={`border rounded-md overflow-hidden ${
-                              characterData.artStyle === (apiStyle?.style_code || style.id) 
-                                ? 'ring-2 ring-blue-500 border-blue-400' 
-                                : 'border-gray-200 hover:border-blue-300'
-                            } cursor-pointer`}
-                          >
-                            <div className="h-32 overflow-hidden bg-gray-100">
-                              <img 
-                                src={style.imageUrl} 
-                                alt={style.name}
-                                className="w-full h-32 object-contain rounded hover:shadow-lg transition-shadow"
-                              />
-                            </div>
-                            <div className="p-2">
-                              <h5 className="font-medium text-sm">{style.name}</h5>
-                              <p className="text-xs text-gray-500 truncate">{style.description}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-            <button
-              onClick={handleBack}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleNext}
-              className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.artStyle ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-              disabled={!characterData.artStyle}
-            >
-              Next
-            </button>
-          </div>
         </div>
-      );
-    }
-    
-    // ... existing photo upload UI ...
+        
+        {/* Art style selection */}
+        <div>
+          <h3 className="font-medium mb-2">Select Art Style</h3>
+          <p className="text-sm text-gray-600 mb-4">Choose how your character should be illustrated</p>
+          
+          {isLoadingStyles ? (
+            <div className="flex justify-center my-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Art style categories with styles */}
+              {getStyleCategories().map((category, index) => (
+                <div key={index} className="space-y-2">
+                  <h4 className="font-medium text-sm text-gray-900">{category.category}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {category.styles.map(style => (
+                      <div 
+                        key={style.id}
+                        onClick={() => handleChange('artStyle', style.id)}
+                        className={`border rounded-md overflow-hidden ${
+                          characterData.artStyle === style.id 
+                            ? 'ring-2 ring-blue-500 border-blue-400' 
+                            : 'border-gray-200 hover:border-blue-300'
+                        } cursor-pointer`}
+                      >
+                        <div className="h-32 overflow-hidden bg-gray-100">
+                          <img 
+                            src={style.imageUrl} 
+                            alt={style.name}
+                            className="w-full h-32 object-contain rounded hover:shadow-lg transition-shadow"
+                          />
+                        </div>
+                        <div className="p-2">
+                          <h5 className="font-medium text-sm">{style.name}</h5>
+                          <p className="text-xs text-gray-500 truncate">{style.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${
+              ((!characterData.photoUrl && !characterData.useTextToImage) || 
+               (characterData.useTextToImage && !characterData.generationPrompt) ||
+               !characterData.artStyle) 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-blue-700'
+            }`}
+            disabled={
+              (!characterData.photoUrl && !characterData.useTextToImage) || 
+              (characterData.useTextToImage && !characterData.generationPrompt) ||
+              !characterData.artStyle
+            }
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
   };
   
-  // Update the generateCharacterPreview function to use the selected API style directly
+  // Update the generateCharacterPreview function to handle text-to-image generation
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
     setError('');
@@ -909,61 +1028,109 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
     
     try {
-      if (!characterData.photoUrl) {
+      // Validate inputs based on the generation method
+      if (!characterData.useTextToImage && !characterData.photoUrl) {
         throw new Error('Please upload a photo first');
+      }
+      
+      if (characterData.useTextToImage && !characterData.generationPrompt) {
+        throw new Error('Please provide a description for text-to-image generation');
       }
       
       if (!characterData.artStyle) {
         throw new Error('Please select an art style');
       }
       
-      // Extract the base64 data correctly
-      let base64Data = '';
-      if (characterData.photoUrl.startsWith('data:image')) {
-        // According to the documentation, we should use the full data URL
-        base64Data = characterData.photoUrl;
-      } else {
-        throw new Error('Invalid image format. Please upload a photo.');
-      }
-      
-      // Build a simple prompt based on character details
-      let prompt = `${characterData.name}`;
-      if (characterData.age) prompt += `, ${characterData.age} years old`;
-      if (characterData.gender) prompt += `, ${characterData.gender}`;
-      
-      // Add instructions for a neutral background with no distractions
-      prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
-      
-      // Use the style code directly from character data (which is now set to the API style code)
+      // Get style code from character data
       const styleCode = characterData.artStyle;
-      console.log("Using style code directly from character data:", styleCode);
+      console.log("Using style code:", styleCode);
       
-      // Create the payload for the API - matching the working parameters
-      const payload = {
-        prompt: prompt,
-        style_code: styleCode,
-        images: [
-          {
-            base64_data: base64Data
-          }
-        ],
-        style_intensity: 0.8,
-        structure_match: 0.7,
-        face_match: 1,
-        color_match: 0,
-        quality_mode: 0,
-        generate_slots: [1, 0, 0, 0],
-        output_format: "webp"
-      };
-      
-      // Log the payload structure (without the full base64 data)
-      console.log('Sending payload with structure:', {
-        ...payload,
-        images: [{ base64_data: "data:image/*;base64,..." }]
-      });
-      console.log("Style selected:", styleCode);
-      
-      try {
+      // Handle text-to-image generation
+      if (characterData.useTextToImage) {
+        // Prepare the text prompt from the generation prompt
+        let enhancedPrompt = characterData.generationPrompt || "";
+        
+        // Combine character information for a rich prompt if not already included
+        if (characterData.name && !enhancedPrompt.includes(characterData.name)) {
+          enhancedPrompt = `${characterData.name}: ${enhancedPrompt}`;
+        }
+        if (characterData.type && !enhancedPrompt.toLowerCase().includes(characterData.type.toLowerCase())) {
+          enhancedPrompt = `${enhancedPrompt}, ${characterData.type}`;
+        }
+        if (characterData.gender && !enhancedPrompt.toLowerCase().includes(characterData.gender.toLowerCase())) {
+          enhancedPrompt = `${enhancedPrompt}, ${characterData.gender}`;
+        }
+        if (characterData.age && !enhancedPrompt.includes(characterData.age)) {
+          enhancedPrompt = `${enhancedPrompt}, age ${characterData.age}`;
+        }
+        
+        // Add instructions for a clean background
+        enhancedPrompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
+        
+        console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
+        
+        // Create the text-to-image task
+        const taskResult = await createTxt2ImgTask({
+          prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
+          style_code: styleCode,
+          style_intensity: 1, // Full style application
+          quality_mode: 1, // High quality
+          target_h: 1024, // Standard size
+          target_w: 1024,
+          generate_slots: [1, 1], // Generate 2 images
+          output_format: 'webp' // Use webp for better quality/size ratio
+        });
+        
+        if (!taskResult || !taskResult.task_id) {
+          throw new Error('Failed to start text-to-image generation task');
+        }
+        
+        // Start polling for this task
+        startPollingTask(taskResult.task_id);
+      }
+      // Handle image-to-image generation for photo uploads
+      else {
+        // Extract the base64 data correctly
+        let base64Data = '';
+        if (characterData.photoUrl && characterData.photoUrl.startsWith('data:image')) {
+          // According to the documentation, we should use the full data URL
+          base64Data = characterData.photoUrl;
+        } else {
+          throw new Error('Invalid image format. Please upload a photo.');
+        }
+        
+        // Build a simple prompt based on character details
+        let prompt = `${characterData.name}`;
+        if (characterData.age) prompt += `, ${characterData.age} years old`;
+        if (characterData.gender) prompt += `, ${characterData.gender}`;
+        
+        // Add instructions for a neutral background with no distractions
+        prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
+        
+        // Create the payload for the API - matching the working parameters
+        const payload = {
+          prompt: prompt,
+          style_code: styleCode,
+          images: [
+            {
+              base64_data: base64Data
+            }
+          ],
+          style_intensity: 0.8,
+          structure_match: 0.7,
+          face_match: 1,
+          color_match: 0,
+          quality_mode: 0,
+          generate_slots: [1, 0, 0, 0],
+          output_format: "webp"
+        };
+        
+        // Log the payload structure (without the full base64 data)
+        console.log('Sending payload with structure:', {
+          ...payload,
+          images: [{ base64_data: "data:image/*;base64,..." }]
+        });
+        
         // Call the Dzine API to create an img2img task
         const result = await createImg2ImgTask(payload);
         console.log('Dzine task created:', result);
@@ -977,216 +1144,176 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         if (result.task_id) {
           taskId = result.task_id;
-          console.log('Found task_id directly in result:', taskId);
         } else if (result.data && result.data.task_id) {
           taskId = result.data.task_id;
-          console.log('Found task_id in result.data:', taskId);
         } else if (typeof result === 'string' && result.includes('task')) {
-          // In case the API returns a string with the task ID
           taskId = result;
-          console.log('Found task as string:', taskId);
         } else {
-          // Log the structure for debugging
-          console.error('Could not find task_id in result:', JSON.stringify(result));
-          throw new Error('Invalid response from API: missing task_id. Response: ' + JSON.stringify(result).substring(0, 100));
+          throw new Error('Invalid response from API: missing task_id');
         }
         
-        let pollCount = 0;
-        let maxPolls = 20; // Maximum number of polling attempts (40 seconds at 2 second intervals)
-        
-        // Create a unique ID for this polling session to avoid conflicts
-        const pollingId = uuidv4();
-        console.log(`Starting polling with ID ${pollingId} for task ${taskId}`);
-        
-        // Mark this polling session as active
-        pollingSessionRef.current[pollingId] = true;
-        
-        // Set up polling to check task progress
-        const pollInterval = setInterval(async () => {
-          try {
-            // If component is unmounted or polling was explicitly canceled for this session
-            if (!pollingSessionRef.current[pollingId]) {
-              console.log(`Stopping poll ${pollingId} because polling was explicitly canceled`);
-              clearInterval(pollInterval);
-              return;
-            }
-            
-            pollCount++;
-            // Simplify progress message - just show "Generating..." instead of polling details
-            setProgressMessage(`Generating...`);
-            
-            // Check task progress
-            const progressData = await getTaskProgress(taskId);
-            console.log(`Poll ${pollCount}/${maxPolls} for task ${taskId}:`, progressData);
-            
-            // Handle different status formats
-            const status = 
-              progressData.status || 
-              (progressData.data && progressData.data.status) || 
-              'unknown';
-            
-            console.log(`Task status: ${status}`);
-            
-            if (status === 'succeed' || status === 'succeeded') {
-              // Task completed successfully
-              console.log('Task completed successfully!');
-              
-              // Look for the result image URL(s) in various places
-              let resultUrls = [];
-              
-              if (progressData.images) {
-                // Case 1: Direct images array
-                resultUrls = progressData.images;
-                console.log('Found images directly in progressData:', resultUrls);
-              } else if (progressData.data && progressData.data.images) {
-                // Case 2: Images in data object
-                resultUrls = progressData.data.images;
-                console.log('Found images in progressData.data:', resultUrls);
-              } else if (progressData.result && progressData.result.images) {
-                // Case 3: Images in result object
-                resultUrls = progressData.result.images;
-                console.log('Found images in progressData.result:', resultUrls);
-              } else {
-                // Try to find images elsewhere in the response
-                console.log('Looking for images in full response:', progressData);
-                
-                // Case 4: Try to locate any URL that looks like an image
-                const extractUrls = (obj, prefix = '') => {
-                  let urls = [];
-                  if (typeof obj !== 'object' || obj === null) return urls;
-                  
-                  Object.keys(obj).forEach(key => {
-                    const path = prefix ? `${prefix}.${key}` : key;
-                    if (typeof obj[key] === 'string' && 
-                        (obj[key].includes('.png') || 
-                         obj[key].includes('.jpg') || 
-                         obj[key].includes('.jpeg') || 
-                         obj[key].includes('.webp'))) {
-                      console.log(`Found potential image URL at ${path}:`, obj[key]);
-                      urls.push(obj[key]);
-                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-                      urls = [...urls, ...extractUrls(obj[key], path)];
-                    }
-                  });
-                  return urls;
-                };
-                
-                resultUrls = extractUrls(progressData);
-                console.log('Extracted possible image URLs:', resultUrls);
-              }
-              
-              // If we found any URLs, use the first one
-              if (resultUrls && resultUrls.length > 0) {
-                let imageUrl = null;
-                
-                // If the "URLs" are actually base64 data, use as is
-                if (resultUrls[0].startsWith('data:image')) {
-                  imageUrl = resultUrls[0];
-                } else {
-                  // Otherwise assume it's a URL
-                  imageUrl = resultUrls[0];
-                }
-                
-                console.log('Using image URL:', imageUrl);
-                
-                // Update the character data with the style preview
-                setCharacterData(prev => ({
-                  ...prev,
-                  stylePreview: imageUrl,
-                  // Make sure we save the art style code too
-                  artStyle: styleCode
-                }));
-                
-                // We're done polling
-                console.log(`Successful completion, ending poll ${pollingId}`);
-                clearInterval(pollInterval);
-                setIsGenerating(false);
-                delete pollingSessionRef.current[pollingId];
-                return;
-              } else {
-                console.warn('Task completed but no images found in the response');
-                setProgressMessage('Task completed but no images found ⚠️');
-              }
-            } else if (status === 'failed' || status === 'error') {
-              // Task failed
-              console.error('Task failed:', progressData);
-              setProgressMessage('Generation failed');
-              clearInterval(pollInterval);
-              setIsGenerating(false);
-              delete pollingSessionRef.current[pollingId];
-              return;
-            } else if (status === 'pending' || status === 'processing' || status === 'unknown') {
-              // Task still in progress
-              // Extract progress percentage if available
-              let progress = null;
-              
-              if (typeof progressData.progress === 'number') {
-                progress = progressData.progress;
-              } else if (progressData.data && typeof progressData.data.progress === 'number') {
-                progress = progressData.data.progress;
-              }
-              
-              if (progress !== null) {
-                const percent = Math.round(progress * 100);
-                setProgressMessage(`Generating... ${percent}%`);
-              } else {
-                // Just show "Generating..." without poll count details
-                setProgressMessage(`Generating...`);
-              }
-            }
-            
-            // If we've reached the maximum polling attempts, stop polling
-            if (pollCount >= maxPolls) {
-              console.log(`Reached maximum polling attempts (${maxPolls}), stopping`);
-              setProgressMessage('Generation taking longer than expected');
-              clearInterval(pollInterval);
-              setIsGenerating(false);
-              delete pollingSessionRef.current[pollingId];
-              return;
-            }
-          } catch (error) {
-            console.error(`Error in polling attempt ${pollCount}:`, error);
-            
-            if (pollCount >= maxPolls) {
-              setProgressMessage('Error occurred');
-              clearInterval(pollInterval);
-              setIsGenerating(false);
-              delete pollingSessionRef.current[pollingId];
-            } else {
-              // Just show "Generating..." without error details
-              setProgressMessage(`Generating...`);
-            }
-          }
-        }, 2000);
-        
-        // Cleanup for this specific polling session when component unmounts or retry
-        useEffect(() => {
-          return () => {
-            console.log(`Component unmounting, cleaning up generation state`);
-            pollingSessionRef.current = {};
-            setIsGenerating(false);
-          };
-        }, []);
-      } catch (apiError) {
-        console.error('API Error:', apiError);
-        throw new Error(`Dzine API error: ${apiError.message}`);
+        // Start polling for this task
+        startPollingTask(taskId);
       }
     } catch (error) {
       console.error('Error creating Dzine task:', error);
       
       // Always fall back to placeholder on error
-      const bgColor = stringToColor(characterData.name + styleCode);
+      const bgColor = stringToColor(characterData.name + characterData.artStyle);
       const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
         ...prev,
-        artStyle: styleCode,
         stylePreview: fallbackPreview
       }));
       
       setError(`Failed to generate character: ${error.message}. Using placeholder instead.`);
       setIsGenerating(false);
     }
+  };
+  
+  // Create a new helper function to handle task polling
+  const startPollingTask = (taskId) => {
+    let pollCount = 0;
+    let maxPolls = 20; // Maximum number of polling attempts
+    
+    // Create a unique ID for this polling session to avoid conflicts
+    const pollingId = uuidv4();
+    console.log(`Starting polling with ID ${pollingId} for task ${taskId}`);
+    
+    // Mark this polling session as active
+    pollingSessionRef.current[pollingId] = true;
+    
+    // Set up polling to check task progress
+    const pollInterval = setInterval(async () => {
+      try {
+        // If component is unmounted or polling was explicitly canceled for this session
+        if (!pollingSessionRef.current[pollingId]) {
+          console.log(`Stopping poll ${pollingId} because polling was canceled`);
+          clearInterval(pollInterval);
+          return;
+        }
+        
+        pollCount++;
+        setProgressMessage(`Generating...`);
+        
+        // Check task progress
+        const progressData = await getTaskProgress(taskId);
+        console.log(`Poll ${pollCount}/${maxPolls} for task ${taskId}:`, progressData);
+        
+        // Handle different status formats
+        const status = 
+          progressData.status || 
+          (progressData.data && progressData.data.status) || 
+          'unknown';
+        
+        console.log(`Task status: ${status}`);
+        
+        if (status === 'succeed' || status === 'succeeded') {
+          // Task completed successfully
+          console.log('Task completed successfully!');
+          
+          // Look for the result image URL(s) in various places
+          let resultUrls = [];
+          
+          if (progressData.images) {
+            resultUrls = progressData.images;
+          } else if (progressData.data && progressData.data.images) {
+            resultUrls = progressData.data.images;
+          } else if (progressData.result && progressData.result.images) {
+            resultUrls = progressData.result.images;
+          } else if (progressData.generate_result_slots && progressData.generate_result_slots.length > 0) {
+            resultUrls = progressData.generate_result_slots;
+          } else if (progressData.data && progressData.data.generate_result_slots && progressData.data.generate_result_slots.length > 0) {
+            resultUrls = progressData.data.generate_result_slots;
+          } else {
+            // Try to find images elsewhere in the response
+            resultUrls = extractImageUrls(progressData);
+          }
+          
+          // If we found any URLs, use the first one
+          if (resultUrls && resultUrls.length > 0) {
+            let imageUrl = null;
+            
+            // If the "URLs" are actually base64 data, use as is
+            if (typeof resultUrls[0] === 'string') {
+              if (resultUrls[0].startsWith('data:image')) {
+                imageUrl = resultUrls[0];
+              } else {
+                // Otherwise assume it's a URL
+                imageUrl = resultUrls[0];
+              }
+              
+              console.log('Using image URL:', imageUrl);
+              
+              // Update the character data with the style preview
+              setCharacterData(prev => ({
+                ...prev,
+                stylePreview: imageUrl
+              }));
+              
+              // We're done polling
+              console.log(`Successful completion, ending poll ${pollingId}`);
+              clearInterval(pollInterval);
+              setIsGenerating(false);
+              delete pollingSessionRef.current[pollingId];
+              return;
+            }
+          }
+          
+          console.warn('Task completed but no images found in the response');
+          setProgressMessage('Task completed but no images found ⚠️');
+        } else if (status === 'failed' || status === 'error') {
+          // Task failed
+          console.error('Task failed:', progressData);
+          setProgressMessage('Generation failed');
+          clearInterval(pollInterval);
+          setIsGenerating(false);
+          delete pollingSessionRef.current[pollingId];
+          return;
+        }
+        
+        // If we've reached the maximum polling attempts, stop polling
+        if (pollCount >= maxPolls) {
+          console.log(`Reached maximum polling attempts (${maxPolls}), stopping`);
+          setProgressMessage('Generation taking longer than expected');
+          clearInterval(pollInterval);
+          setIsGenerating(false);
+          delete pollingSessionRef.current[pollingId];
+          return;
+        }
+      } catch (error) {
+        console.error(`Error in polling attempt ${pollCount}:`, error);
+        
+        if (pollCount >= maxPolls) {
+          setProgressMessage('Error occurred');
+          clearInterval(pollInterval);
+          setIsGenerating(false);
+          delete pollingSessionRef.current[pollingId];
+        }
+      }
+    }, 2000);
+  };
+  
+  // Helper function to extract image URLs from response
+  const extractImageUrls = (obj, prefix = '') => {
+    let urls = [];
+    if (typeof obj !== 'object' || obj === null) return urls;
+    
+    Object.keys(obj).forEach(key => {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof obj[key] === 'string' && 
+          (obj[key].includes('.png') || 
+           obj[key].includes('.jpg') || 
+           obj[key].includes('.jpeg') || 
+           obj[key].includes('.webp'))) {
+        console.log(`Found potential image URL at ${path}:`, obj[key]);
+        urls.push(obj[key]);
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        urls = [...urls, ...extractImageUrls(obj[key], path)];
+      }
+    });
+    return urls;
   };
   
   // Helper function to create a colored placeholder image as a data URL
