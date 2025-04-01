@@ -124,10 +124,17 @@ export const getStyleByName = async (styleName) => {
       s.name.toLowerCase().includes(styleName.toLowerCase())
     );
     
-    return style ? style.style_code : null;
+    if (!style) {
+      console.log(`Style not found for name: ${styleName}, using default style`);
+      // Return PixiePop 3D as default style
+      return 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f';
+    }
+    
+    return style.style_code;
   } catch (error) {
     console.error('Error getting style by name:', error);
-    return null;
+    // Return PixiePop 3D as fallback
+    return 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f';
   }
 };
 
@@ -166,7 +173,7 @@ export const createImg2ImgTask = async (payload) => {
       console.error('Missing style_code in payload');
       throw new Error('Style code is required');
     }
-    
+
     // Log style details for debugging
     console.log('Style parameters for img2img:', {
       styleCode: payload.style_code,

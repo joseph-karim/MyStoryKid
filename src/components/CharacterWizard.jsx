@@ -121,20 +121,62 @@ const CURATED_STYLES = [
   }
 ];
 
-// Map of style IDs to API style codes - no longer needed, using direct API codes
-const PLEASANTLY_WARM_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+// Map of style IDs to API style codes
+const STYLE_CODE_MAP = {
+  // Whimsical & Soft (Ages 0-5)
+  watercolor_whimsy: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de', // Watercolor Whimsy
+  whimsical_coloring: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b', // Whimsical Coloring
+  enchanted_character: 'Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e', // Enchanted Character
+  minimalist_cutesy: 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7', // Minimalist Cutesy
 
-// Fallback style code for when mapping fails - use "No Style v2" as fallback
-const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; 
+  // Classic & Timeless (Ages 3-8)
+  cheerful_storybook: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926', // Cheerful Storybook
+  pleasantly_warm: 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c', // Pleasantly Warm
+  storytime_whimsy: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook Charm
+  line_and_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9', // Line & Wash
+  golden_hour: 'Style-90a8d36d-9a67-4619-a995-4036fda8474d', // Golden Hour
+
+  // Modern & Colorful (Ages 4-9)
+  cute_exaggeration: 'Style-11393e3a-ec40-402f-82cf-57c19bea8d12', // Cute Exaggeration
+  glossy_elegance: 'Style-04d8cbcf-6496-4d68-997e-516303502507', // Glossy Elegance
+  starlit_fantasy: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0', // Starlit Fantasy
+  fantasy_hero: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf', // Fantasy Hero
+  joyful_clay: 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d', // Joyful Clay
+
+  // Realistic & Artistic (Ages 6-12)
+  enchanted_elegance: 'Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25', // Enchanted Elegance
+  warm_portrait: 'Style-4ab783c7-2955-4092-878e-965162241bf7', // Warm Portrait
+  magic_portrait: 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4', // Magic Portrait
+  vivid_tableaux: 'Style-589373f8-1283-4570-baf9-61d02eb13391', // Vivid Tableaux
+  luminous_narratives: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Luminous Narratives
+
+  // Additional styles
+  dreamlike_portraiture: 'Style-c0bde410-94f1-42d1-a1f6-d968aabbf689', // Dreamlike Portraiture
+  aquarelle_life: 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333', // Aquarelle Life
+  ancient_china: 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c', // Ancient China
+  ceramic_lifelike: 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d', // Ceramic Lifelike
+  yarn_realism: 'Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb', // Yarn Realism
+  mystical_sovereignty: 'Style-04329eae-1af6-4f06-a97c-f4b2b48516de', // Mystical Sovereignty
+  soft_radiance: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41' // Soft Radiance
+};
+
+// Fallback style code - use PixiePop 3D as default
+const SAFE_STYLE_CODE = "Style-7a23990c-65f7-4300-b2a1-f5a97263e66f";
 
 // Helper to get a safe style code for API use
-const getSafeStyleCode = (styleCode) => {
+const getSafeStyleCode = (styleId) => {
   // If it's already a full style code, use it
-  if (styleCode && styleCode.startsWith('Style-')) {
-    return styleCode;
+  if (styleId && styleId.startsWith('Style-')) {
+    return styleId;
   }
   
-  // Fallback to the default "No Style" code
+  // Try to get from mapping
+  const mappedCode = STYLE_CODE_MAP[styleId];
+  if (mappedCode) {
+    return mappedCode;
+  }
+  
+  // Fallback to PixiePop 3D
   return SAFE_STYLE_CODE;
 };
 
@@ -876,20 +918,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the generateCharacterPreview function to handle API style errors better
   const generateCharacterPreview = async () => {
-    setIsGenerating(true);
-    setError('');
-    
-    // Create fallback image right away to ensure we have something to show
-    const bgColor = stringToColor(characterData.name + (forcedArtStyle || 'default'));
-    const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-    
-    // Display a warning if API check failed
-    if (apiStatus.checked && !apiStatus.working) {
-      console.warn('Attempting to generate character with failing API:', apiStatus.message);
-      setProgressMessage(`Warning: API check failed (${apiStatus.message}). Trying anyway...`);
-    }
-    
     try {
+      setIsGenerating(true);
+      setProgressMessage('Preparing to generate character preview...');
+      
+      // Get the style code for preview
+      const previewStyleCode = getSafeStyleCode(characterData.artStyle);
+      console.log('STYLE DEBUG: Using style ID', JSON.stringify({
+        originalStyle: characterData.artStyle,
+        mappedCode: previewStyleCode,
+        fromApi: previewStyleCode.startsWith('Style-')
+      }));
+      
+      // Create fallback image right away to ensure we have something to show
+      const bgColor = stringToColor(characterData.name + (forcedArtStyle || 'default'));
+      const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
+      
+      // Display a warning if API check failed
+      if (apiStatus.checked && !apiStatus.working) {
+        console.warn('Attempting to generate character with failing API:', apiStatus.message);
+        setProgressMessage(`Warning: API check failed (${apiStatus.message}). Trying anyway...`);
+      }
+      
       // Validate inputs based on the generation method
       if (!characterData.useTextToImage && !characterData.photoUrl) {
         throw new Error('Please upload a photo first');
@@ -909,8 +959,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
       
       // Convert from our style IDs to actual API style codes
-      const styleCode = getStyleCode(styleId);
-      console.log(`STYLE DEBUG: Using style ID "${styleId}" (API code "${styleCode}") from ${forcedArtStyle ? 'story' : 'character selection'}`);
+      const apiStyleCode = getSafeStyleCode(styleId);
+      console.log(`STYLE DEBUG: Using style ID "${styleId}" (API code "${apiStyleCode}") from ${forcedArtStyle ? 'story' : 'character selection'}`);
       
       // Handle text-to-image generation
       if (characterData.useTextToImage) {
@@ -935,12 +985,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         enhancedPrompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
         console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
-        console.log(`STYLE DEBUG: Using mapped API style_code=${styleCode} with intensity=1.0`);
+        console.log(`STYLE DEBUG: Using mapped API style_code=${apiStyleCode} with intensity=1.0`);
         
         // More detailed payload for better art style application
         const txt2imgPayload = {
           prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
-          style_code: styleCode,
+          style_code: apiStyleCode,
           style_intensity: 1.0, // Maximum style intensity
           quality_mode: 1, // High quality
           target_h: 1024, // Standard size
@@ -960,7 +1010,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             throw new Error('Failed to start text-to-image generation task');
           }
           
-          console.log("Task created successfully with style:", styleCode);
+          console.log("Task created successfully with style:", apiStyleCode);
           
           // Start polling for this task
           startPollingTask(taskResult.task_id, fallbackPreview);
@@ -1015,12 +1065,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         // Add instructions for a neutral background with no distractions
         prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
-        console.log(`STYLE DEBUG: Using img2img with mapped API style_code=${styleCode} with style_intensity=1.0`);
+        console.log(`STYLE DEBUG: Using img2img with mapped API style_code=${apiStyleCode} with style_intensity=1.0`);
         
         // Improved payload for better style application
         const img2imgPayload = {
           prompt: prompt,
-          style_code: styleCode,
+          style_code: apiStyleCode,
           images: [
             {
               base64_data: base64Data
@@ -1060,7 +1110,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             throw new Error('Invalid response from API: missing task_id');
           }
           
-          console.log("Task created successfully with style:", styleCode);
+          console.log("Task created successfully with style:", apiStyleCode);
           
           // Start polling for this task with fallback
           startPollingTask(taskId, fallbackPreview);
@@ -1492,8 +1542,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 onClick={onClose}
                 className="absolute top-2 right-2 z-10 p-2 bg-white bg-opacity-70 rounded-full text-gray-800 hover:bg-opacity-100"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
               <div className="overflow-hidden flex items-center justify-center">
