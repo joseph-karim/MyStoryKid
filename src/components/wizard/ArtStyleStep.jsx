@@ -4,32 +4,32 @@ import { getDzineStyles, getAvailableStyles } from '../../services/dzineService'
 import { useQueryClient } from '@tanstack/react-query';
 
 // Import art style images from the Dzine Styles folder
-import starlitFantasyImg from '../../assets/dzine-styles/Starlit-Fantasy.png';
-import cheerfulStorybookImg from '../../assets/dzine-styles/Cheerful-Storybook.png';
-import enchantedEleganceImg from '../../assets/dzine-styles/Enchanted-Elegance.png';
+import starlitFantasyImg from '../../assets/style_thumbnails/Starlit Fantasy.webp';
+import cheerfulStorybookImg from '../../assets/style_thumbnails/Storybook Charm.webp';
+import enchantedEleganceImg from '../../assets/style_thumbnails/Enchanted Elegance.webp';
 import glossyEleganceImg from '../../assets/dzine-styles/Glossy-Elegance.png';
 import minimalistCuteImg from '../../assets/dzine-styles/Minimalist-Cutesy.png';
-import watercolorWhimsyImg from '../../assets/dzine-styles/Watercolor-Whimsy.png';
-import pleasantlyWarmImg from '../../assets/dzine-styles/Pleasantly-Warm.png';
+import watercolorWhimsyImg from '../../assets/style_thumbnails/Watercolor Whimsy.webp';
+import pleasantlyWarmImg from '../../assets/style_thumbnails/Warm Fables.webp';
 import ancientChinaImg from '../../assets/dzine-styles/Ancient-China.png';
 import lineAndWashImg from '../../assets/dzine-styles/Line-&-Wash.png';
-import magicPortraitImg from '../../assets/dzine-styles/Magic-Portrait.png';
-import warmPortraitImg from '../../assets/dzine-styles/Warm-Portrait.png';
+import magicPortraitImg from '../../assets/style_thumbnails/Magic Portrait.webp';
+import warmPortraitImg from '../../assets/style_thumbnails/Warm Portrait.webp';
 import goldenHourImg from '../../assets/dzine-styles/Golden-Hour.png';
-import dreamlikePortraitureImg from '../../assets/dzine-styles/Dreamlike-Portraiture.png';
+import dreamlikePortraitureImg from '../../assets/style_thumbnails/Dreamlike Portraiture.webp';
 import luminousNarrativesImg from '../../assets/dzine-styles/Luminous-Narratives.png';
-import aquarelleLifeImg from '../../assets/dzine-styles/Aquarelle-Life.png';
-import vividTableauxImg from '../../assets/dzine-styles/Vivid-Tableaux.png';
+import aquarelleLifeImg from '../../assets/style_thumbnails/Aquarelle Life.webp';
+import vividTableauxImg from '../../assets/style_thumbnails/Vivid Tableaux.webp';
 import whimsicalColoringImg from '../../assets/dzine-styles/Whimsical-Coloring.png';
 import ceramicLifelikeImg from '../../assets/dzine-styles/Ceramic-Lifelike.png';
 import joyfulClayImg from '../../assets/dzine-styles/Joyful-Clay.png';
 import yarnRealismImg from '../../assets/dzine-styles/Yarn-Realism.png';
 import fantasyHeroImg from '../../assets/dzine-styles/Fantasy-Hero.png';
-import storytimeWhimsyImg from '../../assets/dzine-styles/Storytime-Whimsy.png';
+import storytimeWhimsyImg from '../../assets/style_thumbnails/Storytime Whimsy.webp';
 import cuteExaggerationImg from '../../assets/dzine-styles/Cute-Exaggeration.png';
-import enchantedCharacterImg from '../../assets/dzine-styles/Enchanted-Character.png';
+import enchantedCharacterImg from '../../assets/style_thumbnails/Enchanted Character.webp';
 import mysticalSovereigntyImg from '../../assets/dzine-styles/Mystical-Sovereignty.png';
-import softRadianceImg from '../../assets/dzine-styles/Soft-Radiance.png';
+import softRadianceImg from '../../assets/style_thumbnails/Soft Radiance.webp';
 
 // Map style IDs to the imported images - used for legacy code compatibility
 const styleImageMap = {

@@ -81,7 +81,16 @@ function SummaryStep() {
         'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': 'Vivid Tableaux',
         'Style-ce7b4279-1398-4964-882c-19911e12aef3': 'Luminous Narratives',
         'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': 'Dreamlike Portraiture',
-        'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': 'Aquarelle Life'
+        'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': 'Aquarelle Life',
+        'Style-d808a5a7-379f-429d-ba07-30711964d577': 'Watercolor Whimsy',
+        'Style-714e2f7a-04bb-420d-bd5e-2d1d0310a8c5': 'Playful Outline (legacy)',
+        'Style-279e02a8-52c4-4732-a859-86a63d787b0d': 'Storybook Adventure',
+        'Style-669000ef-4330-40c4-8104-4c04c4c22673': 'Enchanted Character',
+        'Style-8e2b5a07-16b3-411c-b613-69ed7c31d3a6': 'Minimalist Cutesy',
+        'Style-4168c76e-5872-4f25-87d8-f3f61437e370': 'Soft Radiance',
+        'Style-3bb40c1e-55f1-4289-b075-15cb39ee9707': 'Storybook Charm',
+        'Style-b09751bc-9046-4855-8fe9-0f07c23d8f9e': 'Warm Fables',
+        'Style-c3a1f0d8-6a5a-4d9f-9ee9-965485ebf98f': 'Storytime Whimsy',
       };
       
       return styleMap[styleCode] || styleCode;
