@@ -4,24 +4,33 @@ import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
 import { getDzineStyles, createImg2ImgTask, getTaskProgress } from '../../services/dzineService.js';
 
-// Import art style images - Updated paths to match the existing assets
-import watercolorImg from '../../assets/watercolor-theme.png';
-import pastelImg from '../../assets/pastel-theme.png';
-import pencilWashImg from '../../assets/gentle-pencil-wash.png';
-import softDigitalImg from '../../assets/soft-brush-digital.png';
-import pencilInkImg from '../../assets/pencil-sketch-ink.png';
-import goldenBooksImg from '../../assets/golden-books-style.png';
-import beatrixPotterImg from '../../assets/beatrix-potter-style.png';
-import cartoonImg from '../../assets/cartoon-2d-animation-style.png';
-import flatVectorImg from '../../assets/flat-vector-illustration.png';
-import storybookPopImg from '../../assets/storybook-pop-style.png';
-import papercutImg from '../../assets/cut-paper-collage-style.png';
-import oilPastelImg from '../../assets/oil-pastel-gouache-style.png';
-import stylizedRealismImg from '../../assets/stylized-realism.png';
-import digitalPainterlyImg from '../../assets/digital-painterly.png';
-import kawaiiImg from '../../assets/japanese-kawaii.png';
-import scandinavianImg from '../../assets/scandinavian-folk-art.png';
-import africanPatternImg from '../../assets/african-patterned-illustration.png';
+// Import art style images from the Dzine Styles folder
+import starlitFantasyImg from '../../assets/Dzine Styles/Starlit Fantasy.png';
+import cheerfulStorybookImg from '../../assets/Dzine Styles/Cheerful Storybook.png';
+import enchantedEleganceImg from '../../assets/Dzine Styles/Enchanted Elegance.png';
+import glossyEleganceImg from '../../assets/Dzine Styles/Glossy Elegance.png';
+import minimalistCuteImg from '../../assets/Dzine Styles/Minimalist Cutesy.png';
+import watercolorWhimsyImg from '../../assets/Dzine Styles/Watercolor Whimsy.png';
+import pleasantlyWarmImg from '../../assets/Dzine Styles/Pleasantly Warm.png';
+import ancientChinaImg from '../../assets/Dzine Styles/Ancient China.png';
+import lineAndWashImg from '../../assets/Dzine Styles/Line & Wash.png';
+import magicPortraitImg from '../../assets/Dzine Styles/Magic Portrait.png';
+import warmPortraitImg from '../../assets/Dzine Styles/Warm Portrait.png';
+import goldenHourImg from '../../assets/Dzine Styles/Golden Hour.png';
+import dreamlikePortraitureImg from '../../assets/Dzine Styles/Dreamlike Portraiture.png';
+import luminousNarrativesImg from '../../assets/Dzine Styles/Luminous Narratives.png';
+import aquarelleLifeImg from '../../assets/Dzine Styles/Aquarelle Life.png';
+import vividTableauxImg from '../../assets/Dzine Styles/Vivid Tableaux.png';
+import whimsicalColoringImg from '../../assets/Dzine Styles/Whimsical Coloring.png';
+import ceramicLifelikeImg from '../../assets/Dzine Styles/Ceramic Lifelike.png';
+import joyfulClayImg from '../../assets/Dzine Styles/Joyful Clay.png';
+import yarnRealismImg from '../../assets/Dzine Styles/Yarn Realism.png';
+import fantasyHeroImg from '../../assets/Dzine Styles/Fantasy Hero.png';
+import storytimeWhimsyImg from '../../assets/Dzine Styles/Storytime Whimsy.png';
+import cuteExaggerationImg from '../../assets/Dzine Styles/Cute Exaggeration.png';
+import enchantedCharacterImg from '../../assets/Dzine Styles/Enchanted Character.png';
+import mysticalSovereigntyImg from '../../assets/Dzine Styles/Mystical Sovereignty.png';
+import softRadianceImg from '../../assets/Dzine Styles/Soft Radiance.png';
 
 // Import the ART_STYLE_CATEGORIES_STRUCTURE for style name lookups
 import { ART_STYLE_CATEGORIES_STRUCTURE } from './ArtStyleStep';
@@ -37,23 +46,23 @@ const CHARACTER_ROLES = [
 
 // Map our internal IDs to the preview images for legacy support
 const styleImageMap = {
-  watercolor: watercolorImg,
-  pastel: pastelImg,
-  pencil_wash: pencilWashImg,
-  soft_digital: softDigitalImg,
-  pencil_ink: pencilInkImg,
-  golden_books: goldenBooksImg,
-  beatrix_potter: beatrixPotterImg,
-  cartoon: cartoonImg,
-  flat_vector: flatVectorImg,
-  storybook_pop: storybookPopImg,
-  papercut: papercutImg,
-  oil_pastel: oilPastelImg,
-  stylized_realism: stylizedRealismImg,
-  digital_painterly: digitalPainterlyImg,
-  kawaii: kawaiiImg,
-  scandinavian: scandinavianImg,
-  african_pattern: africanPatternImg,
+  watercolor: watercolorWhimsyImg,
+  pastel: whimsicalColoringImg,
+  pencil_wash: lineAndWashImg,
+  soft_digital: watercolorWhimsyImg,
+  pencil_ink: magicPortraitImg,
+  golden_books: cheerfulStorybookImg,
+  beatrix_potter: warmPortraitImg,
+  cartoon: starlitFantasyImg,
+  flat_vector: minimalistCuteImg,
+  storybook_pop: cheerfulStorybookImg,
+  papercut: whimsicalColoringImg,
+  oil_pastel: glossyEleganceImg,
+  stylized_realism: dreamlikePortraitureImg,
+  digital_painterly: luminousNarrativesImg,
+  kawaii: joyfulClayImg,
+  scandinavian: softRadianceImg,
+  african_pattern: vividTableauxImg,
 };
 
 // Find any SAFE_STYLE_CODE constant and update it with the correct style code
@@ -70,16 +79,16 @@ const getSafeStyleCode = (styleCode) => {
   return SAFE_STYLE_CODE;
 };
 
-// Special mapping for the warm fables style code
-const WARM_FABLES_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+// Special mapping for the pleasantly warm style code
+const PLEASANTLY_WARM_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
 
 // --- NEW: Helper function to get style name from API style code ---
 const getStyleNameFromCode = (styleCode) => {
   if (!styleCode) return 'Default Style';
   
-  // Special handling for Pleasently Warm style
+  // Special handling for Pleasantly Warm style
   if (styleCode === 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1') {
-    return 'Pleasently Warm';
+    return 'Pleasantly Warm';
   }
   
   // Try to find the style in our ART_STYLE_CATEGORIES_STRUCTURE (imported from ArtStyleStep.jsx)
@@ -431,7 +440,7 @@ function CharactersStep() {
         prompt += `, in the ${styleName} style`;
         
         // Special handling for known styles to enhance prompt
-        if (artStyleCode === WARM_FABLES_STYLE_CODE) {
+        if (artStyleCode === PLEASANTLY_WARM_STYLE_CODE) {
           prompt += `, charming detailed watercolor illustrations in the style of classic children's tales`;
         }
         

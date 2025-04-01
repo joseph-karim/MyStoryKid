@@ -3,44 +3,93 @@ import { useBookStore } from '../../store';
 import { getDzineStyles, getAvailableStyles } from '../../services/dzineService';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Import art style images - Updated paths to match the existing assets
-import watercolorImg from '../../assets/watercolor-theme.png';
-import pastelImg from '../../assets/pastel-theme.png';
-import pencilWashImg from '../../assets/gentle-pencil-wash.png';
-import softDigitalImg from '../../assets/soft-brush-digital.png';
-import pencilInkImg from '../../assets/pencil-sketch-ink.png';
-import goldenBooksImg from '../../assets/golden-books-style.png';
-import beatrixPotterImg from '../../assets/beatrix-potter-style.png';
-import cartoonImg from '../../assets/cartoon-2d-animation-style.png';
-import flatVectorImg from '../../assets/flat-vector-illustration.png';
-import storybookPopImg from '../../assets/storybook-pop-style.png';
-import papercutImg from '../../assets/cut-paper-collage-style.png';
-import oilPastelImg from '../../assets/oil-pastel-gouache-style.png';
-import stylizedRealismImg from '../../assets/stylized-realism.png';
-import digitalPainterlyImg from '../../assets/digital-painterly.png';
-import kawaiiImg from '../../assets/japanese-kawaii.png';
-import scandinavianImg from '../../assets/scandinavian-folk-art.png';
-import africanPatternImg from '../../assets/african-patterned-illustration.png';
+// Import art style images from the Dzine Styles folder
+import starlitFantasyImg from '../../assets/Dzine Styles/Starlit Fantasy.png';
+import cheerfulStorybookImg from '../../assets/Dzine Styles/Cheerful Storybook.png';
+import enchantedEleganceImg from '../../assets/Dzine Styles/Enchanted Elegance.png';
+import glossyEleganceImg from '../../assets/Dzine Styles/Glossy Elegance.png';
+import minimalistCuteImg from '../../assets/Dzine Styles/Minimalist Cutesy.png';
+import watercolorWhimsyImg from '../../assets/Dzine Styles/Watercolor Whimsy.png';
+import pleasantlyWarmImg from '../../assets/Dzine Styles/Pleasantly Warm.png';
+import ancientChinaImg from '../../assets/Dzine Styles/Ancient China.png';
+import lineAndWashImg from '../../assets/Dzine Styles/Line & Wash.png';
+import magicPortraitImg from '../../assets/Dzine Styles/Magic Portrait.png';
+import warmPortraitImg from '../../assets/Dzine Styles/Warm Portrait.png';
+import goldenHourImg from '../../assets/Dzine Styles/Golden Hour.png';
+import dreamlikePortraitureImg from '../../assets/Dzine Styles/Dreamlike Portraiture.png';
+import luminousNarrativesImg from '../../assets/Dzine Styles/Luminous Narratives.png';
+import aquarelleLifeImg from '../../assets/Dzine Styles/Aquarelle Life.png';
+import vividTableauxImg from '../../assets/Dzine Styles/Vivid Tableaux.png';
+import whimsicalColoringImg from '../../assets/Dzine Styles/Whimsical Coloring.png';
+import ceramicLifelikeImg from '../../assets/Dzine Styles/Ceramic Lifelike.png';
+import joyfulClayImg from '../../assets/Dzine Styles/Joyful Clay.png';
+import yarnRealismImg from '../../assets/Dzine Styles/Yarn Realism.png';
+import fantasyHeroImg from '../../assets/Dzine Styles/Fantasy Hero.png';
+import storytimeWhimsyImg from '../../assets/Dzine Styles/Storytime Whimsy.png';
+import cuteExaggerationImg from '../../assets/Dzine Styles/Cute Exaggeration.png';
+import enchantedCharacterImg from '../../assets/Dzine Styles/Enchanted Character.png';
+import mysticalSovereigntyImg from '../../assets/Dzine Styles/Mystical Sovereignty.png';
+import softRadianceImg from '../../assets/Dzine Styles/Soft Radiance.png';
 
-// Map style IDs to the imported images
+// Map style IDs to the imported images - used for legacy code compatibility
 const styleImageMap = {
-  watercolor: watercolorImg,
-  pastel: pastelImg,
-  pencil_wash: pencilWashImg, 
-  soft_digital: softDigitalImg,
-  pencil_ink: pencilInkImg,
-  golden_books: goldenBooksImg,
-  beatrix_potter: beatrixPotterImg,
-  cartoon: cartoonImg,
-  flat_vector: flatVectorImg,
-  storybook_pop: storybookPopImg,
-  papercut: papercutImg,
-  oil_pastel: oilPastelImg,
-  stylized_realism: stylizedRealismImg,
-  digital_painterly: digitalPainterlyImg,
-  kawaii: kawaiiImg,
-  scandinavian: scandinavianImg,
-  african_pattern: africanPatternImg
+  watercolor_whimsy: watercolorWhimsyImg,
+  whimsical_coloring: whimsicalColoringImg,
+  enchanted_character: enchantedCharacterImg,
+  minimialist_cutesy: minimalistCuteImg,
+  
+  cheerful_storybook: cheerfulStorybookImg,
+  pleasently_warm: pleasantlyWarmImg,
+  storytime_whimsy: storytimeWhimsyImg,
+  line_and_wash: lineAndWashImg,
+  golden_hour: goldenHourImg,
+  
+  cute_exaggeration: cuteExaggerationImg,
+  glossy_elegance: glossyEleganceImg,
+  starlit_fantasy: starlitFantasyImg,
+  fantasy_hero: fantasyHeroImg,
+  joyful_clay: joyfulClayImg,
+  
+  enchanted_elegance: enchantedEleganceImg,
+  warm_portrait: warmPortraitImg,
+  magic_portrait: magicPortraitImg,
+  vivid_tableaux: vividTableauxImg,
+  luminous_narratives: luminousNarrativesImg,
+  
+  // Additional styles
+  dreamlike_portraiture: dreamlikePortraitureImg,
+  aquarelle_life: aquarelleLifeImg,
+  ancient_china: ancientChinaImg,
+  ceramic_lifelike: ceramicLifelikeImg,
+  yarn_realism: yarnRealismImg,
+  mystical_sovereignty: mysticalSovereigntyImg,
+  soft_radiance: softRadianceImg
+};
+
+// Direct mapping from API style codes to images for more reliable lookups
+const dzineStyleImageMap = {
+  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': watercolorWhimsyImg,
+  'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': whimsicalColoringImg,
+  'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': enchantedCharacterImg,
+  'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': minimalistCuteImg,
+  
+  'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf': cheerfulStorybookImg,
+  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': pleasantlyWarmImg,
+  'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a': storytimeWhimsyImg,
+  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': lineAndWashImg,
+  'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': goldenHourImg,
+  
+  'Style-b484beb8-143e-4776-9a87-355e0456cfa3': cuteExaggerationImg,
+  'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': glossyEleganceImg,
+  'Style-541a2afd-904a-4968-bc60-8ad0ede22a86': starlitFantasyImg,
+  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': fantasyHeroImg,
+  'Style-455da805-d716-4bc8-a960-4ac505aa7875': joyfulClayImg,
+  
+  'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': enchantedEleganceImg,
+  'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': warmPortraitImg,
+  'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': magicPortraitImg,
+  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': vividTableauxImg,
+  'Style-ce7b4279-1398-4964-882c-19911e12aef3': luminousNarrativesImg
 };
 
 // Updated Art Style Categories with direct API styles and CORRECT names
@@ -86,9 +135,9 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
         description: 'Bright, cheerful illustrations with bold colors and playful details'
       },
       { 
-        id: 'pleasently_warm',
+        id: 'pleasantly_warm',
         apiCode: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',
-        title: 'Pleasently Warm',
+        title: 'Pleasantly Warm',
         description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
       },
       { 
@@ -377,17 +426,17 @@ function ArtStyleStep() {
   // Special handling for Warm Fables style
   useEffect(() => {
     try {
-      // Make sure Pleasently Warm style is always available by ID in localStorage
+      // Make sure Pleasantly Warm style is always available by ID in localStorage
       const existingNames = localStorage.getItem('styleCodeNames') || '{}';
       const namesMap = JSON.parse(existingNames);
       
-      // Hard-code the Pleasently Warm style
-      const pleasentlyWarmStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
-      namesMap[pleasentlyWarmStyleCode] = 'Pleasently Warm';
+      // Hard-code the Pleasantly Warm style
+      const pleasantlyWarmStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+      namesMap[pleasantlyWarmStyleCode] = 'Pleasantly Warm';
       
       localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
     } catch (e) {
-      console.error("Failed to ensure Pleasently Warm style is in localStorage:", e);
+      console.error("Failed to ensure Pleasantly Warm style is in localStorage:", e);
     }
   }, []);
   

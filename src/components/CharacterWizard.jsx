@@ -4,44 +4,53 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
 
-// Import art style images - for thumbnail display
-import watercolorImg from '../assets/watercolor-theme.png';
-import pastelImg from '../assets/pastel-theme.png';
-import pencilWashImg from '../assets/gentle-pencil-wash.png';
-import softDigitalImg from '../assets/soft-brush-digital.png';
-import pencilInkImg from '../assets/pencil-sketch-ink.png';
-import goldenBooksImg from '../assets/golden-books-style.png';
-import beatrixPotterImg from '../assets/beatrix-potter-style.png';
-import cartoonImg from '../assets/cartoon-2d-animation-style.png';
-import flatVectorImg from '../assets/flat-vector-illustration.png';
-import storybookPopImg from '../assets/storybook-pop-style.png';
-import papercutImg from '../assets/cut-paper-collage-style.png';
-import oilPastelImg from '../assets/oil-pastel-gouache-style.png';
-import stylizedRealismImg from '../assets/stylized-realism.png';
-import digitalPainterlyImg from '../assets/digital-painterly.png';
-import kawaiiImg from '../assets/japanese-kawaii.png';
-import scandinavianImg from '../assets/scandinavian-folk-art.png';
-import africanPatternImg from '../assets/african-patterned-illustration.png';
+// Import art style images from the Dzine Styles folder
+import starlitFantasyImg from '../assets/Dzine Styles/Starlit Fantasy.png';
+import cheerfulStorybookImg from '../assets/Dzine Styles/Cheerful Storybook.png';
+import enchantedEleganceImg from '../assets/Dzine Styles/Enchanted Elegance.png';
+import glossyEleganceImg from '../assets/Dzine Styles/Glossy Elegance.png';
+import minimalistCuteImg from '../assets/Dzine Styles/Minimalist Cutesy.png';
+import watercolorWhimsyImg from '../assets/Dzine Styles/Watercolor Whimsy.png';
+import pleasantlyWarmImg from '../assets/Dzine Styles/Pleasantly Warm.png';
+import ancientChinaImg from '../assets/Dzine Styles/Ancient China.png';
+import lineAndWashImg from '../assets/Dzine Styles/Line & Wash.png';
+import magicPortraitImg from '../assets/Dzine Styles/Magic Portrait.png';
+import warmPortraitImg from '../assets/Dzine Styles/Warm Portrait.png';
+import goldenHourImg from '../assets/Dzine Styles/Golden Hour.png';
+import dreamlikePortraitureImg from '../assets/Dzine Styles/Dreamlike Portraiture.png';
+import luminousNarrativesImg from '../assets/Dzine Styles/Luminous Narratives.png';
+import aquarelleLifeImg from '../assets/Dzine Styles/Aquarelle Life.png';
+import vividTableauxImg from '../assets/Dzine Styles/Vivid Tableaux.png';
+import whimsicalColoringImg from '../assets/Dzine Styles/Whimsical Coloring.png';
+import ceramicLifelikeImg from '../assets/Dzine Styles/Ceramic Lifelike.png';
+import joyfulClayImg from '../assets/Dzine Styles/Joyful Clay.png';
+import yarnRealismImg from '../assets/Dzine Styles/Yarn Realism.png';
+import fantasyHeroImg from '../assets/Dzine Styles/Fantasy Hero.png';
+import storytimeWhimsyImg from '../assets/Dzine Styles/Storytime Whimsy.png';
+import cuteExaggerationImg from '../assets/Dzine Styles/Cute Exaggeration.png';
+import enchantedCharacterImg from '../assets/Dzine Styles/Enchanted Character.png';
+import mysticalSovereigntyImg from '../assets/Dzine Styles/Mystical Sovereignty.png';
+import softRadianceImg from '../assets/Dzine Styles/Soft Radiance.png';
 
 // Map style IDs to the imported images
 const styleImageMap = {
-  watercolor: watercolorImg,
-  pastel: pastelImg,
-  pencil_wash: pencilWashImg, 
-  soft_digital: softDigitalImg,
-  pencil_ink: pencilInkImg,
-  golden_books: goldenBooksImg,
-  beatrix_potter: beatrixPotterImg,
-  cartoon: cartoonImg,
-  flat_vector: flatVectorImg,
-  storybook_pop: storybookPopImg,
-  papercut: papercutImg,
-  oil_pastel: oilPastelImg,
-  stylized_realism: stylizedRealismImg,
-  digital_painterly: digitalPainterlyImg,
-  kawaii: kawaiiImg,
-  scandinavian: scandinavianImg,
-  african_pattern: africanPatternImg
+  watercolor: watercolorWhimsyImg,
+  pastel: cheerfulStorybookImg,
+  pencil_wash: lineAndWashImg, 
+  soft_digital: glossyEleganceImg,
+  pencil_ink: magicPortraitImg,
+  golden_books: starlitFantasyImg,
+  beatrix_potter: warmPortraitImg,
+  cartoon: dreamlikePortraitureImg,
+  flat_vector: whimsicalColoringImg,
+  storybook_pop: storytimeWhimsyImg,
+  papercut: aquarelleLifeImg,
+  oil_pastel: glossyEleganceImg,
+  stylized_realism: ceramicLifelikeImg,
+  digital_painterly: joyfulClayImg,
+  kawaii: enchantedCharacterImg,
+  scandinavian: yarnRealismImg,
+  african_pattern: fantasyHeroImg
 };
 
 // Curated art style categories with representative styles
@@ -59,33 +68,33 @@ const CURATED_STYLES = [
     category: '🖌️ Painterly & Artistic',
     description: 'Styles with texture, depth, and artistic elements',
     styles: [
-      { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, magical quality', imageUrl: watercolorImg, keywordMatch: ['water', 'soft', 'gentle'] },
-      { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes with vivid colors', imageUrl: oilPastelImg, keywordMatch: ['oil', 'pastel', 'paint', 'brush'] },
-      { id: 'digital_painterly', name: 'Digital Painterly', description: 'Digital art with classical painting feel', imageUrl: digitalPainterlyImg, keywordMatch: ['paint', 'digital', 'artistic'] }
+      { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, magical quality', imageUrl: watercolorWhimsyImg, keywordMatch: ['water', 'soft', 'gentle'] },
+      { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes with vivid colors', imageUrl: vividTableauxImg, keywordMatch: ['oil', 'pastel', 'paint', 'brush'] },
+      { id: 'digital_painterly', name: 'Digital Painterly', description: 'Digital art with classical painting feel', imageUrl: luminousNarrativesImg, keywordMatch: ['paint', 'digital', 'artistic'] }
     ]
   },
   {
     category: '✏️ Classic & Illustration',
     description: 'Timeless illustration styles',
     styles: [
-      { id: 'golden_books', name: 'Golden Books', description: 'Classic mid-century illustration style', imageUrl: goldenBooksImg, keywordMatch: ['classic', 'golden', 'vintage', 'book'] },
-      { id: 'beatrix_potter', name: 'Warm Fables', description: 'Detailed watercolor with classic feel', imageUrl: beatrixPotterImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
-      { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Fine line work with light color washes', imageUrl: pencilInkImg, keywordMatch: ['pencil', 'ink', 'sketch', 'line'] }
+      { id: 'golden_books', name: 'Golden Books', description: 'Classic mid-century illustration style', imageUrl: starlitFantasyImg, keywordMatch: ['classic', 'golden', 'vintage', 'book'] },
+      { id: 'beatrix_potter', name: 'Warm Fables', description: 'Detailed watercolor with classic feel', imageUrl: warmPortraitImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
+      { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Fine line work with light color washes', imageUrl: magicPortraitImg, keywordMatch: ['pencil', 'ink', 'sketch', 'line'] }
     ]
   },
   {
     category: '✨ Whimsical & Playful',
     description: 'Fun styles perfect for young children',
     styles: [
-      { id: 'kawaii', name: 'Kawaii', description: 'Ultra-cute Japanese style with soft colors', imageUrl: kawaiiImg, keywordMatch: ['cute', 'kawaii', 'japan', 'soft'] },
-      { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper', imageUrl: papercutImg, keywordMatch: ['paper', 'cut', 'collage', 'texture'] },
-      { id: 'scandinavian', name: 'Scandinavian', description: 'Geometric shapes with folk art influences', imageUrl: scandinavianImg, keywordMatch: ['scandi', 'folk', 'nordic', 'pattern'] }
+      { id: 'kawaii', name: 'Kawaii', description: 'Ultra-cute Japanese style with soft colors', imageUrl: enchantedCharacterImg, keywordMatch: ['cute', 'kawaii', 'japan', 'soft'] },
+      { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper', imageUrl: aquarelleLifeImg, keywordMatch: ['paper', 'cut', 'collage', 'texture'] },
+      { id: 'scandinavian', name: 'Scandinavian', description: 'Geometric shapes with folk art influences', imageUrl: yarnRealismImg, keywordMatch: ['scandi', 'folk', 'nordic', 'pattern'] }
     ]
   }
 ];
 
 // Map of style IDs to API style codes - no longer needed, using direct API codes
-const PLEASENTLY_WARM_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
+const PLEASANTLY_WARM_STYLE_CODE = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
 
 // Fallback style code for when mapping fails - use "No Style v2" as fallback
 const SAFE_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; 
@@ -1226,8 +1235,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (!characterData.artStyle) return 'No style selected';
       
       // Special case for the Warm Fables style code
-      if (characterData.artStyle === PLEASENTLY_WARM_STYLE_CODE) {
-        return 'Pleasently Warm';
+      if (characterData.artStyle === PLEASANTLY_WARM_STYLE_CODE) {
+        return 'Pleasantly Warm';
       }
       
       // If it's a full style code (starts with "Style-")
@@ -1244,7 +1253,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           
           // Also check the lastSelectedStyleName for Warm Fables style
           const lastStyleName = localStorage.getItem('lastSelectedStyleName');
-          if (lastStyleName && characterData.artStyle === PLEASENTLY_WARM_STYLE_CODE) {
+          if (lastStyleName && characterData.artStyle === PLEASANTLY_WARM_STYLE_CODE) {
             return lastStyleName;
           }
         } catch (e) {
