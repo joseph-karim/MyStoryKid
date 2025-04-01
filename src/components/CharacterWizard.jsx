@@ -1746,7 +1746,56 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     } catch (error) {
       console.error('API error in image-to-image:', error);
       setProgressMessage(`Error: ${error.message}`);
-      useFallbackImage(fallbackImage);
+
+      // Check if the error is the specific "Style are invalid" error (code 108005)
+      // We check the error message because the actual error object might not expose the code easily here
+      if (error.message && error.message.includes('108005') && error.message.toLowerCase().includes('style are invalid')) {
+        console.log('Style code rejected by API, trying with default style');
+        
+        // Define a known safe default style code
+        const DEFAULT_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // "No Style v2"
+        
+        // --- Retry logic ---
+        try {
+          // Re-create payload with the default style code
+          const retryPayload = {
+            ...payload, // Use the original payload base
+            style_code: DEFAULT_STYLE_CODE, // Override with default style
+            seed: Math.floor(Math.random() * 2147483647) + 1, // Use a new seed for retry
+          };
+          
+          console.log('Retrying img2img task with default style payload:', JSON.stringify({
+            ...retryPayload,
+            images: retryPayload.images.map(img => ({
+              base64_data: img.base64_data ? 'base64_data_present' : undefined,
+              url: img.url
+            }))
+          }, null, 2));
+
+          const retryTaskResponse = await createImg2ImgTask(retryPayload);
+          
+          if (!retryTaskResponse || !retryTaskResponse.task_id) {
+            console.error('Invalid task response on retry:', retryTaskResponse);
+            throw new Error('Failed to create image generation task on retry');
+          }
+          
+          const retryTaskId = retryTaskResponse.task_id;
+          console.log('Retry task created with ID:', retryTaskId);
+          
+          // Start polling for the retry task result
+          await startPollingTask(retryTaskId, fallbackImage);
+          
+        } catch (retryError) {
+          console.error('Even retry failed:', retryError);
+          setProgressMessage(`Retry failed: ${retryError.message}`);
+          useFallbackImage(fallbackImage); // Use fallback if retry also fails
+        }
+        // --- End Retry logic ---
+        
+      } else {
+        // For any other errors, just use the fallback image directly
+        useFallbackImage(fallbackImage);
+      }
     }
   };
   
