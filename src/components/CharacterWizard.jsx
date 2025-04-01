@@ -302,61 +302,51 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setError(''); // Clear errors on navigation
     let targetStep = step + 1;
     
-    // Validation before proceeding (example for Step 1)
+    // Validation for Step 1 (Details)
     if (step === 1) {
-      if (!characterData.name || !characterData.type || !characterData.age || !characterData.gender) {
+      if (!characterData.name || !characterData.age || !characterData.gender) { // Add other required fields if any
         setError('Please fill in all character details.');
         return;
       }
     }
     
-    // Validation for Step 2 (Appearance)
+    // Validation for Step 2 (Photo/Style)
     if (step === 2) {
-      // Ensure photo is uploaded if we are NOT forcing a style (meaning user must select style+photo)
-      if (!forcedArtStyle && !characterData.photoUrl) {
+      // Photo is always required for img2img
+      if (!characterData.photoUrl) {
          setError('Please upload a photo.');
          return;
       }
-       // If style is forced, we don't need to check for artStyle here as it's set
-       // If style is NOT forced, ensure one was selected in the UI
-       if (!forcedArtStyle && !characterData.artStyle) {
+      // Style is required IF NOT forced
+      if (!forcedArtStyle && !characterData.artStyle) {
            setError('Please select an art style.');
            return;
        }
+      // Moving from Step 2 to 3 triggers generation
     }
     
-    // --- Skip Step 3 (Appearance) if art style is forced ---
-    // If we are currently on Step 2 (Details) and moving next, check if we should skip Step 3
-    if (step === 2 && forcedArtStyle) {
-      console.log('[NAV] Skipping Step 3 (Appearance) forwards because style is forced');
-      targetStep = 4; // Jump directly to Step 4 (Confirm)
-      // Trigger generation automatically when skipping to confirm step?
-      // Need to ensure characterData is updated before calling this
-      // Maybe call generateCharacterPreview() inside a useEffect triggered by step change to 4
-    }
-    // -----------------------------------------------------
+    // REMOVED: Skip logic is no longer needed with 3 steps
+    // if (step === 2 && forcedArtStyle) { ... }
 
-    // Unlock the next step and navigate
-    if (targetStep <= 4) { // Assuming 4 is the last step (Confirm)
+    // Unlock the next step and navigate (Max step is 3 now)
+    if (targetStep <= 3) { 
       setUnlockedSteps(prev => [...new Set([...prev, targetStep])]);
       setStep(targetStep);
-    } else {
-      // Handle final step / completion if needed
-      // For now, just stay on the last step
-      console.log('Already on the last step or beyond.');
+    } else if (step === 3) {
+      // If on step 3 (Confirm) and clicking Next -> Complete
+      handleComplete();
     }
   };
   
-  // Auto-generate preview when entering step 4 (Confirm step)
+  // Auto-generate preview when entering step 3 (Confirm step)
   useEffect(() => {
-    if (step === 4 && !isGenerating && !characterData.stylePreview) { // Only generate if not already generating and no preview exists
+    if (step === 3 && !isGenerating && !characterData.stylePreview) { // Check step 3 now
       // Ensure required data is present before generating
       if (characterData.artStyle && characterData.photoUrl) {
-          console.log('[EFFECT] Step 4 reached, triggering character preview generation.');
+          console.log('[EFFECT] Step 3 reached, triggering character preview generation.');
           generateCharacterPreview();
       } else {
-         console.warn('[EFFECT] Step 4 reached, but missing artStyle or photoUrl, cannot generate preview.');
-         // Optionally set an error state here if this situation shouldn't happen
+         console.warn('[EFFECT] Step 3 reached, but missing artStyle or photoUrl, cannot generate preview.');
          setError('Cannot generate preview. Missing photo or style information.')
       }
     }
@@ -539,7 +529,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 1:
         return "Details";
       case 2:
-        return "Photo/Description";
+        return "Photo/Style";
       case 3:
         return "Confirm";
       default:
@@ -551,50 +541,54 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const renderAppearanceStep = () => {
     return (
       <div className="space-y-6 animate-fadeIn">
-        <h2 className="text-2xl font-bold mb-2">Select Art Style</h2>
-        <p className="text-sm text-gray-600 mb-4">Choose an art style for your character.</p>
-
-        {/* Style Selection Grid - Powered by API */}
-        <div className="mb-6">
-          {isLoadingStyles ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
-              <p className="ml-3 text-gray-600">Loading styles...</p>
-            </div>
-          ) : apiStyles.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {apiStyles.map(style => (
-                <div
-                  key={style.style_code}
-                  onClick={() => handleChange('artStyle', style.style_code)} // Set the actual style_code
-                  className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ease-in-out transform hover:scale-105 
-                    ${characterData.artStyle === style.style_code 
-                      ? 'border-blue-500 ring-2 ring-blue-500 shadow-md' 
-                      : 'border-gray-200 hover:border-blue-400 hover:shadow'}`}
-                  title={style.name} // Tooltip for style name
-                >
-                  <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={style.cover_url} 
-                      alt={style.name} 
-                      className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90" 
-                      loading="lazy" // Lazy load images
-                      onError={(e) => { e.target.style.display = 'none'; /* Hide if image fails */ }}
-                    />
-                  </div>
-                  <p className="text-xs text-center p-2 truncate bg-white text-gray-700">
-                    {style.name}
-                  </p>
+        {/* Conditionally render Style Selection only if NOT forced */}
+        {!forcedArtStyle && (
+          <>
+            <h2 className="text-2xl font-bold mb-2">Select Art Style</h2>
+            <p className="text-sm text-gray-600 mb-4">Choose an art style for your character.</p>
+            {/* Style Selection Grid - Powered by API */}
+            <div className="mb-6">
+              {isLoadingStyles ? (
+                <div className="flex justify-center items-center h-40">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+                  <p className="ml-3 text-gray-600">Loading styles...</p>
                 </div>
-              ))}
+              ) : apiStyles.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {apiStyles.map(style => (
+                    <div
+                      key={style.style_code}
+                      onClick={() => handleChange('artStyle', style.style_code)} // Set the actual style_code
+                      className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ease-in-out transform hover:scale-105 
+                        ${characterData.artStyle === style.style_code 
+                          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md' 
+                          : 'border-gray-200 hover:border-blue-400 hover:shadow'}`}
+                      title={style.name} // Tooltip for style name
+                    >
+                      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={style.cover_url} 
+                          alt={style.name} 
+                          className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90" 
+                          loading="lazy" // Lazy load images
+                          onError={(e) => { e.target.style.display = 'none'; /* Hide if image fails */ }}
+                        />
+                      </div>
+                      <p className="text-xs text-center p-2 truncate bg-white text-gray-700">
+                        {style.name}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-red-600">Could not load art styles. Please try refreshing.</p>
+              )}
             </div>
-          ) : (
-            <p className="text-center text-red-600">Could not load art styles. Please try refreshing.</p>
-          )}
-        </div>
+          </>
+        )}
         
-        {/* Photo Upload Section */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        {/* Photo Upload Section - Always shown on this step */} 
+        <div className={`mt-8 pt-6 ${!forcedArtStyle ? 'border-t border-gray-200' : ''}`}> {/* Add border only if styles were shown */}
           <h3 className="text-lg font-semibold mb-3">Upload Photo</h3>
           <p className="text-sm text-gray-600 mb-4">Upload a clear photo of the character's face. This will be used with the selected art style.</p>
           <div 
@@ -666,26 +660,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Modified renderStep to avoid adding duplicate navigation buttons
   const renderStep = () => {
-    // --- Conditionally hide Step 3 content if style is forced ---
-    if (step === 3 && forcedArtStyle) {
-      // Optionally show a message or just nothing
-      console.log('[RENDER] Skipping render of Step 3 content because style is forced.');
-      return (
-         <div className="p-4 text-center text-gray-500">
-            <p>Art style already selected. Proceeding to confirmation...</p>
-            {/* You might want a loading indicator here if generation starts automatically */}
-         </div>
-      );
-    }
-    // ---------------------------------------------------------
-    
     switch (step) {
       case 1: return renderDetailsStep();
-      case 2: return renderAppearanceStep(); // Appearance/Photo step is now Step 2
-      case 3: // This case is now skipped by navigation logic if style is forced
-              // If reached, it means style is NOT forced, render the preview
-              return renderPreviewStep(); 
-      case 4: return renderConfirmStep(); // Confirm step is now Step 4
+      case 2: return renderAppearanceStep(); // Appearance/Photo step
+      case 3: return renderConfirmStep(); // Confirm step (renders preview)
       default: return <div>Unknown step</div>;
     }
   };
@@ -1050,7 +1028,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  const renderPreviewStep = () => {
+  // Rename renderPreviewStep to renderConfirmStep
+  const renderConfirmStep = () => {
     return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Preview Character</h2>
@@ -1208,12 +1187,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update tab rendering logic if steps were renumbered
+  // Update tab rendering logic for 3 steps
   const stepsConfig = [
     { index: 1, title: 'Details' },
-    { index: 2, title: 'Photo/Style' }, // Combined Photo & Style if style isn't forced
-    { index: 3, title: 'Preview' },   // Preview is now step 3
-    { index: 4, title: 'Confirm' }    // Confirm is now step 4
+    { index: 2, title: 'Photo & Style' }, 
+    { index: 3, title: 'Confirm' }    
   ];
   
   return (
@@ -1233,9 +1211,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {/* Tabs Navigation Example */}
       <div className="flex border-b mb-4">
         {stepsConfig.map(({ index, title }) => {
-          // --- Conditionally disable Appearance tab if style is forced ---
-          const isSkippable = index === 2 && forcedArtStyle;
-          const isDisabled = !unlockedSteps.includes(index) || isSkippable;
+          // --- Conditionally disable Step 2 if needed (though maybe not necessary now?) ---
+          // Keeping the logic simple for now
+          const isDisabled = !unlockedSteps.includes(index);
           const isActive = step === index;
           
           return (
@@ -1272,7 +1250,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           exit={{ opacity: 0, x: step > (step - 1) ? -50 : 50 }}
           transition={{ duration: 0.3 }}
         >
-          {renderStep()} { /* This calls the function that includes the conditional skip logic */ }
+          {renderStep()}
         </motion.div>
       </AnimatePresence>
       
