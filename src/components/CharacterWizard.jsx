@@ -311,11 +311,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (styleToUse && hasPhotoOrDesc) {
         console.log(`[EFFECT] Step 3 reached & dependencies met, using style: ${styleToUse}`);
         // Ensure style is set in character data before generation
-      setCharacterData(prev => ({
-        ...prev,
-          artStyle: styleToUse
-        }));
-        generateCharacterPreview(styleToUse);
+        // No - don't update characterData here, generateCharacterPreview will read the latest state
+        // setCharacterData(prev => ({ ...prev, artStyle: styleToUse }));
+        
+        // PASS the correct isHuman flag to the generation function
+        generateCharacterPreview(styleToUse, characterData.isHuman);
       } else {
         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasForcedStyle=${!!styleToUse}, hasPhotoOrDesc=${hasPhotoOrDesc}`);
         // Set error if required elements are missing when reaching confirm step
@@ -323,7 +323,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         else if (!hasPhotoOrDesc) setError('Error: Photo or Description was not provided.');
       }
     }
-  }, [step, forcedArtStyle, characterData.photoUrl, characterData.generationPrompt, isGenerating, characterData.stylePreview]);
+    // Add characterData.isHuman to dependency array to ensure effect re-runs if it changes
+  }, [step, forcedArtStyle, characterData.photoUrl, characterData.generationPrompt, characterData.isHuman, isGenerating, characterData.stylePreview]);
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -710,8 +711,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      }
    };
    
-   // Update the generateCharacterPreview function to accept style code
-   const generateCharacterPreview = async (styleApiCode) => {
+   // Update the generateCharacterPreview function signature
+   const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
      // Style code is now passed directly as an argument
      if (!styleApiCode) {
        setError('No art style specified. Cannot generate preview.');
@@ -719,7 +720,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        return;
      }
      
-     console.log(`[PREVIEW] Generating preview with style code: ${styleApiCode}`);
+     console.log(`[PREVIEW] Generating preview with style code: ${styleApiCode}, isHuman: ${isHumanCharacter}`);
      
      // Determine generation type and prepare data
      if (characterData.useTextToImage) {
@@ -729,7 +730,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          return;
        }
        console.log('[PREVIEW] Using Text-to-Image with style:', styleApiCode);
-       await generateCharacterImage(styleApiCode, characterData.generationPrompt, null);
+       await generateCharacterImage(styleApiCode, characterData.generationPrompt, null, isHumanCharacter);
      } else {
        // Image-to-Image
        if (!characterData.photoUrl) {
@@ -737,7 +738,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          return;
        }
        console.log('[PREVIEW] Using Image-to-Image with style:', styleApiCode);
-       await generateCharacterImage(styleApiCode, null, characterData.photoUrl);
+       await generateCharacterImage(styleApiCode, null, characterData.photoUrl, isHumanCharacter);
      }
    };
    
@@ -1155,8 +1156,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      );
    };
    
-   // Updated generateCharacterImage to handle both Img2Img and Txt2Img
-   const generateCharacterImage = async (styleApiCode, prompt, fallbackImage) => {
+   // Update generateCharacterImage signature to accept isHuman flag
+   const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
      // Style validation
      if (!styleApiCode || !styleApiCode.startsWith('Style-')) {
        console.error('Invalid or missing style API code passed to generateCharacterImage:', styleApiCode);
@@ -1168,13 +1169,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      
      const generationId = uuidv4(); 
      pollingSessionRef.current[generationId] = { stopPolling: false }; 
+     let operationType = ''; // <<< Declare operationType outside the try block
      
      try {
        setIsGenerating(true);
        setProgressMessage('Starting generation...');
        
        let taskResponse;
-       let operationType = '';
+       // let operationType = ''; // <<< Remove declaration from inside try block
        
        if (characterData.useTextToImage) {
          // --- Text-to-Image Logic --- 
@@ -1231,7 +1233,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            prompt: imgPrompt.substring(0, 800),
            images: [{ base64_data: characterData.photoUrl }],
            color_match: characterData.color_match ?? 0, 
-           face_match: characterData.face_match ?? 1, 
            style_intensity: characterData.style_intensity ?? 1.0, 
            structure_match: characterData.structure_match ?? 0.8, 
            quality_mode: characterData.quality_mode ?? 1, 
@@ -1241,11 +1242,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            seed: Math.floor(Math.random() * 2147483647) + 1,
          };
          
-         console.log('Img2Img Payload:', JSON.stringify({
+         console.log('Img2Img Payload (excluding base64):', JSON.stringify({
               ...payload,
               images: [{ base64_data: 'base64_data_present' }]
             }, null, 2));
-         taskResponse = await createImg2ImgTask(payload);
+         taskResponse = await createImg2ImgTask(payload, isHumanCharacter);
        }
        
        // --- Common Task Handling --- 
