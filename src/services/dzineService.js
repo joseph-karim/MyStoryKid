@@ -463,4 +463,51 @@ export const getFormattedApiKey = () => {
   return API_KEY;
 };
 
+// Map our human-readable style names to their API style codes
+export const styleCodeMap = {
+  starlit_fantasy: "Style-7cb66f12-50b8-425e-bb03-92f2213bbba7",
+  cheerful_storybook: "Style-2c25986f-12e7-4cdb-9888-01c9a04a433d", 
+  enchanted_elegance: "Style-dd2ada7a-70a9-4a3f-93f8-1daf83fdd4f0",
+  glossy_elegance: "Style-0c99c2d7-ef7b-4eea-ac58-0f80af232590",
+  minimalist_cutesy: "Style-3de43a1f-fd88-4efe-bc35-1a453bedd5e5", 
+  watercolor_whimsy: "Style-a33f4b39-d580-45ee-983e-d65c50f181fb", 
+  pleasantly_warm: "Style-21a75e9c-3ff8-4728-99c4-94d448a489a1",
+  ancient_china: "Style-38d99e9a-9f7a-4a9c-9a84-9aaca8bb8e1c",
+  line_and_wash: "Style-74f0f70d-7c9f-4bb7-bc41-3636d2b9fa7a", 
+  magic_portrait: "Style-09ffbb88-64e0-4a7b-8bf1-e8f9a0ec1e5d", 
+  warm_portrait: "Style-e2a1d336-9eef-42e0-bc81-5b3388e0034e", 
+  golden_hour: "Style-eab373f0-7ddb-4da9-82cf-5b70a8e63776", 
+  dreamlike_portraiture: "Style-8ccd685e-4ea3-43bd-ba84-f9e73bd964ae", 
+  luminous_narratives: "Style-6dadfd49-b399-4344-babe-a84d033c89d2", 
+  aquarelle_life: "Style-a3d4214d-5654-4ab5-9c4d-2a2a7a4bd1fa", 
+  vivid_tableaux: "Style-2d8b26df-5fbb-4e89-b731-696bdabc118e", 
+  whimsical_coloring: "Style-cfd977fa-31bd-48d9-9ca7-3f30ac7c6d92", 
+  ceramic_lifelike: "Style-1c4e74ab-0e28-4628-8f4e-a2de572cb3cd", 
+  joyful_clay: "Style-4f89eb76-fb79-44dd-bb9d-b1007b7a5ef0", 
+  yarn_realism: "Style-7c0e0809-ce5a-42f1-a9ca-ba0a18dfa51e", 
+  fantasy_hero: "Style-9efbd18a-f2e4-4eb3-9845-6fbcbdc8f34b", 
+  storytime_whimsy: "Style-5ad97bd1-8efd-4991-bb72-4d7c67e93356", 
+  cute_exaggeration: "Style-0c54aead-23e7-4a3a-a238-d51de63a33c6", 
+  enchanted_character: "Style-5b752a78-21d1-41f6-910b-5a1b5d9a9d43", 
+  mystical_sovereignty: "Style-97e64014-2094-4fa6-aaa9-8dfc9ead288d", 
+  soft_radiance: "Style-fbc31a98-00cd-48a8-bc1a-a1b0c2c9b21a"
+};
+
+// Function to get the proper style code when creating a task
+export const getStyleCode = (styleId) => {
+  // If already a full style code (starts with "Style-"), use as is
+  if (styleId && styleId.startsWith('Style-')) {
+    return styleId;
+  }
+  
+  // Look up in the map of our curated styles
+  if (styleId && styleCodeMap[styleId]) {
+    return styleCodeMap[styleId];
+  }
+  
+  // Default fallback style if mapping fails
+  console.warn(`Style ID "${styleId}" not found in style map, using default style`);
+  return "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+};
+
 // --- Potentially add other functions like face detect/swap later if needed --- 

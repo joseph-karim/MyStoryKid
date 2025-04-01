@@ -2,7 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import { createImg2ImgTask, createTxt2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
+import { 
+  createImg2ImgTask, 
+  createTxt2ImgTask, 
+  getTaskProgress, 
+  checkApiAccess, 
+  getDzineStyles,
+  getStyleCode 
+} from '../services/dzineService';
 
 // Import art style images from the Dzine Styles folder
 import starlitFantasyImg from '../assets/dzine-styles/Starlit-Fantasy.png';
@@ -388,9 +395,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   }, [step, forcedArtStyle]);
   
+  // Also modify the conditional render to always generate preview when step 4 is mounted
+  useEffect(() => {
+    // Auto-generate preview when entering step 4 (preview step)
+    if (step === 4 && !characterData.stylePreview && !isGenerating) {
+      generateCharacterPreview();
+    }
+  }, [step]);
+  
   const handleChange = (field, value) => {
-      setCharacterData(prev => ({
-        ...prev,
+    setCharacterData(prev => ({
+      ...prev,
       [field]: value
     }));
     
@@ -521,10 +536,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
     }
     
-    // If we're in step 2 (photo upload) and have a forced art style,
-    // we can skip straight to preview (step 3 in the new flow)
-    if (step === 2) {
-      const nextStep = 3; // Preview step
+    // Art style selection validation (step 3)
+    if (step === 3 && !characterData.artStyle) {
+      setError('Please select an art style for your character.');
+      return;
+    }
+    
+    // If we're in step 3 (art style) and moving to step 4 (preview),
+    // we need to generate the preview
+    if (step === 3) {
+      const nextStep = 4; // Preview step
       
       // Unlock the next step if not already unlocked
       if (!unlockedSteps.includes(nextStep)) {
@@ -540,7 +561,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       return;
     }
     
-    if (step === 3) {
+    if (step === 4) {
       // This is the final step
       handleComplete();
       return;
@@ -699,6 +720,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 2:
         return "Photo/Description";
       case 3:
+        return "Select Art Style";
+      case 4:
         return "Confirm";
       default:
         return `Step ${stepNumber}`;
@@ -848,50 +871,61 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   // Step 3: Select Art Style
-  const renderStyleStep = () => {
+  const renderArtStyleStep = () => {
     return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Select Art Style</h2>
         
-        {isLoadingStyles ? (
-          <div className="flex justify-center my-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Art style categories with styles */}
-            {getStyleCategories().map((category, index) => (
-              <div key={index} className="space-y-2">
-                <h4 className="font-medium text-sm text-gray-900">{category.category}</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {category.styles.map(style => (
-                    <div
-                      key={style.id}
-                      onClick={() => handleChange('artStyle', style.id)}
-                      className={`border rounded-md overflow-hidden ${
-                        characterData.artStyle === style.id
-                          ? 'ring-2 ring-blue-500 border-blue-400' 
-                          : 'border-gray-200 hover:border-blue-300'
-                      } cursor-pointer`}
-                    >
-                      <div className="h-32 overflow-hidden bg-gray-100">
-                        <img
-                          src={style.imageUrl} 
-                          alt={style.name}
-                          className="w-full h-32 object-contain rounded hover:shadow-lg transition-shadow"
-                        />
-                      </div>
-                      <div className="p-2">
-                        <h5 className="font-medium text-sm">{style.name}</h5>
-                        <p className="text-xs text-gray-500 truncate">{style.description}</p>
-                      </div>
-                    </div>
-                  ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2">
+          {Object.entries(styleImageMap).map(([styleId, imageUrl]) => {
+            // Convert from snake_case to Display Name
+            const displayName = styleId
+              .split('_')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+              
+            return (
+              <div 
+                key={styleId}
+                onClick={() => handleChange('artStyle', styleId)}
+                className={`border rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md ${
+                  characterData.artStyle === styleId 
+                    ? 'ring-2 ring-blue-500 border-blue-500 shadow-md' 
+                    : 'border-gray-200'
+                }`}
+              >
+                <div className="h-32 overflow-hidden bg-gray-50">
+                  <img 
+                    src={imageUrl} 
+                    alt={displayName}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="p-2 bg-white">
+                  <p className="text-sm font-medium text-center truncate">{displayName}</p>
                 </div>
               </div>
-            ))}
-                  </div>
-                )}
+            );
+          })}
+        </div>
+        
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${
+              !characterData.artStyle ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+            }`}
+            disabled={!characterData.artStyle}
+          >
+            Next
+          </button>
+        </div>
       </div>
     );
   };
@@ -919,6 +953,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 2:
         return renderAppearanceStep();
       case 3:
+        return renderArtStyleStep();
+      case 4:
         return renderPreviewStep();
       default:
         return null;
@@ -947,14 +983,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
       
       // Ensure we have a valid art style - use API default style if none provided
-      let styleCode = characterData.artStyle || forcedArtStyle;
-      if (!styleCode) {
+      let styleId = characterData.artStyle || forcedArtStyle;
+      if (!styleId) {
         // If no style is set, use a safe default
-        styleCode = SAFE_STYLE_CODE;
-        console.log("No style selected, using safe default style:", SAFE_STYLE_CODE);
+        styleId = 'starlit_fantasy'; // Default to a popular style
+        console.log("No style selected, using default style:", styleId);
       }
       
-      console.log("STYLE DEBUG: Attempting to use style code:", styleCode);
+      // Convert from our style IDs to actual API style codes
+      const styleCode = getStyleCode(styleId);
+      console.log(`STYLE DEBUG: Converting style ID "${styleId}" to API code "${styleCode}"`);
       
       // Handle text-to-image generation
       if (characterData.useTextToImage) {
@@ -979,7 +1017,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         enhancedPrompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
         console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
-        console.log(`STYLE DEBUG: Using style_code=${styleCode} with intensity=1.0`);
+        console.log(`STYLE DEBUG: Using mapped API style_code=${styleCode} with intensity=1.0`);
         
         // More detailed payload for better art style application
         const txt2imgPayload = {
@@ -1057,7 +1095,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         // Add instructions for a neutral background with no distractions
         prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
         
-        console.log(`STYLE DEBUG: Using img2img with style_code=${styleCode} with style_intensity=1.0`);
+        console.log(`STYLE DEBUG: Using img2img with mapped API style_code=${styleCode} with style_intensity=1.0`);
         
         // Improved payload for better style application
         const img2imgPayload = {
@@ -1520,14 +1558,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     return luminance > 0.5 ? '#000000' : '#FFFFFF';
   };
   
-  // Also modify the conditional render to always generate preview when step 4 is mounted
-  useEffect(() => {
-    // Auto-generate preview when entering step 4 (preview step)
-    if (step === 4 && !characterData.stylePreview && !isGenerating) {
-      generateCharacterPreview();
-    }
-  }, [step]);
-  
   // Image Preview Modal Component
   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
     if (!isOpen) return null;
@@ -1685,6 +1715,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     : 'text-gray-400 cursor-not-allowed border-transparent'
               }`}
               disabled={!unlockedSteps.includes(3)}
+            >
+              Select Art Style
+            </button>
+          </li>
+          <li className="mr-2">
+            <button
+              onClick={() => handleTabClick(4)}
+              className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                step === 4 
+                  ? 'text-blue-600 border-blue-600' 
+                  : unlockedSteps.includes(4)
+                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                    : 'text-gray-400 cursor-not-allowed border-transparent'
+              }`}
+              disabled={!unlockedSteps.includes(4)}
             >
               Confirm
             </button>
