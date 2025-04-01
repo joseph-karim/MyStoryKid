@@ -723,7 +723,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 1:
         return "Details";
       case 2:
-        return "Photo or Description";
+        return "Photo/Description";
       case 3:
         return "Style";
       case 4:
