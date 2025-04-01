@@ -641,7 +641,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               return; // Skip this polling cycle
             }
             
-            if (progress.status === 'succeeded') {
+            if (progress.status === 'succeeded' || progress.status === 'succeed') {
               clearInterval(pollInterval);
               setProgressMessage('Preview ready!');
               
@@ -672,7 +672,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               setProgressMessage(`Creating character... (${Math.min(90, pollCount * 5)}%)`);
               console.log(`Processing: poll ${pollCount}/${maxPolls}`);
             } else {
+              // Handle unknown status - check if we have image URLs which indicate completion
               console.log(`Unknown status: ${progress.status} (poll ${pollCount}/${maxPolls})`);
+              
+              // If we have result images, treat as success even with unknown status
+              if (progress.generate_result_slots && progress.generate_result_slots.some(url => url)) {
+                console.log('Found image URLs in result, treating as success');
+                clearInterval(pollInterval);
+                setProgressMessage('Preview ready!');
+                
+                const imageUrl = progress.generate_result_slots.find(url => url);
+                if (imageUrl) {
+                  setCharacterData(prev => ({
+                    ...prev,
+                    artStyle: styleIdToUse,
+                    stylePreview: imageUrl
+                  }));
+                  setIsGenerating(false);
+                  return;
+                }
+              }
+              
+              // If no images found, continue polling but give up after a while
               if (pollCount > 15) { // After 30 seconds of unknown status, give up
                 clearInterval(pollInterval);
                 throw new Error(`Unknown task status: ${progress.status}`);
