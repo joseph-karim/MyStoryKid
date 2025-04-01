@@ -408,14 +408,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Determine default isHuman value based on type
     const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
     
-    // Effect to update isHuman if type changes and it hasn't been manually set
+    // Effect to update isHuman only when type changes AND isHuman hasn't been manually set
     useEffect(() => {
-       // Only set if not explicitly set yet or if type dictates a change
-       if (characterData.isHuman === null || characterData.isHuman === undefined || 
-           (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman)) {
-            handleChange('isHuman', defaultIsHuman);
-       }
-    }, [characterData.type]); // Re-run only if type changes
+      // Check if isHuman is still at its initial undefined/null state OR if the type change *requires* a default change
+      // This prevents overriding a manual user selection unless the type fundamentally changes the default
+      const shouldSetDefault = characterData.isHuman === undefined || characterData.isHuman === null ||
+                               (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman);
+                               
+      if (shouldSetDefault) {
+          console.log(`[EFFECT] Setting default isHuman based on type '${characterData.type}': ${defaultIsHuman}`);
+          handleChange('isHuman', defaultIsHuman);
+      }
+    }, [characterData.type]); // Dependency remains characterData.type
   
   return (
       <div className="space-y-6 animate-fadeIn">
