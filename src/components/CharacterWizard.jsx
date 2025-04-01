@@ -793,162 +793,105 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         // Extract status from various possible response structures
         let status = null;
+        let normalizedStatus = 'pending'; // Default to pending
         
-        if (progressData.status) {
-          status = progressData.status;
-        } else if (progressData.data && progressData.data.status) {
-          status = progressData.data.status;
-        } else if (typeof progressData === 'string' && 
-                  (progressData.includes('success') || 
-                   progressData.includes('running') || 
-                   progressData.includes('failed'))) {
-          status = progressData.includes('success') ? 'success' : 
-                  progressData.includes('running') ? 'running' : 'failed';
+        if (progressData?.status) {
+          status = progressData.status.toLowerCase();
+        } else if (progressData?.data?.status) {
+          status = progressData.data.status.toLowerCase();
         }
         
-        console.log(`Extracted status: ${status}`);
+        // Normalize status according to docs + observed values
+        if (status === 'succeed' || status === 'succeeded') {
+          normalizedStatus = 'success';
+        } else if (status === 'failed' || status === 'error') {
+          normalizedStatus = 'failed';
+        } else if (['processing', 'running', 'waiting', 'in_queue', 'uploading'].includes(status)) {
+          normalizedStatus = 'running';
+        } else if (status === 'pending' && is404) {
+          normalizedStatus = 'pending_404'; // Special case for initial 404s
+        } else {
+          normalizedStatus = 'running'; // Assume running if status is unknown/missing but no error occurred
+        }
         
-        // Update UI based on status
-        if (status === 'running' || status === 'pending' || status === 'waiting') {
-          // Task is still running, continue polling
-          console.log(`Task ${taskId} is still running`);
-          setProgressMessage(`Generating image... (${pollCount}s)`);
-          
-          // If we're taking too long, show a hopeful message
-          if (pollCount > 10) {
-            setProgressMessage(`Almost there... (${pollCount}s)`);
-          }
-        } else if (status === 'success' || status === 'completed') {
-          // Task completed successfully
+        console.log(`Extracted status: ${status}, Normalized status: ${normalizedStatus}`);
+        
+        // -- Success Path --
+        if (normalizedStatus === 'success') {
           console.log(`Task ${taskId} completed successfully`);
           setProgressMessage('Image generated successfully!');
           
-          // Extract image URLs from the response
+          // Extract image URLs (Simplified based on latest logs/docs)
           let resultUrls = [];
-          
-          // Check various places where the URLs might be
-          if (progressData.generate_result_urls && progressData.generate_result_urls.length > 0) {
-            resultUrls = progressData.generate_result_urls;
-            console.log("Found URLs in generate_result_urls:", resultUrls);
-          } else if (progressData.data && progressData.data.generate_result_urls && progressData.data.generate_result_urls.length > 0) {
-            resultUrls = progressData.data.generate_result_urls;
-            console.log("Found URLs in data.generate_result_urls:", resultUrls);
-          } else if (progressData.result && progressData.result.images) {
-            resultUrls = progressData.result.images;
-            console.log("Found URLs in result.images:", resultUrls);
-          } else if (progressData.generate_result_slots && progressData.generate_result_slots.length > 0) {
-            resultUrls = progressData.generate_result_slots;
-            console.log("Found URLs in generate_result_slots:", resultUrls);
-          } else if (progressData.data && progressData.data.generate_result_slots && progressData.data.generate_result_slots.length > 0) {
-            resultUrls = progressData.data.generate_result_slots;
+          if (progressData?.data?.generate_result_slots?.length > 0) {
+            resultUrls = progressData.data.generate_result_slots.filter(url => url); // Filter out empty slots
             console.log("Found URLs in data.generate_result_slots:", resultUrls);
-          } else if (progressData.result && progressData.result.generate_result_slots) {
-            resultUrls = progressData.result.generate_result_slots;
-            console.log("Found URLs in result.generate_result_slots:", resultUrls);
-          } else if (progressData.images && progressData.images.length > 0) {
-            resultUrls = progressData.images;
-            console.log("Found URLs in images array:", resultUrls);
           } else {
-            // Try to find images elsewhere in the response
+            // Fallback extraction (less likely needed now but kept for safety)
             resultUrls = extractImageUrls(progressData);
-            console.log("Extracted image URLs from response:", resultUrls);
+             console.log("Used fallback URL extraction:", resultUrls);
           }
           
-          // If we found any URLs, use the first one
-          if (resultUrls && resultUrls.length > 0) {
-            let imageUrl = null;
-            
-            // If the "URLs" are actually base64 data, use as is
-            if (typeof resultUrls[0] === 'string') {
-              if (resultUrls[0].startsWith('data:image')) {
-                imageUrl = resultUrls[0];
-                console.log("Found base64 image data");
-              } else if (resultUrls[0].includes('http')) {
-                // It's a regular URL
-                imageUrl = resultUrls[0];
-                console.log("Found HTTP image URL:", imageUrl);
-              } else {
-                // Try to format as a data URL if it's raw base64
-                try {
-                  if (resultUrls[0].match(/^[A-Za-z0-9+/=]+$/)) {
-                    imageUrl = `data:image/jpeg;base64,${resultUrls[0]}`;
-                    console.log("Converted raw base64 to data URL");
-                  }
-                } catch (err) {
-                  console.error("Error formatting base64 data:", err);
-                }
-              }
-              
-              if (imageUrl) {
-                console.log('Using image URL:', imageUrl.substring(0, 100) + '...');
-                
-                // Update the character data with the style preview
-                setCharacterData(prev => ({
-                  ...prev,
-                  stylePreview: imageUrl
-                }));
-                
-                // We're done polling
-                console.log(`Successful completion, ending poll ${pollingId}`);
-                clearInterval(pollingSessionRef.current[pollingId]);
-                setIsGenerating(false);
-                delete pollingSessionRef.current[pollingId];
-                return;
-              }
-            } else if (typeof resultUrls[0] === 'object' && resultUrls[0].url) {
-              // Handle object format with URL field
-              imageUrl = resultUrls[0].url;
-              console.log("Found URL in object format:", imageUrl);
-              
-              // Update the character data with the style preview
-              setCharacterData(prev => ({
-                ...prev,
-                stylePreview: imageUrl
-              }));
-              
-              // We're done polling
-              console.log(`Successful completion, ending poll ${pollingId}`);
-              clearInterval(pollingSessionRef.current[pollingId]);
-              setIsGenerating(false);
-              delete pollingSessionRef.current[pollingId];
-              return;
-            }
+          const imageUrl = resultUrls[0] || null; // Take the first non-empty URL
+          
+          if (imageUrl) {
+            console.log('Using image URL:', imageUrl);
+            setCharacterData(prev => ({ ...prev, stylePreview: imageUrl }));
+            // --- STOP POLLING --- 
+            clearInterval(pollingSessionRef.current[pollingId]);
+            setIsGenerating(false);
+            delete pollingSessionRef.current[pollingId];
+            console.log(`Success: Cleared polling interval ${pollingId}`);
+            return; // Exit interval callback
+          } else {
+            console.warn('Task succeeded but no valid image URLs found in generate_result_slots.');
+            setProgressMessage('Task finished but no image found - using placeholder.');
+            // --- STOP POLLING --- 
+            clearInterval(pollingSessionRef.current[pollingId]);
+            setIsGenerating(false);
+            delete pollingSessionRef.current[pollingId];
+            useFallbackImage(fallbackImage); // Use fallback if success but no image
+            console.log(`Success (no image): Cleared polling interval ${pollingId}`);
+            return; // Exit interval callback
           }
-          
-          console.warn('Task completed but no images found in the response');
-          setProgressMessage('Task completed but no images found - using fallback');
-          clearInterval(pollingSessionRef.current[pollingId]);
-          setIsGenerating(false);
-          delete pollingSessionRef.current[pollingId];
-          
-          // Use the fallback
-          useFallbackImage(fallbackImage);
-        } else if (status === 'failed' || status === 'error') {
-          // Task failed
-          console.error('Task failed:', progressData);
-          setProgressMessage('Generation failed - using fallback image');
-          clearInterval(pollingSessionRef.current[pollingId]);
-          setIsGenerating(false);
-          delete pollingSessionRef.current[pollingId];
-          
-          // Use the fallback
-          useFallbackImage(fallbackImage);
-          return;
         }
+        // -- Failure Path --
+        else if (normalizedStatus === 'failed') {
+          console.error(`Task ${taskId} failed. Reason:`, progressData?.data?.error_reason || progressData?.error_reason || 'Unknown');
+          setProgressMessage('Generation failed. Please try again.');
+          setError('Image generation failed. Please check the style or try again.');
+          // --- STOP POLLING --- 
+          clearInterval(pollingSessionRef.current[pollingId]);
+          setIsGenerating(false);
+          delete pollingSessionRef.current[pollingId];
+          // No automatic fallback on failure, let user retry
+          // useFallbackImage(fallbackImage);
+          console.log(`Failed: Cleared polling interval ${pollingId}`);
+          return; // Exit interval callback
+        }
+        // -- Still Running Path --
+        else {
+          // Task is still running (running, pending_404, or unknown)
+          console.log(`Task ${taskId} is still running (Status: ${normalizedStatus})`);
+          // Update progress message (handled outside the try block before)
+        }
+        
       } catch (error) {
         console.error(`Error in polling attempt ${pollCount}:`, error);
         consecutiveErrors++;
         
-        // If we've had too many consecutive errors or reached max polls, use fallback
         if (consecutiveErrors >= maxConsecutiveErrors || pollCount >= maxPolls) {
-          setProgressMessage('Error occurred - using fallback image');
+          setProgressMessage('Polling error or timeout - using placeholder image');
+          setError('Could not retrieve image result due to polling errors or timeout.');
+          // --- STOP POLLING --- 
           clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
-          
-          // Use the fallback
-          useFallbackImage(fallbackImage);
+          useFallbackImage(fallbackImage); // Use fallback only on repeated errors/timeout
+          console.log(`Error/Timeout: Cleared polling interval ${pollingId}`);
+          return; // Exit interval callback
         }
+        // Continue polling if error limit not reached
       }
     }, 1000); // Poll every second
   };
