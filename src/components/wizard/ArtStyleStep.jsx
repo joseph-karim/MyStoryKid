@@ -48,27 +48,49 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
     category: 'Whimsical & Soft (Ages 0–5)',
     description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
-    styleIds: ['watercolor', 'pastel', 'pencil_wash', 'soft_digital']
+    styleIds: [
+      { id: 'watercolor', keywords: ['watercolor', 'water', 'soft', 'gentle', 'dreamy', 'whimsy'] },
+      { id: 'pastel', keywords: ['pastel', 'chalk', 'soft', 'tender', 'gentle', 'soothing'] },
+      { id: 'pencil_wash', keywords: ['pencil', 'wash', 'line', 'drawing', 'sketch', 'watercolor'] },
+      { id: 'soft_digital', keywords: ['soft', 'digital', 'rounded', 'gentle', 'brush', 'whimsy'] }
+    ]
   },
   {
     category: 'Classic & Timeless (Ages 3–8)',
     description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
-    styleIds: ['pencil_ink', 'golden_books', 'beatrix_potter']
+    styleIds: [
+      { id: 'pencil_ink', keywords: ['pencil', 'ink', 'sketch', 'line', 'drawing', 'classic'] },
+      { id: 'golden_books', keywords: ['golden', 'book', 'classic', 'vintage', 'retro', 'mid-century'] },
+      { id: 'beatrix_potter', keywords: ['classic', 'fable', 'warm', 'gentle', 'tale', 'peter', 'rabbit'] }
+    ]
   },
   {
     category: 'Modern & Colorful (Ages 4–9)',
     description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
-    styleIds: ['cartoon', 'flat_vector', 'storybook_pop', 'papercut']
+    styleIds: [
+      { id: 'cartoon', keywords: ['cartoon', 'anime', 'animation', 'fun', 'vibrant', '2d'] },
+      { id: 'flat_vector', keywords: ['flat', 'vector', 'simple', 'clean', 'minimal', 'icon'] },
+      { id: 'storybook_pop', keywords: ['storybook', 'pop', 'vibrant', 'bright', 'fun', 'energetic'] },
+      { id: 'papercut', keywords: ['paper', 'cut', 'cutout', 'collage', 'texture', 'layer'] }
+    ]
   },
   {
     category: 'Artistic & Elevated (Ages 6–12)',
     description: 'Sophisticated art styles with richer detail and artistic techniques for older children.',
-    styleIds: ['oil_pastel', 'stylized_realism', 'digital_painterly']
+    styleIds: [
+      { id: 'oil_pastel', keywords: ['oil', 'pastel', 'paint', 'texture', 'brush', 'stroke', 'vibrant'] },
+      { id: 'stylized_realism', keywords: ['stylized', 'realism', 'realistic', 'detail', 'structure', 'serenity'] },
+      { id: 'digital_painterly', keywords: ['digital', 'paint', 'painterly', 'artistic', 'rich', 'luminous'] }
+    ]
   },
   {
     category: 'Cultural Styles (All Ages)',
     description: 'Art styles inspired by diverse cultural traditions and aesthetic sensibilities.',
-    styleIds: ['kawaii', 'scandinavian', 'african_pattern']
+    styleIds: [
+      { id: 'kawaii', keywords: ['kawaii', 'cute', 'japanese', 'japan', 'anime', 'adorable'] },
+      { id: 'scandinavian', keywords: ['scandinavian', 'nordic', 'folk', 'scandi', 'minimal', 'clean'] },
+      { id: 'african_pattern', keywords: ['african', 'pattern', 'bold', 'collage', 'vibrant', 'colorful'] }
+    ]
   }
 ];
 
@@ -187,6 +209,24 @@ function ArtStyleStep() {
   // This guarantees styles will display even if API is unavailable
   const FALLBACK_STYLE_MAP = { ...styleIdToCodeMap };
 
+  // Find best matching API style for a given internal style ID
+  const findBestMatchingStyle = (styleItem, apiStyles) => {
+    if (!apiStyles || apiStyles.length === 0) return null;
+    
+    // Try to find a match based on keywords
+    const matches = apiStyles.map(apiStyle => {
+      const apiStyleName = apiStyle.name.toLowerCase();
+      const matchScore = styleItem.keywords.reduce((score, keyword) => {
+        return apiStyleName.includes(keyword.toLowerCase()) ? score + 1 : score;
+      }, 0);
+      return { apiStyle, matchScore };
+    }).filter(match => match.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore);
+    
+    // Return the best match or null if no matches
+    return matches.length > 0 ? matches[0].apiStyle : null;
+  };
+
   // Fetch styles from Dzine API on mount
   useEffect(() => {
     const fetchStyles = async () => {
@@ -194,64 +234,70 @@ function ArtStyleStep() {
       setStyleFetchError(null);
       try {
         const data = await getDzineStyles();
-        setDzineStyles(data.list || []);
-        
-        // Create a map from name (or a generated ID) to style_code
-        const map = { ...FALLBACK_STYLE_MAP }; // Start with fallback map
-        let foundNoStyle = null;
-        
-        // If we got actual styles from the API, enhance our mapping
         if (data.list && data.list.length > 0) {
-          data.list.forEach(style => {
-            // Generate a simple ID from the name for mapping
-            const simpleId = style.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_v\d+$/, ''); 
-            map[simpleId] = style.style_code;
+          setDzineStyles(data.list);
+          
+          // Find "No Style" option for custom styles
+          const noStyleOption = data.list.find(style => 
+            style.name.toLowerCase().includes('no style')
+          );
+          setNoStyleCode(noStyleOption?.style_code || 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2');
+          
+          // Set initial artStyleCode if not already set
+          if (!artStyleCode) {
+            // Auto-suggest style based on category (can be refined)
+            const category = wizardState.storyData.category || 'adventure';
             
-            if (style.name === 'No Style v2') {
-               foundNoStyle = style.style_code;
+            // Map categories to style IDs
+            const categoryToStyleMap = {
+              adventure: 'cartoon',
+              fantasy: 'watercolor',
+              bedtime: 'pastel',
+              learning: 'flat_vector',
+              birthday: 'storybook_pop'
+            };
+            
+            // Get the suggested style ID
+            const suggestedInternalStyleId = categoryToStyleMap[category] || 'cartoon';
+            
+            // Find the matching style in our structured categories
+            let matchingStyleItem = null;
+            for (const category of ART_STYLE_CATEGORIES_STRUCTURE) {
+              const match = category.styleIds.find(s => s.id === suggestedInternalStyleId);
+              if (match) {
+                matchingStyleItem = match;
+                break;
+              }
             }
-          });
+            
+            // Find the API style that best matches this internal style
+            if (matchingStyleItem) {
+              const bestMatch = findBestMatchingStyle(matchingStyleItem, data.list);
+              if (bestMatch) {
+                setArtStyleCode(bestMatch.style_code);
+              } else {
+                // Default to first style if no match
+                setArtStyleCode(data.list[0].style_code);
+              }
+            } else {
+              // Default to first style if no matching style item
+              setArtStyleCode(data.list[0].style_code);
+            }
+          }
         } else {
-          // If API returned no styles, we'll use our fallback mapping for UI
-          // But mark them as unavailable in the UI
-          console.warn('No styles returned from Dzine API - using fallback mapping');
+          console.warn('No styles returned from Dzine API');
+          setStyleFetchError('No styles available from API');
         }
-        
-        setNoStyleCode(foundNoStyle || 'nostyle');
-
-        // Set initial artStyleCode if not already set
-        if (!wizardState.storyData.artStyleCode) {
-           // Auto-suggest style based on category (can be refined)
-           const category = wizardState.storyData.category;
-           let suggestedStyleId = 'cartoon'; // Default ID
-           if (category === 'adventure') suggestedStyleId = 'cartoon';
-           else if (category === 'fantasy') suggestedStyleId = 'watercolor';
-           else if (category === 'bedtime') suggestedStyleId = 'pastel';
-           else if (category === 'learning') suggestedStyleId = 'flat_vector';
-           else if (category === 'birthday') suggestedStyleId = 'storybook_pop';
-         
-           const suggestedCode = map[suggestedStyleId] || foundNoStyle || 'cartoon'; // Fallback
-           setArtStyleCode(suggestedCode);
-        }
-
       } catch (err) {
         console.error("Failed to fetch Dzine styles:", err);
         setStyleFetchError(err.message || 'Could not load art styles.');
-        
-        // Use fallback map even in error case
-        setNoStyleCode('nostyle');
-        
-        // Set a default style code if none already set
-        if (!wizardState.storyData.artStyleCode) {
-          setArtStyleCode('cartoon');
-        }
       } finally {
         setIsLoadingStyles(false);
       }
     };
-
+    
     fetchStyles();
-  }, []); // Fetch only once
+  }, []);
   
   // Load wizard state when it changes (e.g., navigating back)
   useEffect(() => {
@@ -330,13 +376,15 @@ function ArtStyleStep() {
             <p className="text-sm text-gray-600 mb-3">{category.description}</p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {category.styleIds.map((styleId) => {
-                const isAvailable = isStyleAvailable(styleId);
-                const styleCode = styleIdToCodeMap[styleId] || styleId;
+              {category.styleIds.map((styleItem) => {
+                // Find the API style that best matches this internal style
+                const apiStyle = findBestMatchingStyle(styleItem, dzineStyles);
+                const isAvailable = !!apiStyle;
+                const styleCode = apiStyle?.style_code || '';
                 
                 return (
                   <div 
-                    key={styleId}
+                    key={styleItem.id}
                     onClick={() => isAvailable && handleStyleSelect(styleCode)}
                     className={`border rounded-lg overflow-hidden transition-all hover:shadow-md ${
                       artStyleCode === styleCode 
@@ -346,8 +394,8 @@ function ArtStyleStep() {
                   >
                     <div className={`aspect-[4/3] bg-gray-100 relative`}>
                       <img 
-                        src={styleImageMap[styleId]} 
-                        alt={styleId}
+                        src={styleImageMap[styleItem.id]} 
+                        alt={styleItem.id}
                         className="w-full h-full object-cover"
                       />
                       {artStyleCode === styleCode && (
@@ -357,10 +405,16 @@ function ArtStyleStep() {
                           </svg>
                         </div>
                       )}
+                      {/* Show API style name for transparency */}
+                      {isAvailable && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                          API: {apiStyle.name}
+                        </div>
+                      )}
                     </div>
                     <div className="p-3">
-                      <h4 className="font-medium mb-1">{styleDescriptions[styleId]?.title || styleId}</h4>
-                      <p className="text-sm text-gray-600">{styleDescriptions[styleId]?.description}</p>
+                      <h4 className="font-medium mb-1">{styleDescriptions[styleItem.id]?.title || styleItem.id}</h4>
+                      <p className="text-sm text-gray-600">{styleDescriptions[styleItem.id]?.description}</p>
                       {!isAvailable && (
                         <div className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-md inline-block">
                           Currently unavailable
@@ -374,12 +428,51 @@ function ArtStyleStep() {
           </div>
         ))}
         
+        {/* Add a section with direct API styles for additional options */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer">
+              <h4 className="font-medium text-gray-700">🔍 More API Styles</h4>
+              <div className="text-sm text-gray-500 group-open:rotate-180 transition-transform duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M8 4a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 1 1 .708-.708L7.5 10.293V4.5A.5.5 0 0 1 8 4z"/>
+                </svg>
+              </div>
+            </summary>
+            
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {dzineStyles.slice(0, 16).map(style => (
+                <div
+                  key={style.style_code}
+                  className={`p-2 border rounded-lg cursor-pointer text-sm ${
+                    artStyleCode === style.style_code
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-blue-300'
+                  }`}
+                  onClick={() => handleStyleSelect(style.style_code)}
+                >
+                  <div className="flex flex-col space-y-1">
+                    {style.cover_url && (
+                      <img 
+                        src={style.cover_url} 
+                        alt={style.name}
+                        className="w-full h-20 object-cover rounded"
+                      />
+                    )}
+                    <div className="font-medium truncate">{style.name}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+        
         {/* Custom style option */}
         <div className="mt-6">
           <div 
-            onClick={() => handleStyleSelect("custom")}
+            onClick={() => handleStyleSelect(noStyleCode)}
             className={`border rounded-lg overflow-hidden transition-all p-4 ${
-              artStyleCode === "custom" 
+              artStyleCode === noStyleCode 
                 ? 'ring-2 ring-blue-500 border-blue-500' 
                 : 'border-gray-200 hover:border-blue-300'
             } cursor-pointer`}
@@ -398,10 +491,10 @@ function ArtStyleStep() {
               onChange={(e) => setCustomStyleDescription(e.target.value)}
               placeholder="Example: Vibrant watercolor with fine ink details, dreamy pastel colors, and a slight glow effect around characters."
               className={`w-full border rounded-md p-3 text-sm ${
-                artStyleCode === "custom" ? 'border-blue-400' : 'border-gray-300'
+                artStyleCode === noStyleCode ? 'border-blue-400' : 'border-gray-300'
               }`}
               rows={3}
-              disabled={artStyleCode !== "custom"}
+              disabled={artStyleCode !== noStyleCode}
             />
           </div>
         </div>
