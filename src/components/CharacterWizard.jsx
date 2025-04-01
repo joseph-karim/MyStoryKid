@@ -4,6 +4,86 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { createImg2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
 
+// Import art style images - for thumbnail display
+import watercolorImg from '../assets/watercolor-theme.png';
+import pastelImg from '../assets/pastel-theme.png';
+import pencilWashImg from '../assets/gentle-pencil-wash.png';
+import softDigitalImg from '../assets/soft-brush-digital.png';
+import pencilInkImg from '../assets/pencil-sketch-ink.png';
+import goldenBooksImg from '../assets/golden-books-style.png';
+import beatrixPotterImg from '../assets/beatrix-potter-style.png';
+import cartoonImg from '../assets/cartoon-2d-animation-style.png';
+import flatVectorImg from '../assets/flat-vector-illustration.png';
+import storybookPopImg from '../assets/storybook-pop-style.png';
+import papercutImg from '../assets/cut-paper-collage-style.png';
+import oilPastelImg from '../assets/oil-pastel-gouache-style.png';
+import stylizedRealismImg from '../assets/stylized-realism.png';
+import digitalPainterlyImg from '../assets/digital-painterly.png';
+import kawaiiImg from '../assets/japanese-kawaii.png';
+import scandinavianImg from '../assets/scandinavian-folk-art.png';
+import africanPatternImg from '../assets/african-patterned-illustration.png';
+
+// Map style IDs to the imported images
+const styleImageMap = {
+  watercolor: watercolorImg,
+  pastel: pastelImg,
+  pencil_wash: pencilWashImg, 
+  soft_digital: softDigitalImg,
+  pencil_ink: pencilInkImg,
+  golden_books: goldenBooksImg,
+  beatrix_potter: beatrixPotterImg,
+  cartoon: cartoonImg,
+  flat_vector: flatVectorImg,
+  storybook_pop: storybookPopImg,
+  papercut: papercutImg,
+  oil_pastel: oilPastelImg,
+  stylized_realism: stylizedRealismImg,
+  digital_painterly: digitalPainterlyImg,
+  kawaii: kawaiiImg,
+  scandinavian: scandinavianImg,
+  african_pattern: africanPatternImg
+};
+
+// Curated art style categories with representative styles
+const CURATED_STYLES = [
+  {
+    category: '🎨 3D & Cartoon Styles',
+    description: 'Modern 3D and cartoon art styles',
+    styles: [
+      { id: 'cartoon', name: 'Cartoon', description: 'Clean lines, bright colors, and exaggerated expressions', imageUrl: cartoonImg, keywordMatch: ['cartoon', 'anime', '3d', 'pixie'] },
+      { id: 'flat_vector', name: 'Flat Vector', description: 'Bold, clean, simple shapes with modern feel', imageUrl: flatVectorImg, keywordMatch: ['vector', 'flat', 'simple', 'icon'] },
+      { id: 'storybook_pop', name: 'Storybook Pop', description: 'Bright, slightly surreal, energetic style', imageUrl: storybookPopImg, keywordMatch: ['storybook', 'pop', 'bright', 'vibrant'] }
+    ]
+  },
+  {
+    category: '🖌️ Painterly & Artistic',
+    description: 'Styles with texture, depth, and artistic elements',
+    styles: [
+      { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, magical quality', imageUrl: watercolorImg, keywordMatch: ['water', 'soft', 'gentle'] },
+      { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes with vivid colors', imageUrl: oilPastelImg, keywordMatch: ['oil', 'pastel', 'paint', 'brush'] },
+      { id: 'digital_painterly', name: 'Digital Painterly', description: 'Digital art with classical painting feel', imageUrl: digitalPainterlyImg, keywordMatch: ['paint', 'digital', 'artistic'] }
+    ]
+  },
+  {
+    category: '✏️ Classic & Illustration',
+    description: 'Timeless illustration styles',
+    styles: [
+      { id: 'golden_books', name: 'Golden Books', description: 'Classic mid-century illustration style', imageUrl: goldenBooksImg, keywordMatch: ['classic', 'golden', 'vintage', 'book'] },
+      { id: 'beatrix_potter', name: 'Beatrix Potter', description: 'Detailed watercolor with classic feel', imageUrl: beatrixPotterImg, keywordMatch: ['classic', 'fable', 'gentle', 'warm'] },
+      { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Fine line work with light color washes', imageUrl: pencilInkImg, keywordMatch: ['pencil', 'ink', 'sketch', 'line'] }
+    ]
+  },
+  {
+    category: '✨ Whimsical & Playful',
+    description: 'Fun styles perfect for young children',
+    styles: [
+      { id: 'kawaii', name: 'Kawaii', description: 'Ultra-cute Japanese style with soft colors', imageUrl: kawaiiImg, keywordMatch: ['cute', 'kawaii', 'japan', 'soft'] },
+      { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper', imageUrl: papercutImg, keywordMatch: ['paper', 'cut', 'collage', 'texture'] },
+      { id: 'scandinavian', name: 'Scandinavian', description: 'Geometric shapes with folk art influences', imageUrl: scandinavianImg, keywordMatch: ['scandi', 'folk', 'nordic', 'pattern'] }
+    ]
+  }
+];
+
 // Style ID to code map - using REAL Dzine API style codes from the API response
 const styleIdToCodeMap = {
   // Common styles with their proper Dzine API style codes
@@ -545,9 +625,33 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  const renderAppearanceStep = () => {
-    const styleCategories = getStyleCategories();
+  // Helper function to match API styles to our curated categories
+  const matchStyleToAPIStyle = (curatedStyle, apiStyles) => {
+    if (!apiStyles || apiStyles.length === 0) return null;
     
+    // First try direct keyword matching
+    const matchedStyle = apiStyles.find(style => {
+      const styleName = style.name.toLowerCase();
+      return curatedStyle.keywordMatch.some(keyword => 
+        styleName.includes(keyword.toLowerCase())
+      );
+    });
+    
+    if (matchedStyle) return matchedStyle;
+    
+    // Fallback to a default style (3D or cartoon preferably)
+    const defaultStyle = apiStyles.find(style => 
+      style.name.toLowerCase().includes('3d') || 
+      style.name.toLowerCase().includes('cartoon') ||
+      style.name.toLowerCase().includes('pixie')
+    );
+    
+    // If no matches at all, return the first available style
+    return defaultStyle || apiStyles[0];
+  };
+  
+  // Update the appearance step to use curated categories with API style mapping
+  const renderAppearanceStep = () => {
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold mb-4">Choose Art Style</h3>
@@ -563,40 +667,91 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </div>
         ) : (
           <div className="space-y-6">
-            {styleCategories.map((category, index) => (
+            {CURATED_STYLES.map((category, index) => (
               <div key={index} className="space-y-2">
                 <h4 className="font-medium text-gray-700">{category.category}</h4>
                 <p className="text-sm text-gray-500">{category.description}</p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {category.styles.map(style => (
-                    <div
-                      key={style.id}
-                      className={`p-3 border rounded-lg cursor-pointer ${
-                        characterData.artStyle === style.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-200'
-                      }`}
-                      onClick={() => handleChange('artStyle', style.id)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        {style.imageUrl && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {category.styles.map(style => {
+                    // Match our curated style to an actual API style
+                    const apiStyle = matchStyleToAPIStyle(style, apiStyles);
+                    const actualStyleId = apiStyle?.style_code || null;
+                    
+                    if (!apiStyle) return null; // Skip if no matching API style found
+                    
+                    return (
+                      <div
+                        key={style.id}
+                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                          characterData.artStyle === actualStyleId
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 hover:border-blue-200 hover:shadow'
+                        }`}
+                        onClick={() => handleChange('artStyle', actualStyleId)}
+                      >
+                        <div className="space-y-2">
                           <img 
                             src={style.imageUrl} 
                             alt={style.name}
-                            className="w-12 h-12 object-cover rounded"
+                            className="w-full h-32 object-cover rounded"
+                          />
+                          <div>
+                            <div className="font-medium flex justify-between">
+                              <span>{style.name}</span>
+                              {characterData.artStyle === actualStyleId && (
+                                <span className="text-blue-500">✓</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">{style.description}</div>
+                            <div className="text-xs text-gray-400 mt-1">API: {apiStyle.name}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            
+            {/* Advanced section with direct API styles */}
+            <div className="mt-8 pt-4 border-t border-gray-200">
+              <details className="group">
+                <summary className="flex items-center justify-between cursor-pointer">
+                  <h4 className="font-medium text-gray-700">🔍 More API Styles</h4>
+                  <div className="text-sm text-gray-500 group-open:rotate-180 transition-transform duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M8 4a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 1 1 .708-.708L7.5 10.293V4.5A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                  </div>
+                </summary>
+                
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {apiStyles.slice(0, 16).map(style => (
+                    <div
+                      key={style.style_code}
+                      className={`p-2 border rounded-lg cursor-pointer text-sm ${
+                        characterData.artStyle === style.style_code
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                      onClick={() => handleChange('artStyle', style.style_code)}
+                    >
+                      <div className="flex flex-col space-y-1">
+                        {style.cover_url && (
+                          <img 
+                            src={style.cover_url} 
+                            alt={style.name}
+                            className="w-full h-20 object-cover rounded"
                           />
                         )}
-                        <div>
-                          <div className="font-medium">{style.name}</div>
-                          <div className="text-xs text-gray-500">{style.description}</div>
-                        </div>
+                        <div className="font-medium truncate">{style.name}</div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            ))}
+              </details>
+            </div>
           </div>
         )}
       </div>
