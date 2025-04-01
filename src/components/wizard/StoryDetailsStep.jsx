@@ -40,101 +40,66 @@ const rhymeSchemeOptions = [
   { value: 'Free Verse', label: 'Free Verse (No strict rhyme)' },
 ];
 
-// Rich Theme Categories
+// Simplified Core Themes for Children's Stories
 const themeCategories = [
   {
-    category: 'Social & Emotional Learning',
-    description: 'Focuses on developing social skills, emotional awareness, and interpersonal relationships',
+    category: 'Friendship & Getting Along',
+    icon: '👪',
+    description: 'Stories about relationships with others and social skills',
     themes: [
-      { value: 'friendship', label: 'Friendship' },
-      { value: 'empathy_kindness', label: 'Empathy & Kindness' },
-      { value: 'managing_emotions', label: 'Managing Emotions' },
-      { value: 'cooperation_teamwork', label: 'Cooperation & Teamwork' },
-      { value: 'conflict_resolution', label: 'Conflict Resolution' },
-      { value: 'resilience_perseverance', label: 'Resilience & Perseverance' },
+      { value: 'making_keeping_friends', label: 'Making & Keeping Friends' },
+      { value: 'understanding_others_feelings', label: 'Understanding Others\' Feelings' },
+      { value: 'working_together', label: 'Working Together' },
     ]
   },
   {
-    category: 'Identity & Self-Discovery',
-    description: 'Focuses on understanding oneself, building confidence, and discovering personal strengths',
+    category: 'Feelings & Emotions',
+    icon: '😊',
+    description: 'Stories about understanding and managing different emotions',
     themes: [
-      { value: 'individuality_uniqueness', label: 'Individuality & Uniqueness' },
-      { value: 'self_esteem_confidence', label: 'Self-Esteem & Confidence' },
-      { value: 'finding_your_voice', label: 'Finding Your Voice' },
-      { value: 'personal_growth', label: 'Personal Growth' },
-      { value: 'cultural_identity', label: 'Cultural Identity & Heritage' },
+      { value: 'understanding_your_feelings', label: 'Understanding Your Own Feelings' },
+      { value: 'coping_with_big_emotions', label: 'Coping with Big Emotions' },
+      { value: 'finding_joy', label: 'Finding Joy & Expressing Happiness' },
     ]
   },
   {
-    category: 'Family & Relationships',
-    description: 'Explores family bonds, different family structures, and navigating relationships',
+    category: 'Family & Belonging',
+    icon: '🏠',
+    description: 'Stories about home, family bonds, and feeling secure',
     themes: [
-      { value: 'parent_child_bonds', label: 'Parent/Caregiver-Child Bonds' },
-      { value: 'sibling_dynamics', label: 'Sibling Dynamics' },
-      { value: 'extended_family', label: 'Extended Family Connections' },
-      { value: 'diverse_family_structures', label: 'Diverse Family Structures' },
-      { value: 'family_traditions', label: 'Family Traditions & Routines' },
-      { value: 'family_change', label: 'Dealing with Family Change' },
+      { value: 'family_love', label: 'Family Love & Support' },
+      { value: 'feeling_you_belong', label: 'Feeling Like You Belong' },
+      { value: 'family_routines', label: 'Family Routines & Change' },
     ]
   },
   {
-    category: 'Adventure & Exploration',
-    description: 'Features journeys, discoveries, and facing challenges in new environments',
+    category: 'Growing Up & Being Yourself',
+    icon: '🌱',
+    description: 'Stories about developing skills, confidence, and responsibility',
     themes: [
-      { value: 'call_to_adventure', label: 'The Call to Adventure' },
-      { value: 'journeys_quests', label: 'Journeys & Quests' },
-      { value: 'overcoming_obstacles', label: 'Overcoming Obstacles' },
-      { value: 'discovery', label: 'Discovery & Hidden Treasures' },
-      { value: 'problem_solving', label: 'Problem-Solving on the Go' },
-      { value: 'exploration', label: 'Exploration of New Environments' },
+      { value: 'learning_new_skills', label: 'Learning & Trying New Skills' },
+      { value: 'being_unique', label: 'Being Unique & Confident' },
+      { value: 'making_choices', label: 'Making Choices & Responsibility' },
     ]
   },
   {
-    category: 'Fantasy & Magic',
-    description: 'Incorporates magical elements, enchanted worlds, and fantastical possibilities',
+    category: 'Adventure & Curiosity',
+    icon: '🔍',
+    description: 'Stories about exploring, discovering, and learning about the world',
     themes: [
-      { value: 'magical_creatures', label: 'Magical Creatures' },
-      { value: 'enchanted_objects', label: 'Enchanted Objects/Places' },
-      { value: 'learning_magic', label: 'Learning Magic/Special Abilities' },
-      { value: 'power_of_belief', label: 'The Power of Belief/Imagination' },
-      { value: 'good_vs_evil', label: 'Good vs. Evil (Simplified)' },
-      { value: 'wishes_consequences', label: 'Wishes & Consequences' },
+      { value: 'exploring_world', label: 'Exploring the World' },
+      { value: 'being_brave', label: 'Being Brave & Facing Challenges' },
+      { value: 'asking_questions', label: 'Asking Questions & Learning' },
     ]
   },
   {
-    category: 'Educational & Informational',
-    description: 'Teaches concepts or facts in an engaging narrative format',
+    category: 'Imagination & Wonder',
+    icon: '✨',
+    description: 'Stories about creativity, magic, and seeing the extraordinary',
     themes: [
-      { value: 'basic_concepts', label: 'Basic Concepts (Letters, Numbers, etc.)' },
-      { value: 'stem_concepts', label: 'STEM Concepts' },
-      { value: 'nature_science', label: 'Nature & Science' },
-      { value: 'history_culture', label: 'History & Culture' },
-      { value: 'arts', label: 'Arts & Creativity' },
-      { value: 'life_skills', label: 'Life Skills & Routines' },
-    ]
-  },
-  {
-    category: 'Nature & Environment',
-    description: 'Focuses on the natural world and our relationship with it',
-    themes: [
-      { value: 'natural_beauty', label: 'Appreciation of Natural Beauty' },
-      { value: 'animals_plants', label: 'Understanding Animals & Plants' },
-      { value: 'conservation', label: 'Conservation & Responsibility' },
-      { value: 'ecosystems', label: 'Interconnectedness of Ecosystems' },
-      { value: 'outdoor_play', label: 'Outdoor Play & Connection with Nature' },
-      { value: 'respect_living_things', label: 'Respect for All Living Things' },
-    ]
-  },
-  {
-    category: 'Humor & Playfulness',
-    description: 'Emphasizes fun, silliness, and the joy of laughter',
-    themes: [
-      { value: 'absurdity_nonsense', label: 'Absurdity & Nonsense' },
-      { value: 'wordplay', label: 'Wordplay & Puns' },
-      { value: 'situational_comedy', label: 'Situational Comedy' },
-      { value: 'character_humor', label: 'Character-Driven Humor' },
-      { value: 'imagination_play', label: 'Joy of Imagination & Pretend Play' },
-      { value: 'lighthearted_mischief', label: 'Lighthearted Mischief' },
+      { value: 'pretend_play', label: 'Pretend Play' },
+      { value: 'magic_fantasy', label: 'Magic & Fantasy' },
+      { value: 'finding_wonder', label: 'Finding Wonder' },
     ]
   },
 ];
