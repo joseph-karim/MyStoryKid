@@ -1683,38 +1683,31 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         fromApi: styleId.startsWith('Style-')
       });
       
-      // Get the image data from either photoUrl or baseImage
-      const imageData = characterData.photoUrl || characterData.baseImage;
-      
-      // Debug log all possible image sources
-      console.log('IMAGE SOURCE DEBUG:', {
-        hasPhotoUrl: !!characterData.photoUrl,
-        hasBaseImage: !!characterData.baseImage,
-        photoUrlType: typeof characterData.photoUrl,
-        baseImageType: typeof characterData.baseImage,
-        photoUrlLength: characterData.photoUrl?.length,
-        baseImageLength: characterData.baseImage?.length,
-        finalImageDataLength: imageData?.length
-      });
-
-      // Validate that we have an image
-      if (!imageData) {
-        console.error('No image data available in character data');
+      // Validate that we have a photo URL
+      if (!characterData.photoUrl) {
+        console.error('No photo URL available in character data');
         throw new Error('Please upload a photo first');
       }
 
+      // Debug log the photo URL
+      console.log('IMAGE DEBUG:', {
+        hasPhotoUrl: !!characterData.photoUrl,
+        photoUrlType: typeof characterData.photoUrl,
+        photoUrlLength: characterData.photoUrl?.length,
+        isBase64: characterData.photoUrl?.startsWith('data:image'),
+        preview: characterData.photoUrl?.substring(0, 50) + '...'
+      });
+
       // Validate base64 image format
-      if (!imageData.startsWith('data:image')) {
-        console.error('Invalid image format:', imageData.substring(0, 50));
+      if (!characterData.photoUrl.startsWith('data:image')) {
+        console.error('Invalid image format:', characterData.photoUrl.substring(0, 50));
         throw new Error('Invalid image format. Expected base64 data URL.');
       }
       
       // Create the API payload
       const payload = {
         style_code: styleCode,
-        images: [{
-          base64_data: imageData
-        }],
+        image: characterData.photoUrl, // Send as single image field
         prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`,
         color_match: 0.5,
         face_match: 1.0,
@@ -1725,10 +1718,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       };
 
       console.log('PAYLOAD DEBUG:', {
-        hasImages: !!payload.images,
-        imagesLength: payload.images?.length,
-        hasBase64Data: !!payload.images?.[0]?.base64_data,
-        base64DataLength: payload.images?.[0]?.base64_data?.length,
+        hasImage: !!payload.image,
+        imageType: typeof payload.image,
+        imageLength: payload.image?.length,
         styleCode: payload.style_code,
         prompt: payload.prompt,
         colorMatch: payload.color_match,
