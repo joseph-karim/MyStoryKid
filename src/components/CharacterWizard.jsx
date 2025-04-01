@@ -275,20 +275,22 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Auto-generate preview when entering step 3 (Confirm step)
   useEffect(() => {
-    if (step === 3 && !isGenerating && !characterData.stylePreview) { // Check step 3 now
+    console.log(`[EFFECT CHECK] Step: ${step}, isGenerating: ${isGenerating}, hasStylePreview: ${!!characterData.stylePreview}, hasForcedStyle: ${!!forcedArtStyle}, hasPhotoUrl: ${!!characterData.photoUrl}`);
+    
+    if (step === 3 && !isGenerating && !characterData.stylePreview) { 
       // Ensure required data is present before generating
-      if (characterData.artStyle && characterData.photoUrl) {
-          console.log('[EFFECT] Step 3 reached & dependencies met, triggering character preview generation.');
-          generateCharacterPreview();
+      // Check the forcedArtStyle prop directly and photoUrl state
+      if (forcedArtStyle && characterData.photoUrl) {
+          console.log('[EFFECT] Step 3 reached & dependencies met (using forcedArtStyle), triggering character preview generation.');
+          // Pass the forcedArtStyle directly to the generation function
+          generateCharacterPreview(forcedArtStyle);
       } else {
-         // Log why it didn't trigger - this is normal if dependencies haven't updated yet
-         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasArtStyle=${!!characterData.artStyle}, hasPhotoUrl=${!!characterData.photoUrl}`);
-         // Do NOT set error here, let the effect re-run when dependencies update
-         // setError('Cannot generate preview. Missing photo or style information.')
+         // Log why it didn't trigger
+         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasForcedStyle=${!!forcedArtStyle}, hasPhotoUrl=${!!characterData.photoUrl}`);
       }
     }
-    // Add dependencies: Re-run if step becomes 3 OR if artStyle/photoUrl update WHILE step is 3.
-  }, [step, characterData.artStyle, characterData.photoUrl, isGenerating, characterData.stylePreview]); 
+    // Update dependencies: Use forcedArtStyle prop instead of characterData.artStyle state
+  }, [step, forcedArtStyle, characterData.photoUrl, isGenerating, characterData.stylePreview]); 
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -617,10 +619,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update the generateCharacterPreview function to handle Photo/Description
-  const generateCharacterPreview = async () => {
-    // Style is now always forced, get it from the prop or state
-    const styleApiCode = characterData.artStyle || forcedArtStyle;
+  // Update the generateCharacterPreview function to accept style code
+  const generateCharacterPreview = async (styleApiCode) => {
+    // Style code is now passed directly as an argument
     if (!styleApiCode) {
       setError('No art style specified. Cannot generate preview.');
       console.error('generateCharacterPreview called without an art style.');
