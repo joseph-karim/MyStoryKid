@@ -416,8 +416,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             handleChange('isHuman', defaultIsHuman);
        }
     }, [characterData.type]); // Re-run only if type changes
-
-    return (
+  
+  return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
@@ -435,18 +435,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter character name"
               required
-            />
-          </div>
+                        />
+                      </div>
 
           {/* Character Type Radio Buttons */}
           <div>
              <label className="block text-sm font-medium text-gray-700 mb-2">Character Type</label>
-             <div className="space-y-2">
+                  <div className="space-y-2">
                {CHARACTER_TYPES.map((charType) => (
                  <label key={charType.id} className="flex items-center space-x-2 text-sm">
-                   <input 
-                     type="radio" 
-                     name="characterType" 
+                        <input
+                          type="radio"
+                          name="characterType"
                      value={charType.id} 
                      checked={characterData.type === charType.id} 
                      onChange={() => {
@@ -458,17 +458,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                      className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                    />
                    <span>{charType.name} <span className="text-gray-500">({charType.description})</span></span>
-                 </label>
-               ))}
-             </div>
-          </div>
-
-          {/* Is Human Toggle */}
+                      </label>
+                    ))}
+                </div>
+              </div>
+              
+          {/* --- Is Human Toggle --- */}
           <div className="mb-4 pt-2 border-t border-gray-200">
             <label className="block text-sm font-medium text-gray-700 mb-1">Use Face Matching?</label>
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2 text-sm">
-                <input 
+                  <input 
                   type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === true} 
@@ -478,27 +478,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <span>Yes (Try to keep facial features)</span>
               </label>
               <label className="flex items-center space-x-2 text-sm">
-                <input 
-                  type="radio" 
+                        <input 
+                          type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === false} 
                   onChange={() => handleChange('isHuman', false)} 
                   className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
                 <span>No (e.g., Pet, Creature)</span>
-              </label>
-            </div>
+                      </label>
+                  </div>
             <p className="text-xs text-gray-500 mt-1">Select 'No' for pets or fantasy creatures if face matching causes issues.</p>
-          </div>
+                </div>
+          {/* --- END: Is Human Toggle --- */}
 
           {/* Age and Gender */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
+              <div>
               <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
                 Age
               </label>
-              <input
-                type="text"
+                  <input
+                    type="text"
                 id="age"
                 value={characterData.age || ''}
                 onChange={(e) => handleChange('age', e.target.value)}
@@ -523,20 +524,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <option value="Other">Other/Not applicable</option>
               </select>
             </div>
-          </div>
-        </div>
-
+                </div>
+                
+            </div>
+            
         {/* Navigation Buttons for Step 1 */}
         <div className="flex justify-end pt-4 mt-6 border-t border-gray-200">
-           <button
+              <button
              onClick={handleNext}
              className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-             disabled={!characterData.name}
-           >
+                disabled={!characterData.name}
+              >
              Next: Appearance
-           </button>
-        </div>
-      </div>
+              </button>
+            </div>
+          </div>
     );
   };
   
