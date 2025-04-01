@@ -9,6 +9,7 @@ import CharactersStep from '../components/wizard/CharactersStep';
 import ArtStyleStep from '../components/wizard/ArtStyleStep';
 import SummaryStep from '../components/wizard/SummaryStep';
 import CategoryStep from '../components/wizard/CategoryStep';
+import CharacterWizard from '../components/wizard/CharacterWizard';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
@@ -34,14 +35,17 @@ function CreateBookPage() {
     }
   }, [wizardState.step, unlockedSteps]);
   
-  // Define wizard steps
+  // Define wizard steps (Updated Flow)
   const steps = [
     { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
-    { id: 3, name: 'Characters' },
-    { id: 4, name: 'Story Details' },
-    { id: 5, name: 'Summary' }
+    { id: 3, name: 'Main Character' }, // Renamed Step 3
+    { id: 4, name: 'Other Characters' }, // Added Step 4
+    { id: 5, name: 'Story Details' },    // Renumbered
+    { id: 6, name: 'Summary' }           // Renumbered
   ];
+  
+  const totalDisplaySteps = steps.length; // Update total steps
   
   // Handle tab click to navigate between steps
   const handleTabClick = (stepId) => {
@@ -51,38 +55,54 @@ function CreateBookPage() {
     }
   };
   
-  // Render the current wizard step
+  // Render the current wizard step (Updated Flow)
   const renderStep = () => {
-    switch (wizardState.step) {
+    console.log(`[Render] CreateBookPage - Rendering step: ${wizardState.currentStep}`); // Add log
+    switch (wizardState.currentStep) { // Use currentStep from store
       case 1:
         return <CategoryStep />;
       case 2:
         return <ArtStyleStep />;
       case 3:
-        return <CharactersStep />;
+        // Render CharacterWizard for the main character
+        return (
+          <CharacterWizard 
+            key="main-char-wizard" // Add key to ensure reset on re-render if needed
+            initialRole="main" 
+            forcedArtStyle={wizardState.storyData.artStyleCode}
+            onComplete={(character) => {
+              if (character) {
+                // Update store with main character and move to next step
+                updateStoryData({ bookCharacters: [character] }); 
+                setWizardStep(4); // Go to Other Characters step
+              } else {
+                // Handle cancellation if necessary (e.g., go back? stay?)
+                setWizardStep(2); // Go back to Art Style if cancelled
+              }
+            }}
+          />
+        );
       case 4:
-        return <StoryDetailsStep />;
+        // Render CharactersStep to manage additional characters
+        return <CharactersStep />;
       case 5:
+        return <StoryDetailsStep />;
+      case 6:
         return <SummaryStep />;
       default:
-        console.warn(`Unknown wizard step: ${wizardState.step}, returning to step 1.`);
+        console.warn(`Unknown wizard step: ${wizardState.currentStep}, returning to step 1.`);
+        // Reset to step 1 if state is invalid
+        setWizardStep(1);
         return <CategoryStep />;
     }
   };
   
   // Calculate current step number for display
-  const displayStepNumber = wizardState.step;
-  const totalDisplaySteps = 5;
+  const displayStepNumber = wizardState.currentStep; // Use currentStep from store
   
   const getStepName = (step) => {
-     switch (step) {
-         case 1: return 'Category & Scene';
-         case 2: return 'Art Style';
-         case 3: return 'Characters';
-         case 4: return 'Story Details';
-         case 5: return 'Summary';
-         default: return '';
-     }
+     // Find step name from the steps array
+     return steps.find(s => s.id === step)?.name || '';
   };
   
   return (
@@ -118,7 +138,7 @@ function CreateBookPage() {
         </ul>
       </div>
       
-      {/* Progress Bar - Updated for 4 steps */}
+      {/* Progress Bar - Updated for new total steps */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
