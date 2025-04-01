@@ -238,23 +238,6 @@ export const createImg2ImgTask = async (payload) => {
       negative_prompt: payload.negative_prompt || '', // Optional
     };
 
-    // --- TEMPORARY DEBUGGING STEP ---
-    // If the style is the one causing issues, try sending a minimal payload
-    const problematicStyleCode = "Style-7a23990c-65f7-4300-b2a1-f5a97263e66f"; // PixiePop 3D
-    if (payload.style_code === problematicStyleCode) {
-        console.warn(`DEBUG: Sending minimal payload for problematic style ${problematicStyleCode}`);
-        apiPayload = {
-            prompt: payload.prompt.substring(0, 800),
-            style_code: payload.style_code,
-            images: payload.images.map(img => ({
-                base64_data: img.base64_data || undefined,
-                url: img.url || undefined
-            })),
-            // Send only the absolute minimum required fields
-        };
-    }
-    // --- END TEMPORARY DEBUGGING STEP ---
-
     // Log the final payload being sent (masking base64 data)
     console.log('Creating img2img task with API payload:', JSON.stringify({
       ...apiPayload,
