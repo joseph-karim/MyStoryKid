@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toddlerImage from '../assets/toddler.jpg';
 import toddlerTransformed from '../assets/toddler transformed.png';
-import spaceAdventureCover from '../assets/dzine-styles/Starlit-Fantasy.png';
-import magicalForestCover from '../assets/dzine-styles/Enchanted-Character.png';
-import underseaQuestCover from '../assets/dzine-styles/Watercolor-Whimsy.png';
+import spaceAdventureCover from '../assets/space-adventure-cover.png';
+import magicalForestCover from '../assets/magical-forest-cover.png';
+import underseaQuestCover from '../assets/undersea-quest-cover.png';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);

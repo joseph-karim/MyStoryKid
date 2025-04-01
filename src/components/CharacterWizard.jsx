@@ -404,8 +404,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [step]);
   
   const handleChange = (field, value) => {
-    setCharacterData(prev => ({
-      ...prev,
+      setCharacterData(prev => ({
+        ...prev,
       [field]: value
     }));
     
@@ -1504,8 +1504,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   />
                 </div>
             </motion.div>
-          </div>
-        )}
+                  </div>
+                )}
       </AnimatePresence>
     );
   };

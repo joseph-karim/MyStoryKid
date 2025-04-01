@@ -355,7 +355,7 @@ function GeneratingStep() {
   };
 
   const calculatedProgress = calculateProgress(); 
-
+  
   return (
     <div className="text-center space-y-6 py-8">
       <h2 className="text-2xl font-bold">Creating Your Story</h2>
