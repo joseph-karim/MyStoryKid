@@ -25,24 +25,24 @@ import africanPatternImg from '../../assets/african-patterned-illustration.png';
 
 // A fallback map for API-to-internal style mapping
 const styleIdToCodeMap = {
-  watercolor: '33',    // Watercolor styles
-  pastel: '32',        // Pastel style
-  pencil_wash: '24',   // Pencil wash
-  soft_digital: '73',  // Soft digital
-  pencil_ink: '22',    // Pencil and ink
-  golden_books: '70',  // Golden books style
-  beatrix_potter: '34', // Potter-like
-  cartoon: '80',       // Cartoon
-  flat_vector: '81',   // Flat vector
-  storybook_pop: '82', // Storybook
-  papercut: '83',      // Papercut style
-  oil_pastel: '35',    // Oil pastel
-  stylized_realism: '44', // Stylized realism
-  digital_painterly: '45', // Digital painterly
-  kawaii: '86',        // Kawaii style
-  scandinavian: '87',  // Scandinavian
-  african_pattern: '88', // African patterns
-  custom: 'custom'     // Custom style
+  watercolor: 'Style-2478f952-50e7-4773-9cd3-c6056e774823',    // Classic Watercolor
+  pastel: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',        // Pastel style
+  pencil_wash: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',   // Line & Wash
+  soft_digital: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',  // Watercolor Whimsy
+  pencil_ink: 'Style-e9021405-1b37-4773-abb9-bd80485527b0',    // Sketch Elegance
+  golden_books: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',  // Golden books style
+  beatrix_potter: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1', // Potter-like
+  cartoon: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',       // Cartoon
+  flat_vector: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',   // Flat vector
+  storybook_pop: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf', // Storybook
+  papercut: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',      // Papercut style
+  oil_pastel: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',    // Oil pastel
+  stylized_realism: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347', // Stylized realism
+  digital_painterly: 'Style-ce7b4279-1398-4964-882c-19911e12aef3', // Digital painterly
+  kawaii: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',        // Kawaii style
+  scandinavian: 'Style-509ffd5a-e71f-4cec-890c-3ff6dcb9cb60',  // Scandinavian
+  african_pattern: 'Style-64894017-c7f5-4316-b16b-43c584bcd643', // African patterns
+  custom: 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2'         // No Style v2
 };
 
 // Character roles
@@ -111,29 +111,83 @@ const ART_STYLE_CATEGORIES_STRUCTURE = [
 
 // Add style descriptions to enrich the presentation
 const styleDescriptions = {
-  watercolor: 'Soft, expressive, and magical. Great for fairy tales and heartwarming journeys.',
-  pastel: 'Soft-edged and calming, like chalk or crayon textures. Very kid-friendly and light.',
-  pencil_wash: 'Combines pencil lines with light color washes. A subtle and intimate feel, often found in timeless books.',
-  soft_digital: 'Digital painting with a hand-drawn aesthetic. Looks painterly, but crisp enough for printing.',
+  watercolor: { 
+    title: 'Watercolor',
+    description: 'Soft, expressive, and magical. Great for fairy tales and heartwarming journeys.'
+  },
+  pastel: { 
+    title: 'Pastel',
+    description: 'Soft-edged and calming, like chalk or crayon textures. Very kid-friendly and light.'
+  },
+  pencil_wash: { 
+    title: 'Pencil Wash',
+    description: 'Combines pencil lines with light color washes. A subtle and intimate feel, often found in timeless books.'
+  },
+  soft_digital: { 
+    title: 'Soft Digital',
+    description: 'Digital painting with a hand-drawn aesthetic. Looks painterly, but crisp enough for printing.'
+  },
   
-  pencil_ink: 'Monochrome or light inked outlines with shading. Great for a vintage feel.',
-  golden_books: 'Inspired by mid-century illustrations (like Little Golden Books). Bright, detailed, with expressive faces.',
-  beatrix_potter: 'Classic English watercolor + fine detail. Excellent for animal tales and nature-based themes.',
+  pencil_ink: { 
+    title: 'Pencil & Ink',
+    description: 'Monochrome or light inked outlines with shading. Great for a vintage feel.'
+  },
+  golden_books: { 
+    title: 'Golden Books',
+    description: 'Inspired by mid-century illustrations (like Little Golden Books). Bright, detailed, with expressive faces.'
+  },
+  beatrix_potter: { 
+    title: 'Beatrix Potter',
+    description: 'Classic English watercolor + fine detail. Excellent for animal tales and nature-based themes.'
+  },
   
-  cartoon: 'Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories.',
-  flat_vector: 'Bold, clean, and simple. Often used in modern educational books.',
-  storybook_pop: 'Bright, slightly surreal, and energetic — think "Adventure Time" meets classic books. Ideal for space, monsters, and wacky themes.',
-  papercut: 'Looks like it was made with layers of paper or fabric. Textured and tactile feel, very charming.',
+  cartoon: { 
+    title: 'Cartoon',
+    description: 'Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories.'
+  },
+  flat_vector: { 
+    title: 'Flat Vector',
+    description: 'Bold, clean, and simple. Often used in modern educational books.'
+  },
+  storybook_pop: { 
+    title: 'Storybook Pop',
+    description: 'Bright, slightly surreal, and energetic — think "Adventure Time" meets classic books. Ideal for space, monsters, and wacky themes.'
+  },
+  papercut: { 
+    title: 'Papercut',
+    description: 'Looks like it was made with layers of paper or fabric. Textured and tactile feel, very charming.'
+  },
   
-  oil_pastel: 'Thick brush strokes, vivid color, tactile textures. Great for magical realism or emotional storytelling.',
-  stylized_realism: 'Semi-realistic faces and proportions with artistic lighting. Ideal if you want to "recognize" the child in the art.',
-  digital_painterly: 'Mimics classical painting but created digitally. For dramatic lighting, beautiful spreads, and immersive scenes.',
+  oil_pastel: { 
+    title: 'Oil Pastel',
+    description: 'Thick brush strokes, vivid color, tactile textures. Great for magical realism or emotional storytelling.'
+  },
+  stylized_realism: { 
+    title: 'Stylized Realism',
+    description: 'Semi-realistic faces and proportions with artistic lighting. Ideal if you want to "recognize" the child in the art.'
+  },
+  digital_painterly: { 
+    title: 'Digital Painterly',
+    description: 'Mimics classical painting but created digitally. For dramatic lighting, beautiful spreads, and immersive scenes.'
+  },
   
-  kawaii: 'Ultra-cute, rounded characters, soft palettes. Great for emotional and nurturing stories.',
-  scandinavian: 'Geometric shapes, bold color, often nature-themed. Feels minimalist but magical.',
-  african_pattern: 'Bright colors, bold patterns, and symbolism. Vibrant and culturally rich visuals.',
+  kawaii: { 
+    title: 'Kawaii',
+    description: 'Ultra-cute, rounded characters, soft palettes. Great for emotional and nurturing stories.'
+  },
+  scandinavian: { 
+    title: 'Scandinavian',
+    description: 'Geometric shapes, bold color, often nature-themed. Feels minimalist but magical.'
+  },
+  african_pattern: { 
+    title: 'African Pattern',
+    description: 'Bright colors, bold patterns, and symbolism. Vibrant and culturally rich visuals.'
+  },
   
-  custom: 'Your own unique style description. Be specific about colors, techniques, and references you like.'
+  custom: {
+    title: 'Custom Style',
+    description: 'Your own unique style description. Be specific about colors, techniques, and references you like.'
+  }
 };
 
 // Function to check if a string is a Base64 data URL (useful for identifying uploads)
@@ -221,15 +275,23 @@ function CharactersStep() {
       setShowCharacterWizard(false);
       return;
     }
-    // We don't store artStyle on individual characters anymore
+    // Make sure we preserve all character properties including stylePreview and artStyle
+    console.log('Character from wizard with stylePreview:', character.stylePreview);
+    console.log('Character from wizard with artStyle:', character.artStyle);
+    
     const characterWithRole = {
       ...character,
       role: selectedRole,
     };
+    
     const newCharacters = [...bookCharacters, characterWithRole];
     setBookCharacters(newCharacters);
-    // Initialize generation status for the new character
-    updateGenStatus(characterWithRole.id, { status: 'idle' }); 
+    
+    // Initialize generation status based on whether the character already has a style preview
+    updateGenStatus(characterWithRole.id, { 
+      status: characterWithRole.stylePreview ? 'confirmed' : 'idle',
+      previewUrl: characterWithRole.stylePreview || null
+    }); 
     
     // Update the store immediately so state persists if user navigates away
     updateStoryData({ bookCharacters: newCharacters }); 
@@ -352,7 +414,7 @@ function CharactersStep() {
     
     // Get the selected style ID and description from the store
     const selectedStyleId = Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode) || 'cartoon';
-    const selectedStyleDescription = styleDescriptions[selectedStyleId] || '';
+    const selectedStyleDescription = styleDescriptions[selectedStyleId]?.description || '';
     
     updateGenStatus(characterId, { status: 'generating', taskId: null, previewUrl: null, errorMessage: null });
 
@@ -434,29 +496,64 @@ function CharactersStep() {
              return; 
          }
 
-        if (progressData.status === 'succeeded') {
-          const imageUrl = progressData.generate_result_slots?.find(url => url);
+        // Handle different status formats and nested data structures
+        const status = progressData.status || 
+                      (progressData.data && progressData.data.status) || 
+                      'unknown';
+        
+        console.log(`Task status: ${status} for character ${characterId}`);
+
+        if (status === 'succeed' || status === 'succeeded') {
+          // Look for image URL in generate_result_slots
+          let imageUrl = null;
+          
+          // Check in progressData.generate_result_slots
+          if (progressData.generate_result_slots && progressData.generate_result_slots.length > 0) {
+            imageUrl = progressData.generate_result_slots.find(url => url); // Find first non-empty string
+          } 
+          // Check in progressData.data.generate_result_slots (more common format)
+          else if (progressData.data && progressData.data.generate_result_slots && progressData.data.generate_result_slots.length > 0) {
+            imageUrl = progressData.data.generate_result_slots.find(url => url); // Find first non-empty string
+          }
+          
+          console.log("Found image URL:", imageUrl);
+          
           if (imageUrl) {
-            updateGenStatus(characterId, { status: 'previewReady', previewUrl: imageUrl, pollIntervalId: null });
+            console.log(`Setting preview URL for character ${characterId} to ${imageUrl}`);
+            updateGenStatus(characterId, { 
+              status: 'previewReady', 
+              previewUrl: imageUrl,
+              pollIntervalId: null 
+            });
             clearPollInterval(characterId); // Stop polling on success
           } else {
-             updateGenStatus(characterId, { status: 'error', errorMessage: 'Generation succeeded but no image URL found.', pollIntervalId: null });
-             clearPollInterval(characterId); 
+            console.error("No valid image URL found in response:", progressData);
+            updateGenStatus(characterId, { 
+              status: 'error', 
+              errorMessage: 'Generation succeeded but no image URL found.', 
+              pollIntervalId: null 
+            });
+            clearPollInterval(characterId);
           }
-        } else if (progressData.status === 'failed') {
-          console.error(`Task ${taskId} failed:`, progressData.error_reason);
-          updateGenStatus(characterId, { status: 'error', errorMessage: progressData.error_reason || 'Image generation failed.', pollIntervalId: null });
+        } else if (status === 'failed' || status === 'error') {
+          console.error(`Task ${taskId} failed:`, progressData.error_reason || progressData.data?.error_reason);
+          updateGenStatus(characterId, { 
+            status: 'error', 
+            errorMessage: progressData.error_reason || progressData.data?.error_reason || 'Image generation failed.', 
+            pollIntervalId: null 
+          });
           clearPollInterval(characterId); // Stop polling on failure
         } else {
           // Still processing ('waiting', 'in_queue', 'processing')
-          // Update status if needed, but keep polling
           updateGenStatus(characterId, { status: 'polling' }); 
         }
       } catch (error) {
         console.error(`Error polling task ${taskId}:`, error);
-        // Avoid infinite loops if polling itself fails repeatedly? Maybe add a counter?
-        // For now, mark as error and stop polling.
-        updateGenStatus(characterId, { status: 'error', errorMessage: error.message || 'Failed to check progress.', pollIntervalId: null });
+        updateGenStatus(characterId, { 
+          status: 'error', 
+          errorMessage: error.message || 'Failed to check progress.', 
+          pollIntervalId: null 
+        });
         clearPollInterval(characterId);
       }
     };
@@ -486,21 +583,76 @@ function CharactersStep() {
        }
    };
 
+  // --- NEW: Helper function to map full style codes to friendly names ---
+  const getStyleNameFromCode = (styleCode) => {
+    if (!styleCode) return 'No Style Selected';
+    
+    // If it's a full style code (starts with "Style-")
+    if (styleCode.startsWith('Style-')) {
+      // First check if we have a direct mapping in our styleIdToCodeMap
+      const styleKey = Object.keys(styleIdToCodeMap).find(key => 
+        styleIdToCodeMap[key] === styleCode
+      );
+      
+      if (styleKey && styleDescriptions[styleKey]) {
+        return styleDescriptions[styleKey].title || styleKey.split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      }
+      
+      // If no mapping found, return a generic label
+      return 'API Style';
+    }
+    
+    // It's not a full code, so it might be one of our short keys
+    return styleCode.split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // --- NEW: Confirm Character Style ---
   const handleConfirmStyle = (characterId) => {
     const status = generationStatus[characterId];
+    const character = bookCharacters.find(c => c.id === characterId);
+    
     if (status?.status === 'previewReady' && status.previewUrl) {
-      // Update the character in the main Zustand store
+      console.log('Confirming style for character:', character.name);
+      console.log('Using art style code:', artStyleCode);
+      
+      // Determine what to store as artStyle
+      let styleToStore = artStyleCode;
+      let styleName = getStyleNameFromCode(artStyleCode);
+      
+      console.log(`Storing style ${styleToStore} (${styleName}) for character ${character.name}`);
+      
+      // Update the character in the store with both style preview and art style code
       updateCharacter(characterId, { 
         stylePreview: status.previewUrl, // Save the generated preview
-        photoUrl: null // DISCARD the original photo
+        artStyle: styleToStore, // Save the selected art style code
+        artStyleName: styleName, // Optional: save a friendly name too
+        photoUrl: null // DISCARD the original photo for privacy
       }); 
+      
+      // Also update local bookCharacters state to stay in sync
+      setBookCharacters(prev => 
+        prev.map(char => 
+          char.id === characterId 
+            ? { 
+                ...char, 
+                stylePreview: status.previewUrl,
+                artStyle: styleToStore,
+                artStyleName: styleName,
+                photoUrl: null 
+              } 
+            : char
+        )
+      );
+      
       // Update local state to reflect confirmation
       updateGenStatus(characterId, { status: 'confirmed' });
       setError(''); // Clear any general errors
     } else {
-        setError(`Cannot confirm style for character ${characterId}. Preview not ready.`);
+      setError(`Cannot confirm style for character ${characterId}. Preview not ready.`);
     }
   };
 
@@ -508,6 +660,26 @@ function CharactersStep() {
   const renderCharacterCard = (character) => {
     const status = generationStatus[character.id] || { status: 'idle' };
     const requiresGeneration = isBase64DataUrl(character.photoUrl) && status.status !== 'confirmed';
+    
+    // Get a display name for the art style if available
+    const getArtStyleDisplayName = () => {
+      // If the character has its own art style name
+      if (character.artStyleName) {
+        return character.artStyleName;
+      }
+      
+      // If the character has a style code
+      if (character.artStyle) {
+        return getStyleNameFromCode(character.artStyle);
+      }
+      
+      // If no character-specific style but story has a style set
+      if (artStyleCode) {
+        return getStyleNameFromCode(artStyleCode);
+      }
+      
+      return 'No Style Selected';
+    };
 
     return (
         <motion.div 
@@ -528,8 +700,15 @@ function CharactersStep() {
           </button>
           
           <h4 className="font-semibold text-lg text-gray-800">{character.name}</h4>
-          <p className="text-sm text-gray-500 capitalize">Role: {character.role}</p>
-          <p className="text-sm text-gray-500">Age: {character.age || 'N/A'}, Gender: {character.gender || 'N/A'}</p>
+          <div className="space-y-1">
+            <p className="text-sm text-gray-500 capitalize">Role: {character.role}</p>
+            <p className="text-sm text-gray-500">
+              Age: {character.age || 'N/A'}, Gender: {character.gender || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Art Style:</span> {getArtStyleDisplayName()}
+            </p>
+          </div>
 
           {/* Display Area for Original Photo & Generated Preview */}
           <div className="flex flex-col sm:flex-row gap-4 items-start mt-3">
@@ -629,7 +808,7 @@ function CharactersStep() {
             <p className="text-gray-600">Create the characters that will appear in your story</p>
             {artStyleCode && (
               <div className="mt-2 inline-block px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm">
-                Using art style: {artStyleCode === 'custom' ? 'Custom Style' : Object.keys(styleIdToCodeMap).find(key => styleIdToCodeMap[key] === artStyleCode)?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                Using art style: {getStyleNameFromCode(artStyleCode)}
               </div>
             )}
           </div>

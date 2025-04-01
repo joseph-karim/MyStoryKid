@@ -569,7 +569,7 @@ function ArtStyleStep() {
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
           <p>Error loading art styles from the server. You can continue with a custom style description.</p>
           <p className="text-xs">{styleFetchError}</p>
-        </div>
+            </div>
       )}
       
       {isLoadingStyles ? (

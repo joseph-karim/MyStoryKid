@@ -38,6 +38,24 @@ function SummaryStep() {
     }
   };
   
+  // Helper function to get a friendly style name
+  const getStyleDisplayName = (styleCode) => {
+    if (!styleCode) return null;
+    
+    // If it's a custom style
+    if (styleCode === 'custom') return 'Custom Style';
+    
+    // If it's a style code (starts with Style-)
+    if (styleCode.startsWith('Style-')) {
+      return 'API Style'; // Generic name for API styles
+    }
+    
+    // Otherwise format the code into a friendly name
+    return styleCode.split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
   return (
     <div className="space-y-6 pb-12">
       <div className="text-center mb-6">
@@ -90,6 +108,7 @@ function SummaryStep() {
           <div className="mt-2">
             <p className="font-medium">
               {storyData.artStyleCode === 'custom' ? 'Custom Style' : 
+                storyData.artStyleCode?.startsWith('Style-') ? 'API Style' :
                 storyData.artStyleCode?.split('_')
                   .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(' ') || 'Not Selected'
@@ -127,6 +146,12 @@ function SummaryStep() {
                        character.role === 'mentor' ? 'Mentor' :
                        character.role === 'pet' ? 'Pet' :
                        'Magical Friend'}
+                      {character.artStyle && (
+                        <span className="ml-2 text-blue-600">• {
+                          character.artStyleName ? character.artStyleName :
+                          getStyleDisplayName(character.artStyle) || 'Custom Style'
+                        }</span>
+                      )}
                     </p>
                   </div>
                 </div>

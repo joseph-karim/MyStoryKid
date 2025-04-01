@@ -404,31 +404,37 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         return;
       }
       
+      // Explicitly log current stylePreview for debugging
+      console.log('Style preview before completion:', characterData.stylePreview);
+      console.log('Art style before completion:', characterData.artStyle);
+      
       // Create the final character object, ensuring we have the style preview
       const finalCharacter = {
         ...characterData,
         id: characterData.id || uuidv4(), // Ensure we have an ID
         // Set a default type if none is specified
         type: characterData.type || 'child',
-        // If we have a photoUrl but no stylePreview, copy photo to preview as fallback
-        stylePreview: characterData.stylePreview || characterData.photoUrl
+        // Ensure stylePreview is set
+        stylePreview: characterData.stylePreview || characterData.photoUrl,
+        // Ensure artStyle is set (can be forcedArtStyle or selected style)
+        artStyle: characterData.artStyle || forcedArtStyle || null,
       };
       
       console.log('Completing character creation with data:', finalCharacter);
       
       // If this is a new character, add it
       if (!currentCharacter) {
-        console.log('Adding new character');
+        console.log('Adding new character with stylePreview:', finalCharacter.stylePreview);
         addCharacter(finalCharacter);
       } else {
         // Otherwise update the existing character
-        console.log('Updating existing character:', currentCharacter.id);
+        console.log('Updating existing character:', currentCharacter.id, 'with stylePreview:', finalCharacter.stylePreview);
         updateCharacter(currentCharacter.id, finalCharacter);
       }
       
       // If we have a callback, invoke it
       if (onComplete) {
-        console.log('Invoking completion callback');
+        console.log('Invoking completion callback with stylePreview:', finalCharacter.stylePreview);
         onComplete(finalCharacter);
       }
     } catch (err) {
@@ -784,7 +790,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                           />
                         )}
                         <div className="font-medium truncate">{style.name}</div>
-                      </div>
+            </div>
                     </div>
                   ))}
                 </div>
@@ -991,7 +997,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 // Update the character data with the style preview
                 setCharacterData(prev => ({
                   ...prev,
-                  stylePreview: imageUrl
+                  stylePreview: imageUrl,
+                  // Make sure we save the art style code too
+                  artStyle: styleCode
                 }));
                 
                 // We're done polling
@@ -1232,7 +1240,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   alt="Character Preview"
                   className="max-w-full max-h-[85vh] object-contain"
                 />
-              </div>
+            </div>
             </motion.div>
           </div>
         )}
@@ -1241,6 +1249,30 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const renderPreviewStep = () => {
+    // Helper to get a display name for the art style
+    const getArtStyleDisplayName = () => {
+      if (!characterData.artStyle) return 'No style selected';
+      
+      // If it's a full style code (starts with "Style-")
+      if (characterData.artStyle.startsWith('Style-')) {
+        // Try to find a style in apiStyles that matches
+        const matchingStyle = apiStyles.find(s => s.style_code === characterData.artStyle);
+        if (matchingStyle) return matchingStyle.name;
+        
+        return 'Custom Style'; // Fallback
+      }
+      
+      // If it's a short code, try to find it in our style map
+      const styleId = Object.keys(styleIdToCodeMap).find(key => 
+        styleIdToCodeMap[key] === characterData.artStyle
+      );
+      
+      // Return a formatted version of the ID if no better name is found
+      return styleId ? 
+        styleId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 
+        'Selected Style';
+    };
+    
     return (
       <div className="space-y-4 text-center">
         <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
@@ -1264,7 +1296,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
           {photoPreview && (
-            <div className="text-center">
+          <div className="text-center">
               <p className="text-sm text-gray-500 mb-2">Original Photo</p>
               <div 
                 className="w-32 h-32 overflow-hidden rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
@@ -1273,13 +1305,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <img 
                   src={photoPreview} 
                   alt="Original" 
-                  className="w-full h-full object-cover"
-                />
+                      className="w-full h-full object-cover"
+                    />
               </div>
               <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
-            </div>
-          )}
-              
+                  </div>
+                )}
+                
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-2">Character Preview</p>
             {isGenerating ? (
@@ -1306,15 +1338,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 No preview yet
               </div>
             )}
-          </div>
-        </div>
-        
+              </div>
+            </div>
+            
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium">{characterData.name}</h4>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 mb-1">
             {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || 'Character'} 
             {characterData.age && `, ${characterData.age} years old`}
             {characterData.gender && `, ${characterData.gender}`}
+          </p>
+          <p className="text-sm font-medium text-blue-600">
+            Art Style: {getArtStyleDisplayName()}
           </p>
         </div>
       </div>
@@ -1383,7 +1418,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         >
           {step === 4 ? 'Complete' : 'Next'}
               </button>
-      </div>
+            </div>
       
       {/* Render Image Preview Modal */}
       <ImagePreviewModal 
