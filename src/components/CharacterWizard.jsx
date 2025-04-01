@@ -39,10 +39,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
   
-  // RE-ADD: State for API styles
-  const [apiStyles, setApiStyles] = useState([]);
-  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
-  
   // Character data
   const [characterData, setCharacterData] = useState(defaultCharacterData);
   
@@ -60,17 +56,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setIsGenerating(false);
     setProgressMessage('');
     
-    // Apply forced style if provided
+    // Apply forced style if provided - This is the ONLY source now
     if (forcedArtStyle) {
       console.log('[DEBUG] Applying forced art style (API style_code):', forcedArtStyle);
-      // Use a temporary variable to avoid direct state dependency issues in initial load
-      const initialArtStyle = forcedArtStyle;
+      // Set it directly into the state used by generation logic
       setCharacterData(prev => ({ 
           ...defaultCharacterData, // Start fresh 
-          artStyle: initialArtStyle // Apply forced style
+          artStyle: forcedArtStyle // Store the forced style
       }));
     } else {
-        // Ensure characterData is reset without a forced style
+        // If no forced style, reset and maybe show an error later?
+        console.warn('[DEBUG] CharacterWizard mounted without a forcedArtStyle prop!');
         setCharacterData(defaultCharacterData);
     }
     
@@ -103,41 +99,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     // Check API status
     checkApiStatus();
-    
-    // RE-ADD: Style fetching logic 
-    const fetchStyles = async () => {
-      // Only fetch if not forcing a style? Or fetch always for potential future use?
-      // Fetching always is safer if component logic might change.
-      try {
-        setIsLoadingStyles(true);
-        console.log('Fetching Dzine API styles for wizard...');
-        const stylesData = await getDzineStyles();
-        if (stylesData?.list?.length > 0) {
-          console.log(`Retrieved ${stylesData.list.length} styles from Dzine API`);
-          // Filter based on img2img intensity > 0 (Keep this filtering)
-          const compatibleStyles = stylesData.list.filter(style => {
-            const img2imgIntensity = style.style_intensity?.img2img;
-            const isCompatible = img2imgIntensity === undefined || img2imgIntensity > 0;
-            // Optional: Log filtered styles
-            // if (!isCompatible) console.log(`Filtering out style: ${style.name} (${style.style_code})`);
-            return isCompatible;
-          });
-          console.log(`Filtered down to ${compatibleStyles.length} potentially compatible styles.`);
-          setApiStyles(compatibleStyles);
-        } else {
-          setApiStyles([]);
-          setError('Could not load any art styles.');
-        }
-      } catch (err) {
-        console.error('Error fetching Dzine styles:', err);
-        setError('Failed to load art styles.');
-        setApiStyles([]);
-      } finally {
-        setIsLoadingStyles(false);
-      }
-    };
-
-    fetchStyles();
     
     // Clean up polling when component unmounts
     return () => {
@@ -292,7 +253,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
     }
     
-    // Validation for Step 2 (Photo/Style/Description)
+    // Validation for Step 2 (Photo/Description)
     if (step === 2) {
       // Check generation method requirements
       if (!characterData.useTextToImage && !characterData.photoUrl) {
@@ -303,11 +264,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            setError('Please provide a character description.');
            return;
        }
-      // Check style requirement ONLY if not forced
-      if (!forcedArtStyle && !characterData.artStyle) {
-           setError('Please select an art style.');
-           return;
-      }
     }
     
     // Unlock the next step and navigate (Max step is 3 now)
@@ -322,25 +278,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Auto-generate preview when entering step 3 (Confirm step)
   useEffect(() => {
-    console.log(`[EFFECT CHECK] Step: ${step}, isGenerating: ${isGenerating}, hasStylePreview: ${!!characterData.stylePreview}, hasForcedStyle: ${!!forcedArtStyle}, hasCharacterArtStyle: ${!!characterData.artStyle}, hasPhotoUrl: ${!!characterData.photoUrl}`);
+    // Log dependencies for debugging
+    console.log(`[EFFECT CHECK] Step: ${step}, isGenerating: ${isGenerating}, hasStylePreview: ${!!characterData.stylePreview}, hasForcedStyle: ${!!forcedArtStyle}, hasPhotoUrl: ${!!characterData.photoUrl}, hasGenPrompt: ${!!characterData.generationPrompt}`);
     
     if (step === 3 && !isGenerating && !characterData.stylePreview) { 
-      // Determine the style to use: forced prop takes precedence over state
-      const styleToUse = forcedArtStyle || characterData.artStyle;
+      // Style MUST come from the forcedArtStyle prop now
+      const styleToUse = forcedArtStyle; 
       
       // Check if we have the required style AND either photo or description prompt
       const hasPhotoOrDesc = characterData.photoUrl || characterData.generationPrompt;
       
       if (styleToUse && hasPhotoOrDesc) {
-          console.log(`[EFFECT] Step 3 reached & dependencies met (using style ${styleToUse}), triggering character preview generation.`);
-          generateCharacterPreview(styleToUse); // Pass the determined style
+          console.log(`[EFFECT] Step 3 reached & dependencies met (using forced style ${styleToUse}), triggering character preview generation.`);
+          generateCharacterPreview(styleToUse); // Pass the forced style
       } else {
-         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasStyle=${!!styleToUse}, hasPhotoOrDesc=${!!hasPhotoOrDesc}`);
+         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasForcedStyle=${!!styleToUse}, hasPhotoOrDesc=${!!hasPhotoOrDesc}`);
+         // Set error if required elements are missing when reaching confirm step
+         if (!styleToUse) setError('Error: Art style was not provided to the wizard.');
+         else if (!hasPhotoOrDesc) setError('Error: Photo or Description was not provided.');
       }
     }
-    // Dependencies: step, forcedStyle, photoUrl (for img2img), generationPrompt (for txt2img), isGenerating, stylePreview
-    // Add characterData.artStyle too, in case forcedArtStyle is null and user selects one
-  }, [step, forcedArtStyle, characterData.artStyle, characterData.photoUrl, characterData.generationPrompt, isGenerating, characterData.stylePreview]); 
+    // Dependencies: step, forcedArtStyle (prop), photoUrl/generationPrompt (state), isGenerating, stylePreview
+  }, [step, forcedArtStyle, characterData.photoUrl, characterData.generationPrompt, isGenerating, characterData.stylePreview]); 
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -527,60 +486,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update the appearance step to conditionally show styles
+  // Update the appearance step to remove style selection entirely
   const renderAppearanceStep = () => {
     return (
       <div className="space-y-6 animate-fadeIn">
-        {/* --- Style Selection (Only if not forced) --- */}
-        {!forcedArtStyle && (
-          <>
-            <h2 className="text-2xl font-bold mb-2">Select Art Style</h2>
-            <p className="text-sm text-gray-600 mb-4">Choose an art style for your character.</p>
-            <div className="mb-6">
-              {isLoadingStyles ? (
-                <div className="flex justify-center items-center h-40">
-                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
-                   <p className="ml-3 text-gray-600">Loading styles...</p>
-                 </div>
-               ) : apiStyles.length > 0 ? (
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                   {apiStyles.map(style => (
-                     <div
-                       key={style.style_code}
-                       onClick={() => handleChange('artStyle', style.style_code)} 
-                       className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ease-in-out transform hover:scale-105 
-                         ${characterData.artStyle === style.style_code 
-                           ? 'border-blue-500 ring-2 ring-blue-500 shadow-md' 
-                           : 'border-gray-200 hover:border-blue-400 hover:shadow'}`}
-                       title={style.name} 
-                     >
-                       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                         <img 
-                           src={style.cover_url} 
-                           alt={style.name} 
-                           className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90" 
-                           loading="lazy" 
-                           onError={(e) => { e.target.style.display = 'none'; }}
-                         />
-                       </div>
-                       <p className="text-xs text-center p-2 truncate bg-white text-gray-700">
-                         {style.name}
-                       </p>
-                     </div>
-                   ))}
-                 </div>
-               ) : (
-                 <p className="text-center text-red-600">Could not load art styles.</p>
-               )}
-             </div>
-           </>
-         )}
-         {/* --- End Style Selection --- */}
+        {/* REMOVED: Style Selection Section */}
+        {/* {!forcedArtStyle && ( ... )} */}
 
          {/* --- Photo vs Description Choice --- */}
-         <div className={`mt-6 ${!forcedArtStyle ? 'pt-6 border-t border-gray-200' : ''}`}> {/* Add separator only if styles were shown */}
+         {/* Ensure this section doesn't have conditional margin/padding based on forcedArtStyle */}
+         <div className={`mt-0 pt-0`}> 
            <h2 className="text-2xl font-bold mb-4">Provide Character Source</h2>
-           <p className="text-sm text-gray-600 mb-4">Choose how to generate the character image.</p>
+           <p className="text-sm text-gray-600 mb-4">Choose how to generate the character image. The art style is pre-selected.</p>
            <div className="space-y-4">
              {/* Photo Upload Option */}
              <div 
