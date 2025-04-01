@@ -204,7 +204,7 @@ export const uploadFileToDzine = async (file) => {
 };
 
 // 5. Image-to-Image Task Creation (Corrected Implementation)
-export const createImg2ImgTask = async (payload) => {
+export const createImg2ImgTask = async (payload, characterType = 'human') => {
   try {
     // --- Start Validation based on Documentation ---
     if (!payload.style_code) throw new Error('style_code is required');
@@ -221,6 +221,10 @@ export const createImg2ImgTask = async (payload) => {
     }
     // --- End Validation ---
 
+    // Determine face_match based on character type
+    const faceMatchValue = (characterType === 'pet' || characterType === 'creature') ? 0 : 1;
+    console.log(`Setting face_match based on type "${characterType}": ${faceMatchValue}`); // Log decision
+
     // Prepare the payload exactly as per documentation
     // We don't need to upload manually, the API accepts base64_data directly
     let apiPayload = {
@@ -233,9 +237,9 @@ export const createImg2ImgTask = async (payload) => {
       // Optional fields with defaults or from payload
       style_intensity: payload.style_intensity !== undefined ? payload.style_intensity : 0.8, // Default if not provided
       structure_match: payload.structure_match !== undefined ? payload.structure_match : 0.8, // Default if not provided
-      quality_mode: payload.quality_mode !== undefined ? payload.quality_mode : 0, // Default if not provided
+      quality_mode: payload.quality_mode !== undefined ? payload.quality_mode : 1, // Use 1 for better quality based on logs
       color_match: payload.color_match !== undefined ? payload.color_match : 0, // Default if not provided
-      face_match: payload.face_match !== undefined ? payload.face_match : 0, // Default if not provided
+      face_match: faceMatchValue, // Use calculated face_match value
       seed: payload.seed !== undefined ? payload.seed : Math.floor(Math.random() * 2147483647) + 1, // Random seed if not provided
       generate_slots: payload.generate_slots || [1, 1], // Default for Model X is [1, 1] based on wizard code
       output_format: payload.output_format || 'webp', // Default
@@ -405,8 +409,8 @@ export const getTaskProgress = async (taskId) => {
         console.log(`Extracted status: ${status}, Normalized status: ${normalizedStatus}`);
 
         if (normalizedStatus === 'success') {
-          console.log(`Task ${taskId} completed successfully`);
-          clearInterval(intervalId);
+           console.log(`Task ${taskId} completed successfully`);
+           clearInterval(intervalId);
           
           // Find the first valid image URL in generate_result_slots
           let imageUrl = null;
