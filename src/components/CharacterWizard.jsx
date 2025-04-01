@@ -189,19 +189,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
     
     // Load API styles on mount
-    fetchStyles();
-    
-    // Check API status
-    checkApiStatus();
-    
-    // Clean up polling when component unmounts
-    return () => {
-      pollingSessionRef.current = {};
-    };
-  }, [forcedArtStyle]);
-  
-  // Fetch styles from API on mount
-  useEffect(() => {
     const fetchStyles = async () => {
       try {
         setIsLoadingStyles(true);
@@ -242,7 +229,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     };
     
     fetchStyles();
-  }, []);
+    
+    // Check API status
+    checkApiStatus();
+    
+    // Clean up polling when component unmounts
+    return () => {
+      pollingSessionRef.current = {};
+    };
+  }, [forcedArtStyle]);
   
   // Run API diagnostic check on mount
   useEffect(() => {
