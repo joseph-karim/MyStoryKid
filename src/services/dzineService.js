@@ -649,7 +649,7 @@ export const styleCodeMap = {
   // Modern & Colorful styles
   cute_exaggeration: "Style-b484beb8-143e-4776-9a87-355e0456cfa3",
   glossy_elegance: "Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280",
-  starlit_fantasy: "Style-541a2afd-904a-4968-bc60-8ad0ede22a86",
+  starlit_fantasy: "Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0",
   fantasy_hero: "Style-7a23990c-65f7-4300-b2a1-f5a97263e66f",
   joyful_clay: "Style-455da805-d716-4bc8-a960-4ac505aa7875",
   ceramic_lifelike: "Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833",
