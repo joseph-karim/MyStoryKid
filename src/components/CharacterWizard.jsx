@@ -389,8 +389,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [step, forcedArtStyle]);
   
   const handleChange = (field, value) => {
-    setCharacterData(prev => ({
-      ...prev,
+      setCharacterData(prev => ({
+        ...prev,
       [field]: value
     }));
     
@@ -490,19 +490,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Don't allow going back from the first step
     if (step <= 1) return;
     
-    // If we're on the preview step and user goes back
-    if (step === 4) {
-      // If forcedArtStyle is provided, go back to photo upload (skip style selection)
-      if (forcedArtStyle) {
-        setStep(2);
-      } else {
-        // Otherwise go back to style selection
-        setStep(3);
-      }
-      return;
-    }
-    
-    // If we're in the art style step, go back to photo upload
+    // If we're on the preview step (step 3), go back to photo upload (step 2)
     if (step === 3) {
       setStep(2);
       return;
@@ -533,23 +521,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
     }
     
-    if (step === 4) {
-      // This is the final step
-      handleComplete();
-      return;
-    }
-    
-    // If moving from step 3 (art style) to step 4 (preview), generate the preview
-    if (step === 3 || (step === 2 && forcedArtStyle)) {
-      const nextStep = forcedArtStyle ? 4 : step + 1;
-      
-      // Reset the preview if we're changing styles
-      if (step === 3 && characterData.stylePreview) {
-        setCharacterData(prev => ({
-          ...prev,
-          stylePreview: null
-        }));
-      }
+    // If we're in step 2 (photo upload) and have a forced art style,
+    // we can skip straight to preview (step 3 in the new flow)
+    if (step === 2) {
+      const nextStep = 3; // Preview step
       
       // Unlock the next step if not already unlocked
       if (!unlockedSteps.includes(nextStep)) {
@@ -558,10 +533,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       setStep(nextStep);
       
-      // If moving to preview step, generate the character preview
-      if (nextStep === 4 && (!characterData.stylePreview || !isGenerating)) {
+      // Ensure we generate the preview
+      if (!characterData.stylePreview || !isGenerating) {
         generateCharacterPreview();
       }
+      return;
+    }
+    
+    if (step === 3) {
+      // This is the final step
+      handleComplete();
       return;
     }
     
@@ -716,6 +697,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+            disabled={step === 1}
           >
             Back
           </button>
@@ -739,8 +721,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 2:
         return "Photo/Description";
       case 3:
-        return "Style";
-      case 4:
         return "Confirm";
       default:
         return `Step ${stepNumber}`;
@@ -907,17 +887,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <h4 className="font-medium text-sm text-gray-900">{category.category}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {category.styles.map(style => (
-                    <div 
+                    <div
                       key={style.id}
                       onClick={() => handleChange('artStyle', style.id)}
                       className={`border rounded-md overflow-hidden ${
-                        characterData.artStyle === style.id 
+                        characterData.artStyle === style.id
                           ? 'ring-2 ring-blue-500 border-blue-400' 
                           : 'border-gray-200 hover:border-blue-300'
                       } cursor-pointer`}
                     >
                       <div className="h-32 overflow-hidden bg-gray-100">
-                        <img 
+                        <img
                           src={style.imageUrl} 
                           alt={style.name}
                           className="w-full h-32 object-contain rounded hover:shadow-lg transition-shadow"
@@ -934,22 +914,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             ))}
           </div>
         )}
-        
-        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
-            onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-          >
-            Back
-          </button>
-          <button
-            onClick={handleNext}
-            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.artStyle ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-            disabled={!characterData.artStyle}
-          >
-            Next
-          </button>
-        </div>
       </div>
     );
   };
@@ -977,8 +941,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       case 2:
         return renderAppearanceStep();
       case 3:
-        return renderStyleStep();
-      case 4:
         return renderPreviewStep();
       default:
         return null;
@@ -1400,7 +1362,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   alt="Character Preview"
                   className="max-w-full max-h-[85vh] object-contain shadow-xl"
                 />
-            </div>
+              </div>
             </motion.div>
           </div>
         )}
@@ -1518,34 +1480,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               Photo/Description
             </button>
           </li>
-          {!forcedArtStyle && (
-            <li className="mr-2">
-              <button
-                onClick={() => handleTabClick(3)}
-                className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                  step === 3 
-                    ? 'text-blue-600 border-blue-600' 
-                    : unlockedSteps.includes(3)
-                      ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                      : 'text-gray-400 cursor-not-allowed border-transparent'
-                }`}
-                disabled={!unlockedSteps.includes(3)}
-              >
-                Art Style
-              </button>
-            </li>
-          )}
           <li className="mr-2">
             <button
-              onClick={() => handleTabClick(4)}
+              onClick={() => handleTabClick(3)}
               className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                step === 4 
+                step === 3 
                   ? 'text-blue-600 border-blue-600' 
-                  : unlockedSteps.includes(4)
+                  : unlockedSteps.includes(3)
                     ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
                     : 'text-gray-400 cursor-not-allowed border-transparent'
               }`}
-              disabled={!unlockedSteps.includes(4)}
+              disabled={!unlockedSteps.includes(3)}
             >
               Confirm
             </button>
@@ -1562,30 +1507,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {/* Step Content */}
       <div className="mb-8 min-h-[400px]">
         {renderStep()}
-      </div>
-      
-      {/* Navigation Buttons */}
-      <div className="flex justify-between">
-        <button
-          onClick={handleBack}
-          className={`px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 ${
-            step === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-          }`}
-          disabled={step === 1}
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          disabled={(step === 1 && !characterData.name) ||
-                   (step === 2 && ((!characterData.photoUrl && !characterData.useTextToImage) || 
-                                  (characterData.useTextToImage && !characterData.generationPrompt))) ||
-                   (step === 3 && !characterData.artStyle) ||
-                   (step === 4 && (!characterData.stylePreview || isGenerating))}
-        >
-          {step === 4 ? 'Complete' : 'Next'}
-        </button>
       </div>
       
       {/* Render Image Preview Modal */}
