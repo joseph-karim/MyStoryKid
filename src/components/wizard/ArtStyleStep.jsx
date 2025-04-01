@@ -529,7 +529,8 @@ function ArtStyleStep() {
   }, []);
   
   const handleBack = () => {
-    setWizardStep(1); // Go back to the Introduction step
+    // Go back to the Category & Scene step
+    setWizardStep(1);
   };
   
   const handleContinue = () => {

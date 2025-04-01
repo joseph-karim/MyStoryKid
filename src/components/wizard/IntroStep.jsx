@@ -117,10 +117,16 @@ function IntroStep() {
       return;
     }
     
-    // Update store with selected themes
+    // Get existing data we want to preserve
+    const { mainScene, customSceneDescription } = wizardState.storyData;
+    
+    // Update store with selected themes while preserving scene data
     updateStoryData({ 
       selectedThemes: selectedThemes,
       customTheme: isCustomTheme ? customTheme : '',
+      // Preserve existing scene data if any
+      mainScene,
+      customSceneDescription,
       // Keep category for backward compatibility, using the first selected theme as primary
       category: selectedThemes.length > 0 ? selectedThemes[0] : 'custom'
     });

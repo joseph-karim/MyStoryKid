@@ -8,6 +8,7 @@ import StoryDetailsStep from '../components/wizard/StoryDetailsStep';
 import CharactersStep from '../components/wizard/CharactersStep';
 import ArtStyleStep from '../components/wizard/ArtStyleStep';
 import SummaryStep from '../components/wizard/SummaryStep';
+import CategoryStep from '../components/wizard/CategoryStep';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
@@ -35,7 +36,7 @@ function CreateBookPage() {
   
   // Define wizard steps
   const steps = [
-    { id: 1, name: 'Introduction' },
+    { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
     { id: 3, name: 'Characters' },
     { id: 4, name: 'Story Details' },
@@ -54,7 +55,7 @@ function CreateBookPage() {
   const renderStep = () => {
     switch (wizardState.step) {
       case 1:
-        return <IntroStep />;
+        return <CategoryStep />;
       case 2:
         return <ArtStyleStep />;
       case 3:
@@ -65,7 +66,7 @@ function CreateBookPage() {
         return <SummaryStep />;
       default:
         console.warn(`Unknown wizard step: ${wizardState.step}, returning to step 1.`);
-        return <IntroStep />;
+        return <CategoryStep />;
     }
   };
   
@@ -75,7 +76,7 @@ function CreateBookPage() {
   
   const getStepName = (step) => {
      switch (step) {
-         case 1: return 'Introduction';
+         case 1: return 'Category & Scene';
          case 2: return 'Art Style';
          case 3: return 'Characters';
          case 4: return 'Story Details';
@@ -94,32 +95,30 @@ function CreateBookPage() {
         </p>
       </div>
       
-      {/* Tab Navigation */}
-      <div className="mb-8">
-        <div className="border-b border-gray-200">
-          <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-            {steps.map((step) => (
-              <li key={step.id} className="mr-2">
-                <button
-                  onClick={() => handleTabClick(step.id)}
-                  className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                    wizardState.step === step.id 
-                      ? 'text-blue-600 border-blue-600' 
-                      : unlockedSteps.includes(step.id)
-                        ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                        : 'text-gray-400 cursor-not-allowed border-transparent'
-                  }`}
-                  disabled={!unlockedSteps.includes(step.id)}
-                >
-                  {step.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Navigation Tabs */}
+      <div className="mb-6 border-b border-gray-200">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+          {steps.map((step) => (
+            <li key={step.id} className="mr-2">
+              <button
+                onClick={() => handleTabClick(step.id)}
+                className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                  wizardState.step === step.id 
+                    ? 'text-blue-600 border-blue-600' 
+                    : unlockedSteps.includes(step.id)
+                      ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                      : 'text-gray-400 cursor-not-allowed border-transparent'
+                }`}
+                disabled={!unlockedSteps.includes(step.id)}
+              >
+                {step.name}
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
       
-      {/* Progress Bar */}
+      {/* Progress Bar - Updated for 4 steps */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">

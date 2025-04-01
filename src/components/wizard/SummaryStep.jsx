@@ -47,13 +47,91 @@ function SummaryStep() {
     
     // If it's a style code (starts with Style-)
     if (styleCode.startsWith('Style-')) {
-      return 'API Style'; // Generic name for API styles
+      // Try to map the API style code to a better name
+      const styleMap = {
+        'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': 'Watercolor Whimsy',
+        'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': 'Whimsical Coloring',
+        'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': 'Enchanted Character',
+        'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': 'Minimalist Cutesy',
+        'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf': 'Cheerful Storybook',
+        'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': 'Pleasantly Warm',
+        'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a': 'Storytime Whimsy',
+        'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': 'Line and Wash',
+        'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': 'Golden Hour',
+        'Style-b484beb8-143e-4776-9a87-355e0456cfa3': 'Cute Exaggeration',
+        'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': 'Glossy Elegance',
+        'Style-541a2afd-904a-4968-bc60-8ad0ede22a86': 'Starlit Fantasy',
+        'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': 'Fantasy Hero',
+        'Style-455da805-d716-4bc8-a960-4ac505aa7875': 'Joyful Clay',
+        'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': 'Enchanted Elegance',
+        'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': 'Warm Portrait',
+        'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': 'Magic Portrait',
+        'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': 'Vivid Tableaux',
+        'Style-ce7b4279-1398-4964-882c-19911e12aef3': 'Luminous Narratives',
+        'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': 'Ancient China',
+        'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': 'Dreamlike Portraiture',
+        'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': 'Aquarelle Life',
+        'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': 'Ceramic Lifelike',
+        'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': 'Yarn Realism',
+        'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': 'Mystical Sovereignty',
+        'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': 'Soft Radiance'
+      };
+      
+      return styleMap[styleCode] || 'API Style';
     }
     
     // Otherwise format the code into a friendly name
     return styleCode.split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  };
+  
+  // Helper function to get a friendly scene name
+  const getSceneDisplayName = (sceneId) => {
+    if (!sceneId) return null;
+    
+    // If it's a custom scene
+    if (sceneId === 'custom_scene') return 'Custom Setting';
+    
+    // Map of scene IDs to readable names
+    const sceneMap = {
+      // Adventure scenes
+      space: 'Space Exploration',
+      ocean: 'Undersea Adventure',
+      jungle: 'Jungle Expedition',
+      mountains: 'Mountain Climb',
+      safari: 'Wildlife Safari',
+      
+      // Bedtime scenes
+      dreams: 'Dreamland',
+      stars: 'Starry Night',
+      bedroom: 'Cozy Bedroom',
+      night_forest: 'Night Forest',
+      cloud_kingdom: 'Cloud Kingdom',
+      
+      // Learning scenes
+      school: 'School Adventure',
+      library: 'Enchanted Library',
+      alphabet_land: 'Alphabet Land',
+      zoo_letters: 'Zoo of Letters',
+      garden: 'Letter Garden',
+      
+      // Birthday scenes
+      party: 'Surprise Party',
+      amusement_park: 'Amusement Park',
+      treasure_hunt: 'Birthday Treasure Hunt',
+      bakery: 'Magical Bakery',
+      parade: 'Birthday Parade',
+      
+      // Fantasy scenes
+      enchanted_forest: 'Enchanted Forest',
+      dragon_mountain: 'Dragon Mountain',
+      fairy_kingdom: 'Fairy Kingdom',
+      wizard_castle: 'Wizard\'s Castle',
+      crystal_caves: 'Crystal Caves'
+    };
+    
+    return sceneMap[sceneId] || 'Custom Setting';
   };
   
   return (
@@ -102,17 +180,25 @@ function SummaryStep() {
           </div>
         </div>
         
+        {/* Main Scene/Setting */}
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-800">Main Scene/Setting</h3>
+          <div className="mt-2">
+            <p className="font-medium">
+              {storyData.mainScene ? getSceneDisplayName(storyData.mainScene) : 'Not Selected'}
+            </p>
+            {storyData.mainScene === 'custom_scene' && storyData.customSceneDescription && (
+              <p className="text-sm text-gray-600 mt-1">{storyData.customSceneDescription}</p>
+            )}
+          </div>
+        </div>
+        
         {/* Art Style */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Art Style</h3>
           <div className="mt-2">
             <p className="font-medium">
-              {storyData.artStyleCode === 'custom' ? 'Custom Style' : 
-                storyData.artStyleCode?.startsWith('Style-') ? 'API Style' :
-                storyData.artStyleCode?.split('_')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ') || 'Not Selected'
-              }
+              {getStyleDisplayName(storyData.artStyleCode) || 'Not Selected'}
             </p>
             {storyData.artStyleCode === 'custom' && storyData.customStyleDescription && (
               <p className="text-sm text-gray-600 mt-1">{storyData.customStyleDescription}</p>
@@ -149,7 +235,7 @@ function SummaryStep() {
                       {character.artStyle && (
                         <span className="ml-2 text-blue-600">• {
                           character.artStyleName ? character.artStyleName :
-                          getStyleDisplayName(character.artStyle) || 'Custom Style'
+                          getStyleDisplayName(character.artStyle)
                         }</span>
                       )}
                     </p>

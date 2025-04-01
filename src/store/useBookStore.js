@@ -409,30 +409,35 @@ const useBookStore = create((set, get) => ({
     try {
       const { storyData } = get().wizardState;
       
-      // Validate required data
+      // Validate all required data with specific error messages
+      const errors = [];
+      
       if (!storyData.category) {
-        throw new Error('Story category is required');
-      }
-      
-      if (!storyData.artStyleCode) {
-        throw new Error('Art style is required');
-      }
-      
-      if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) {
-        throw new Error('At least one character is required');
-      }
-      
-      if (!storyData.bookCharacters.find(char => char.role === 'main')) {
-        throw new Error('A main character is required');
+        errors.push('Story category is required');
       }
       
       if (!storyData.mainScene) {
-        throw new Error('Main scene/setting is required');
+        errors.push('Main scene/setting is required');
+      }
+      
+      if (!storyData.artStyleCode) {
+        errors.push('Art style is required');
+      }
+      
+      if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) {
+        errors.push('At least one character is required');
+      } else if (!storyData.bookCharacters.find(char => char.role === 'main')) {
+        errors.push('A main character is required');
+      }
+      
+      // If any validation errors, throw with all error messages
+      if (errors.length > 0) {
+        throw new Error(errors.join('. '));
       }
       
       console.log("Starting two-step book generation process...");
       
-      // Use our new storyGenerator service to generate the book
+      // Use our storyGenerator service to generate the book
       const result = await generateCompleteBook(storyData);
       
       if (!result.success) {
