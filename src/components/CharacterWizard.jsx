@@ -39,10 +39,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
   
-  // Add state for API styles
-  const [apiStyles, setApiStyles] = useState([]);
-  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
-  
   // Character data
   const [characterData, setCharacterData] = useState(defaultCharacterData);
   
@@ -68,64 +64,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         artStyle: forcedArtStyle // Assuming forcedArtStyle is now an actual API style_code
       }));
     }
-    
-    // Load API styles on mount
-    const fetchStyles = async () => {
-      try {
-        setIsLoadingStyles(true);
-        console.log('Fetching Dzine API styles for wizard...');
-        const stylesData = await getDzineStyles(); // Assume this returns { list: [...] }
-        
-        if (stylesData?.list?.length > 0) {
-          console.log(`Retrieved ${stylesData.list.length} styles from Dzine API`);
-          
-          // --- Filter out potentially incompatible styles for img2img ---
-          const compatibleStyles = stylesData.list.filter(style => {
-            const img2imgIntensity = style.style_intensity?.img2img;
-            // Keep styles where img2img intensity is explicitly greater than 0
-            // Or keep if intensity object/value is missing (assume compatible by default)
-            const isCompatible = img2imgIntensity === undefined || img2imgIntensity > 0;
-            if (!isCompatible) {
-              console.log(`Filtering out style potentially incompatible with img2img: ${style.name} (${style.style_code}) - img2img intensity: ${img2imgIntensity}`);
-            }
-            return isCompatible;
-          });
-          console.log(`Filtered down to ${compatibleStyles.length} potentially compatible styles for img2img.`);
-          // ----------------------------------------------------------
-          
-          setApiStyles(compatibleStyles); // Set the filtered list
-          
-          // Set initial art style if none is selected and not forced
-          if (!forcedArtStyle && !characterData.artStyle && compatibleStyles.length > 0) {
-            // Try to find a recommended style (like cartoon, 3D, pixie, etc)
-            const recommendedStyle = compatibleStyles.find(style => 
-              style.name.toLowerCase().includes('cartoon') || 
-              style.name.toLowerCase().includes('3d') ||
-              style.name.toLowerCase().includes('pixie')
-            );
-            // Default to the first compatible style in the list if no recommended found
-            const defaultStyle = recommendedStyle?.style_code || compatibleStyles[0]?.style_code || null;
-            
-            if (defaultStyle) {
-                 setCharacterData(prev => ({ ...prev, artStyle: defaultStyle }));
-                 console.log(`[DEBUG] Setting initial style to: ${defaultStyle}`);
-            }
-          }
-        } else {
-          console.error('No styles available from Dzine API');
-          setError('Could not load art styles from the API');
-          setApiStyles([]); // Ensure state is empty array
-        }
-      } catch (err) {
-        console.error('Error fetching Dzine styles:', err);
-        setError('Failed to load art styles. Please try again later.');
-        setApiStyles([]); // Ensure state is empty array
-      } finally {
-        setIsLoadingStyles(false);
-      }
-    };
-    
-    fetchStyles();
     
     // Define the checkApiStatus function to check API connectivity
     const checkApiStatus = async () => {
@@ -304,30 +242,27 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     // Validation for Step 1 (Details)
     if (step === 1) {
-      if (!characterData.name || !characterData.age || !characterData.gender) { // Add other required fields if any
+      if (!characterData.name || !characterData.age || !characterData.gender) { 
         setError('Please fill in all character details.');
         return;
       }
     }
     
-    // Validation for Step 2 (Photo/Style)
+    // Validation for Step 2 (Photo/Description)
     if (step === 2) {
-      // Photo is always required for img2img
-      if (!characterData.photoUrl) {
+      // Check if using photo upload but no photo is present
+      if (!characterData.useTextToImage && !characterData.photoUrl) {
          setError('Please upload a photo.');
          return;
       }
-      // Style is required IF NOT forced
-      if (!forcedArtStyle && !characterData.artStyle) {
-           setError('Please select an art style.');
+      // Check if using text description but no prompt is present
+      if (characterData.useTextToImage && !characterData.generationPrompt) {
+           setError('Please provide a character description.');
            return;
        }
-      // Moving from Step 2 to 3 triggers generation
+      // Art style is now assumed to be always provided via forcedArtStyle
     }
     
-    // REMOVED: Skip logic is no longer needed with 3 steps
-    // if (step === 2 && forcedArtStyle) { ... }
-
     // Unlock the next step and navigate (Max step is 3 now)
     if (targetStep <= 3) { 
       setUnlockedSteps(prev => [...new Set([...prev, targetStep])]);
@@ -537,105 +472,115 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update the appearance step to use curated categories with API style mapping
+  // Update the appearance step to use radio buttons for Photo/Description
   const renderAppearanceStep = () => {
     return (
       <div className="space-y-6 animate-fadeIn">
-        {/* Conditionally render Style Selection only if NOT forced */}
-        {!forcedArtStyle && (
-          <>
-            <h2 className="text-2xl font-bold mb-2">Select Art Style</h2>
-            <p className="text-sm text-gray-600 mb-4">Choose an art style for your character.</p>
-            {/* Style Selection Grid - Powered by API */}
-            <div className="mb-6">
-              {isLoadingStyles ? (
-                <div className="flex justify-center items-center h-40">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
-                  <p className="ml-3 text-gray-600">Loading styles...</p>
-                </div>
-              ) : apiStyles.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {apiStyles.map(style => (
-                    <div
-                      key={style.style_code}
-                      onClick={() => handleChange('artStyle', style.style_code)} // Set the actual style_code
-                      className={`cursor-pointer border rounded-lg overflow-hidden transition-all duration-200 ease-in-out transform hover:scale-105 
-                        ${characterData.artStyle === style.style_code 
-                          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md' 
-                          : 'border-gray-200 hover:border-blue-400 hover:shadow'}`}
-                      title={style.name} // Tooltip for style name
-                    >
-                      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+        <h2 className="text-2xl font-bold mb-4">Provide Character Source</h2>
+        <p className="text-sm text-gray-600 mb-4">Choose how to generate the character image. The art style is pre-selected.</p>
+
+        {/* Character Generation Method Selection */}
+        <div className="mb-6">
+          <div className="space-y-4">
+            {/* Photo Upload Option */}
+            <div 
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${!characterData.useTextToImage ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:bg-gray-50'}`}
+              onClick={() => handleChange('useTextToImage', false)}
+            >
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="generationMethod"
+                  id="photoUpload"
+                  checked={!characterData.useTextToImage}
+                  onChange={() => handleChange('useTextToImage', false)}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 mr-3"
+                />
+                <label htmlFor="photoUpload" className="font-medium text-gray-700 cursor-pointer">Upload a Photo (Recommended for Likeness)</label>
+              </div>
+              
+              {/* Photo upload box - only shown when this option is active */}
+              {!characterData.useTextToImage && (
+                <div className="mt-4 pl-7"> {/* Indent the upload box */}
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent radio button click trigger
+                      fileInputRef.current && fileInputRef.current.click();
+                    }}
+                  >
+                    {photoPreview ? (
+                      <div className="flex flex-col items-center">
                         <img 
-                          src={style.cover_url} 
-                          alt={style.name} 
-                          className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90" 
-                          loading="lazy" // Lazy load images
-                          onError={(e) => { e.target.style.display = 'none'; /* Hide if image fails */ }}
+                          src={photoPreview} 
+                          alt="Character Preview" 
+                          className="w-32 h-32 object-cover rounded-md mb-2 shadow"
                         />
+                        <button 
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                          onClick={(e) => {
+                            e.stopPropagation(); 
+                            setPhotoPreview(null);
+                            handleChange('photoUrl', null);
+                          }}
+                        >
+                          Remove Photo
+                        </button>
                       </div>
-                      <p className="text-xs text-center p-2 truncate bg-white text-gray-700">
-                        {style.name}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-red-600">Could not load art styles. Please try refreshing.</p>
-              )}
-            </div>
-          </>
-        )}
-        
-        {/* Photo Upload Section - Always shown on this step */} 
-        <div className={`mt-8 pt-6 ${!forcedArtStyle ? 'border-t border-gray-200' : ''}`}> {/* Add border only if styles were shown */}
-          <h3 className="text-lg font-semibold mb-3">Upload Photo</h3>
-          <p className="text-sm text-gray-600 mb-4">Upload a clear photo of the character's face. This will be used with the selected art style.</p>
-          <div 
-            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                >
-                  {photoPreview ? (
-              <div className="flex flex-col items-center">
-                      <img 
-                        src={photoPreview} 
-                  alt="Character Preview" 
-                  className="w-32 h-32 object-cover rounded-md mb-2 shadow"
-                      />
-                      <button 
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                        onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering the outer div's click
-                          setPhotoPreview(null);
-                    handleChange('photoUrl', null);
-                        }}
-                      >
-                  Remove Photo
-                      </button>
-                    </div>
-                  ) : (
-              <div className="flex flex-col items-center text-gray-500">
-                <svg className="mx-auto h-12 w-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 10v6m3-3h-6"></path>
-                      </svg>
-                <span className="mt-2 block text-sm font-medium">
-                  Click to upload a photo
-                </span>
-                <span className="mt-1 block text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</span>
-                    </div>
-                  )}
-          </div>
-                  <input
-                    type="file"
-            accept="image/png, image/jpeg, image/webp" // Be specific
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-            style={{ display: 'none' }} 
+                    ) : (
+                      <div className="flex flex-col items-center text-gray-500">
+                         <svg className="mx-auto h-12 w-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 10v6m3-3h-6"></path></svg>
+                        <span className="mt-2 block text-sm font-medium">
+                          Click to upload a photo
+                        </span>
+                        <span className="mt-1 block text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</span>
+                      </div>
+                    )}
+                  </div>
+                  <input 
+                    type="file" 
+                    accept="image/png, image/jpeg, image/webp"
+                    ref={fileInputRef} 
+                    onChange={handlePhotoUpload} 
+                    style={{ display: 'none' }} 
                   />
                 </div>
-
-        {/* Navigation Buttons - Copied from renderDetailsStep structure */}
+              )}
+            </div>
+              
+            {/* Text Description Option */}
+            <div 
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${characterData.useTextToImage ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:bg-gray-50'}`}
+              onClick={() => handleChange('useTextToImage', true)}
+            >
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="generationMethod"
+                  id="textDescription"
+                  checked={characterData.useTextToImage}
+                  onChange={() => handleChange('useTextToImage', true)}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 mr-3"
+                />
+                <label htmlFor="textDescription" className="font-medium text-gray-700 cursor-pointer">Generate from Description</label>
+              </div>
+              
+              {/* Textarea - only shown when this option is active */}
+              {characterData.useTextToImage && (
+                <div className="mt-4 pl-7"> {/* Indent the textarea */}
+                  <textarea
+                    value={characterData.generationPrompt}
+                    onChange={(e) => handleChange('generationPrompt', e.target.value)}
+                    placeholder="Describe the character's appearance. E.g., 'A cheerful young wizard with glasses and a pointy hat', 'A friendly dragon with green scales and small wings'"
+                    className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Navigation Buttons */} 
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
           <button
             onClick={handleBack}
@@ -645,15 +590,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </button>
           <button
             onClick={handleNext}
-            // Enable Next only if an art style AND a photo are selected
-            className={`px-6 py-2 bg-blue-600 text-white rounded ${(!characterData.artStyle || !characterData.photoUrl) 
+            // Enable Next only if either photo is uploaded OR description is provided
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${ 
+              (!characterData.useTextToImage && !characterData.photoUrl) || (characterData.useTextToImage && !characterData.generationPrompt)
               ? 'opacity-50 cursor-not-allowed' 
               : 'hover:bg-blue-700'}`}
-            disabled={!characterData.artStyle || !characterData.photoUrl}
+            disabled={(!characterData.useTextToImage && !characterData.photoUrl) || (characterData.useTextToImage && !characterData.generationPrompt)}
           >
             Next
           </button>
-              </div>
+        </div>
       </div>
     );
   };
@@ -668,15 +614,36 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
-  // Update the generateCharacterPreview function to handle API style errors better
+  // Update the generateCharacterPreview function to handle Photo/Description
   const generateCharacterPreview = async () => {
-    // For now, assume it gets the correct style_code from characterData.artStyle
-    if (!characterData.artStyle) {
-      setError('Please select an art style first.');
+    // Style is now always forced, get it from the prop or state
+    const styleApiCode = characterData.artStyle || forcedArtStyle;
+    if (!styleApiCode) {
+      setError('No art style specified. Cannot generate preview.');
+      console.error('generateCharacterPreview called without an art style.');
       return;
     }
-    console.log(`Generating preview with style code: ${characterData.artStyle}`);
-    await generateCharacterImage(characterData.artStyle, characterData.generationPrompt || null, photoPreview);
+    
+    console.log(`Generating preview with style code: ${styleApiCode}`);
+    
+    // Determine generation type and prepare data
+    if (characterData.useTextToImage) {
+      // Text-to-Image
+      if (!characterData.generationPrompt) {
+        setError('Please provide a description for text-to-image generation.');
+        return;
+      }
+      console.log('[PREVIEW] Using Text-to-Image');
+      await generateCharacterImage(styleApiCode, characterData.generationPrompt, null); // Pass null for fallbackImage initially?
+    } else {
+      // Image-to-Image
+      if (!characterData.photoUrl) {
+        setError('Please upload a photo for image-to-image generation.');
+        return;
+      }
+      console.log('[PREVIEW] Using Image-to-Image');
+      await generateCharacterImage(styleApiCode, null, characterData.photoUrl); // Pass null for prompt, use photoUrl as potential fallback
+    }
   };
   
   // Helper function to use fallback image
@@ -1092,98 +1059,129 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  // Updated generateCharacterImage to use style_code directly
+  // Updated generateCharacterImage to handle both Img2Img and Txt2Img
   const generateCharacterImage = async (styleApiCode, prompt, fallbackImage) => {
-    // `styleApiCode` is now expected to be the actual API style_code
+    // Style validation
     if (!styleApiCode || !styleApiCode.startsWith('Style-')) {
       console.error('Invalid or missing style API code passed to generateCharacterImage:', styleApiCode);
-      setError('An invalid style code was selected.');
+      setError('An invalid art style was specified.');
       setIsGenerating(false);
-      setProgressMessage('Error: Invalid style code.');
-      return; // Prevent API call with invalid code
+      setProgressMessage('Error: Invalid style.');
+      return; 
     }
     
-    const generationId = uuidv4(); // Unique ID for this generation attempt
-    pollingSessionRef.current[generationId] = { stopPolling: false }; // Initialize polling state
+    const generationId = uuidv4(); 
+    pollingSessionRef.current[generationId] = { stopPolling: false }; 
     
     try {
       setIsGenerating(true);
       setProgressMessage('Starting generation...');
       
-      console.log('[API CALL] Generating image with Style Code:', styleApiCode);
-            
-      // Validate that we have a photo URL for img2img
-      if (!characterData.photoUrl) {
-        console.error('No photo URL available in character data for img2img');
-        // TODO: Handle text-to-image case if needed, or throw error
-        throw new Error('Please upload a photo first for Image-to-Image generation');
-      }
-
-      // Debug log the photo URL
-      console.log('IMAGE DEBUG:', {
-        hasPhotoUrl: !!characterData.photoUrl,
-        photoUrlType: typeof characterData.photoUrl,
-        photoUrlLength: characterData.photoUrl?.length,
-        isBase64: characterData.photoUrl?.startsWith('data:image'),
-        preview: characterData.photoUrl?.substring(0, 50) + '...'
-      });
+      let taskResponse;
+      let operationType = '';
       
-      // Prepare the payload for the API call (using the actual styleApiCode)
-      const payload = {
-        style_code: styleApiCode, 
-        prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`, 
-        images: [{
-          base64_data: characterData.photoUrl // Send the full data URL as required
-        }],
-        // Add other necessary parameters from documentation / previous state
-        color_match: characterData.color_match ?? 0, // Use state or default
-        face_match: characterData.face_match ?? 1, // Use state or default
-        style_intensity: characterData.style_intensity ?? 1.0, // Use state or default
-        structure_match: characterData.structure_match ?? 0.8, // Use state or default
-        quality_mode: characterData.quality_mode ?? 1, // Use state or default
-        generate_slots: characterData.generate_slots ?? [1, 1], // Use state or default
-        output_format: 'webp',
-        negative_prompt: characterData.negative_prompt || 'ugly, deformed, disfigured, poor quality, blurry, nsfw' // Use state or default negative
-      };
-      
-      // Create the task using the service
-      const taskResponse = await createImg2ImgTask(payload);
-      
-      // The service layer now throws on error or returns { task_id: '...' }
-      const taskId = taskResponse.task_id;
-      console.log('Task created with ID:', taskId);
-      
-      // Start polling for the result
-      await startPollingTask(taskId, fallbackImage, generationId);
-      
-    } catch (error) {
-      console.error('API error during image generation process:', error);
-      
-      // Stop the loading indicator
-      setIsGenerating(false);
-      
-      // Check if the error is the specific "Style are invalid" error (code 108005)
-      if (error.message && error.message.includes('108005') && error.message.toLowerCase().includes('style are invalid')) {
-        // Find the name of the failed style from the apiStyles state for a better error message
-        const failedStyleName = apiStyles.find(s => s.style_code === styleApiCode)?.name || styleApiCode;
-        const userErrorMessage = `The style "${failedStyleName}" cannot be used for image generation. Please choose a different style.`;
-        console.log('Style code rejected by API. Setting error for user:', userErrorMessage);
-        setError(userErrorMessage);
-        setProgressMessage('Error: Invalid style selected'); // Update progress indicator too
+      if (characterData.useTextToImage) {
+        // --- Text-to-Image Logic --- 
+        operationType = 'Text-to-Image';
+        console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
         
-        // REMOVED: Automatic retry logic
-        // --- Retry logic --- ... --- End Retry logic ---
+        if (!prompt) {
+          throw new Error('Description (prompt) is required for Text-to-Image.');
+        }
+        
+        // Enhance prompt slightly if needed (can be more elaborate)
+        let enhancedPrompt = prompt;
+        if (characterData.name && !enhancedPrompt.includes(characterData.name)) {
+            enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
+        }
+        enhancedPrompt += ", high quality illustration"; // Add quality modifier
+        
+        const payload = {
+          prompt: enhancedPrompt.substring(0, 800), 
+          style_code: styleApiCode,
+          // Add other Txt2Img specific parameters from docs
+          style_intensity: characterData.style_intensity ?? 1.0, 
+          quality_mode: characterData.quality_mode ?? 1, 
+          target_h: 1024, // Example size, adjust as needed
+          target_w: 1024,
+          generate_slots: characterData.generate_slots ?? [1, 1], 
+          output_format: 'webp',
+          seed: Math.floor(Math.random() * 2147483647) + 1,
+          negative_prompt: characterData.negative_prompt || 'low quality, blurry, bad anatomy' // Txt2Img specific negative?
+        };
+        
+        console.log('Txt2Img Payload:', JSON.stringify(payload, null, 2));
+        taskResponse = await createTxt2ImgTask(payload);
         
       } else {
-        // For any other non-style errors, show a generic error message
-        console.log('Non-style error encountered during generation.');
+        // --- Image-to-Image Logic --- 
+        operationType = 'Image-to-Image';
+        console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
+        
+        if (!characterData.photoUrl) {
+          throw new Error('Photo is required for Image-to-Image.');
+        }
+
+        // Use photoUrl directly for base64_data
+        if (!characterData.photoUrl.startsWith('data:image')) {
+           throw new Error('Invalid photo data format for Image-to-Image.');
+        }
+        
+        // Construct prompt for Img2Img (can be simpler)
+        const imgPrompt = prompt || `Character portrait of ${characterData.name || 'person'} in the selected style`;
+
+        const payload = {
+          style_code: styleApiCode, 
+          prompt: imgPrompt.substring(0, 800),
+          images: [{ base64_data: characterData.photoUrl }],
+          color_match: characterData.color_match ?? 0, 
+          face_match: characterData.face_match ?? 1, 
+          style_intensity: characterData.style_intensity ?? 1.0, 
+          structure_match: characterData.structure_match ?? 0.8, 
+          quality_mode: characterData.quality_mode ?? 1, 
+          generate_slots: characterData.generate_slots ?? [1, 1], 
+          output_format: 'webp',
+          negative_prompt: characterData.negative_prompt || 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
+          seed: Math.floor(Math.random() * 2147483647) + 1,
+        };
+        
+        console.log('Img2Img Payload:', JSON.stringify({
+             ...payload,
+             images: [{ base64_data: 'base64_data_present' }]
+           }, null, 2));
+        taskResponse = await createImg2ImgTask(payload);
+      }
+      
+      // --- Common Task Handling --- 
+      if (!taskResponse || !taskResponse.task_id) {
+        throw new Error(`Failed to create ${operationType} task. No task ID received.`);
+      }
+      
+      const taskId = taskResponse.task_id;
+      console.log(`${operationType} Task created with ID:`, taskId);
+      
+      // Use photo as fallback for img2img, generate placeholder for txt2img
+      const actualFallback = characterData.useTextToImage 
+          ? createColorPlaceholder(stringToColor(characterData.name || 'fallback'), characterData.name || 'Generating...') 
+          : fallbackImage; 
+          
+      await startPollingTask(taskId, actualFallback, generationId);
+      
+    } catch (error) {
+      console.error(`API error during ${operationType || 'generation'} process:`, error);
+      setIsGenerating(false);
+      
+      // Simplified error handling - No retry, just show the error
+      // The specific "Style Invalid" case is less likely now if style is always forced,
+      // but we keep the check just in case.
+      if (error.message && error.message.includes('108005') && error.message.toLowerCase().includes('style are invalid')) {
+        const userErrorMessage = `The selected style (${styleApiCode}) cannot be used. Please inform the administrator.`;
+        setError(userErrorMessage);
+        setProgressMessage('Error: Invalid style specified'); 
+      } else {
         setError(`Generation failed: ${error.message}. Please try again or contact support.`);
         setProgressMessage('Error occurred during generation');
-        
-        // REMOVED: Automatic fallback logic for general errors (user should retry manually)
-        // useFallbackImage(fallbackImage);
       }
-      // No longer need the final setIsGenerating(false) here as it's handled above or in polling completion
     }
   };
   
