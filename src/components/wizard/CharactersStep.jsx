@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useBookStore, useCharacterStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
-import { getDzineStyles, createImg2ImgTask, getTaskProgress } from '../../services/dzineService.js';
+import { getDzineStyles, createImg2ImgTask, createTxt2ImgTask, getTaskProgress } from '../../services/dzineService.js';
 
 // Import art style images from the Dzine Styles folder
 import starlitFantasyImg from '../../assets/dzine-styles/Starlit-Fantasy.png';
@@ -40,8 +40,9 @@ const CHARACTER_ROLES = [
   { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
   { id: 'sidekick', label: 'Sidekick', description: 'Friend or companion who helps the main character' },
   { id: 'mentor', label: 'Mentor', description: 'Wise character who guides the main character' },
-  { id: 'pet', label: 'Pet', description: 'Animal companion on the adventure' },
-  { id: 'magical', label: 'Magical Friend', description: 'A fairy, creature or magical being' },
+  { id: 'pet', label: 'Pet', description: 'Animal companion or pet' },
+  { id: 'magical_friend', label: 'Magical Friend', description: 'Enchanted or fantasy character with special abilities' },
+  { id: 'custom', label: 'Custom Role', description: 'Define your own character role in the story' }
 ];
 
 // Map our internal IDs to the preview images for legacy support
@@ -276,7 +277,7 @@ function CharactersStep() {
   
   const [bookCharacters, setBookCharacters] = useState(wizardState.storyData.bookCharacters || []);
   const [showCharacterWizard, setShowCharacterWizard] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState(null);
   const [error, setError] = useState('');
   
   // Art style is now set in the ArtStyleStep
@@ -347,8 +348,10 @@ function CharactersStep() {
   const handleCharacterComplete = (character) => {
     if (!character) {
       setShowCharacterWizard(false);
+      setSelectedRole(null);
       return;
     }
+    
     // Make sure we preserve all character properties including stylePreview and artStyle
     console.log('Character from wizard with stylePreview:', character.stylePreview);
     console.log('Character from wizard with artStyle:', character.artStyle);
@@ -356,22 +359,23 @@ function CharactersStep() {
     const characterWithRole = {
       ...character,
       role: selectedRole,
+      customRole: selectedRole === 'custom' ? character.customRole : undefined
     };
     
     const newCharacters = [...bookCharacters, characterWithRole];
     setBookCharacters(newCharacters);
     
     // Initialize generation status based on whether the character already has a style preview
-    updateGenStatus(characterWithRole.id, { 
+    updateGenStatus(characterWithRole.id, {
       status: characterWithRole.stylePreview ? 'confirmed' : 'idle',
       previewUrl: characterWithRole.stylePreview || null
-    }); 
+    });
     
-    // Update the store immediately so state persists if user navigates away
-    updateStoryData({ bookCharacters: newCharacters }); 
-
+    // Update the store
+    updateStoryData({ bookCharacters: newCharacters });
+    
     setShowCharacterWizard(false);
-    setError('');
+    setSelectedRole(null);
   };
 
   const removeCharacter = (characterId) => {
@@ -463,80 +467,114 @@ function CharactersStep() {
     });
   };
 
-  // --- NEW: Start Image Generation ---
+  // Update the handleGeneratePreview function to handle text-to-image if needed
   const handleGeneratePreview = async (characterId) => {
-    setError(''); // Clear general errors
-    const character = bookCharacters.find(c => c.id === characterId);
-    if (!character || !character.photoUrl || !isBase64DataUrl(character.photoUrl)) {
-      updateGenStatus(characterId, { status: 'error', errorMessage: 'No photo uploaded for generation.' });
-      return;
-    }
-    
-    // Use the art style code directly
-    if (!artStyleCode) {
-      setError('No art style is selected. Please go back and select an art style.');
-      return;
-    }
-    
-    // Get a display name for the style
-    const styleName = getStyleNameFromCode(artStyleCode);
-    
-    updateGenStatus(characterId, { status: 'generating', taskId: null, previewUrl: null, errorMessage: null });
-
     try {
-      // Build a rich prompt that describes the character AND the style
-      let prompt = `${character.age || 'a'} year old ${character.gender || 'child'} named ${character.name}`;
+      const character = bookCharacters.find(c => c.id === characterId);
       
-      // Add style description based on selection
-      if (artStyleCode === 'custom' && customStyleDescription) {
-        // Use custom style description directly
-        prompt += `, ${customStyleDescription}`;
-      } else {
-        // Add style description
-        prompt += `, in the ${styleName} style`;
-        
-        // Special handling for known styles to enhance prompt
-        if (artStyleCode === PLEASANTLY_WARM_STYLE_CODE) {
-          prompt += `, charming detailed watercolor illustrations in the style of classic children's tales`;
-        }
-        
-        // If there's additional custom description, append it for further refinement
-        if (customStyleDescription) {
-          prompt += `, ${customStyleDescription}`;
-        }
+      if (!character) {
+        throw new Error(`Character not found: ${characterId}`);
       }
       
-      // Add instructions for a clean background
-      prompt += ", plain neutral background, soft lighting, no distracting elements, focus on character only";
+      // Update status to generating
+      updateGenStatus(characterId, {
+        status: 'generating',
+        errorMessage: null
+      });
       
-      // Always use a safe style code that we know works with the API
-      const safeStyleCode = getSafeStyleCode(artStyleCode);
+      // Get API style code from character
+      let styleCode = character.artStyle;
+      if (!styleCode) {
+        throw new Error('No art style is selected for this character');
+      }
       
-      console.log("Generating with prompt:", prompt);
-      console.log("Using style code:", safeStyleCode);
-
-      const payload = {
-        prompt: prompt.substring(0, 800),  // Limit prompt length
-        style_code: safeStyleCode,
-        style_intensity: 0.8,  // Slightly reduced to let prompt have more influence
-        structure_match: 0.7,
-        face_match: 1,
-        color_match: 0,
-        quality_mode: 0,
-        generate_slots: [1, 0, 0, 0],
-        images: [{ base64_data: character.photoUrl }],
-        output_format: 'webp'
-      };
-
-      const taskData = await createImg2ImgTask(payload);
-      updateGenStatus(characterId, { status: 'polling', taskId: taskData.task_id });
-      startPolling(characterId, taskData.task_id);
-
+      // If we have a description but no photo, use text-to-image API
+      if (!character.photoUrl && (character.description || character.generationPrompt)) {
+        console.log('Using text-to-image generation for character:', character.name);
+        
+        updateGenStatus(characterId, {
+          status: 'polling',
+          message: 'Processing text-to-image generation...'
+        });
+        
+        // Prepare the text prompt from description or generation prompt
+        const prompt = character.generationPrompt || character.description;
+        if (!prompt) {
+          throw new Error('No description provided for text-to-image generation');
+        }
+        
+        // Combine character information for a rich prompt
+        let enhancedPrompt = prompt;
+        if (character.name && !prompt.includes(character.name)) {
+          enhancedPrompt = `${character.name}: ${enhancedPrompt}`;
+        }
+        if (character.type && !prompt.toLowerCase().includes(character.type.toLowerCase())) {
+          enhancedPrompt = `${enhancedPrompt}, ${character.type}`;
+        }
+        if (character.gender && !prompt.toLowerCase().includes(character.gender.toLowerCase())) {
+          enhancedPrompt = `${enhancedPrompt}, ${character.gender}`;
+        }
+        if (character.age && !prompt.includes(character.age)) {
+          enhancedPrompt = `${enhancedPrompt}, age ${character.age}`;
+        }
+        
+        console.log(`Enhanced prompt for text-to-image: ${enhancedPrompt}`);
+        
+        // Create the text-to-image task
+        const taskResult = await createTxt2ImgTask({
+          prompt: enhancedPrompt.substring(0, 800), // Limit to 800 characters as per API docs
+          style_code: styleCode,
+          style_intensity: 1, // Full style application
+          quality_mode: 1, // High quality
+          target_h: 1024, // Standard size
+          target_w: 1024,
+          generate_slots: [1, 1], // Generate 2 images
+          output_format: 'webp' // Use webp for better quality/size ratio
+        });
+        
+        if (!taskResult || !taskResult.task_id) {
+          throw new Error('Failed to start text-to-image generation task');
+        }
+        
+        // Start polling for this task
+        startPolling(characterId, taskResult.task_id);
+        
+      } else if (character.photoUrl) {
+        // Existing image-to-image logic
+        console.log('Using image-to-image generation for character:', character.name);
+        
+        // Add instructions for a clean background
+        const prompt = `${character.age || 'a'} year old ${character.gender || 'child'} named ${character.name}, plain neutral background, soft lighting, no distracting elements, focus on character only`;
+        
+        // Create the image-to-image task
+        const payload = {
+          prompt: prompt.substring(0, 800),  // Limit prompt length
+          style_code: styleCode,
+          style_intensity: 0.8,  // Slightly reduced to let prompt have more influence
+          structure_match: 0.7,
+          face_match: 1,
+          color_match: 0,
+          quality_mode: 0,
+          generate_slots: [1, 0, 0, 0],
+          images: [{ base64_data: character.photoUrl }],
+          output_format: 'webp'
+        };
+        
+        const taskData = await createImg2ImgTask(payload);
+        if (!taskData || !taskData.task_id) {
+          throw new Error('Failed to start image-to-image generation task');
+        }
+        
+        // Start polling for this task
+        startPolling(characterId, taskData.task_id);
+      } else {
+        throw new Error('Character must have either a photo or a description for generation');
+      }
     } catch (error) {
-      console.error("Error creating Dzine task:", error);
-      updateGenStatus(characterId, { 
-        status: 'error', 
-        errorMessage: error.message || 'Failed to start generation.' 
+      console.error(`Error generating preview for character ${characterId}:`, error);
+      updateGenStatus(characterId, {
+        status: 'error',
+        errorMessage: error.message
       });
     }
   };
@@ -832,8 +870,7 @@ function CharactersStep() {
       {showCharacterWizard ? (
         <CharacterWizard 
           onComplete={handleCharacterComplete} 
-          initialStep={1}
-          forcedArtStyle={artStyleCode !== 'custom' ? artStyleCode : null}
+          initialRole={selectedRole}
         />
       ) : (
         <>

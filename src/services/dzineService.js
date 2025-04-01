@@ -210,6 +210,58 @@ export const createImg2ImgTask = async (payload) => {
   }
 };
 
+// 6. Text-to-Image Task Creation
+export const createTxt2ImgTask = async (payload) => {
+  try {
+    console.log('Sending Text-to-Image request to Dzine API:', JSON.stringify(payload, null, 2));
+    
+    // Use the EXACT endpoint from the documentation
+    const endpoint = '/create_task_txt2img';
+    console.log(`Using documented text-to-image endpoint: ${endpoint}`);
+    
+    const data = await fetchDzine(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    
+    // Log full response for debugging
+    console.log(`Raw response from Text-to-Image API:`, JSON.stringify(data));
+    
+    // Check for task_id in different possible response structures
+    if (data) {
+      console.log(`Success with endpoint ${endpoint}:`, data);
+      
+      // Case 1: Standard structure with code 200
+      if (data.code === 200 && data.data && data.data.task_id) {
+        console.log(`Found task_id in standard structure:`, data.data.task_id);
+        return data.data;
+      }
+      
+      // Case 2: Direct task_id in data
+      if (data.task_id) {
+        console.log(`Found direct task_id:`, data.task_id);
+        return { task_id: data.task_id };
+      }
+      
+      // Case 3: Nested in a different structure
+      if (data.data && data.data.task) {
+        console.log(`Found task in nested structure:`, data.data.task);
+        return { task_id: data.data.task };
+      }
+      
+      // If we got here, log the structure for debugging
+      console.warn(`Could not find task_id in response structure:`, data);
+      throw new Error('Could not find task_id in API response');
+    } else {
+      console.error(`Empty response from ${endpoint}`);
+      throw new Error('Empty response from API');
+    }
+  } catch (error) {
+    console.error('Error in createTxt2ImgTask:', error);
+    throw error;
+  }
+};
+
 // Check task progress with retry logic
 export const getTaskProgress = async (taskId) => {
   if (!taskId) {

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import { createImg2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
+import { createImg2ImgTask, createTxt2ImgTask, getTaskProgress, checkApiAccess, getDzineStyles } from '../services/dzineService';
 
 // Import art style images from the Dzine Styles folder
 import starlitFantasyImg from '../assets/dzine-styles/Starlit-Fantasy.png';
@@ -131,7 +131,7 @@ const getSafeStyleCode = (styleCode) => {
   return SAFE_STYLE_CODE;
 };
 
-function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null }) {
+function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
   const [error, setError] = useState('');
@@ -160,6 +160,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     artStyle: forcedArtStyle || null, // Will be set to first available style after fetch
     stylePreview: null,
     description: '',
+    customRole: '',  // For storing custom role description
+    generationPrompt: '', // For text-to-image generation
+    useTextToImage: false // Flag for text-to-image vs image-to-image
   }));
   
   // Add state for image preview modal
@@ -262,6 +265,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     { id: 'animal', name: 'Animal', description: 'A pet or wild animal companion' },
   ];
   
+  // Character roles (imported from the roles defined in CharactersStep)
+  const CHARACTER_ROLES = [
+    { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
+    { id: 'sidekick', label: 'Sidekick', description: 'Friend or companion who helps the main character' },
+    { id: 'mentor', label: 'Mentor', description: 'Wise character who guides the main character' },
+    { id: 'pet', label: 'Pet', description: 'Animal companion or pet' },
+    { id: 'magical_friend', label: 'Magical Friend', description: 'Enchanted or fantasy character with special abilities' },
+    { id: 'custom', label: 'Custom Role', description: 'Define your own character role in the story' }
+  ];
+  
   // Helper function to categorize styles from API
   const getStyleCategories = () => {
     if (!apiStyles.length) return [];
@@ -354,18 +367,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [step, forcedArtStyle]);
   
   const handleChange = (field, value) => {
-    // If changing art style, reset the style preview
-    if (field === 'artStyle' && value !== characterData.artStyle) {
-      setCharacterData({
-        ...characterData,
-        [field]: value,
-        stylePreview: null // Reset the preview when style changes
-      });
-    } else {
-      setCharacterData({
-        ...characterData,
-        [field]: value,
-      });
+    setCharacterData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear any errors when field changes
+    if (error) {
+      setError('');
     }
   };
   
@@ -395,6 +404,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       artStyle: forcedArtStyle || null,
       stylePreview: null,
       description: '',
+      customRole: '',
+      generationPrompt: '',
+      useTextToImage: false
     });
   };
   
@@ -625,49 +637,145 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   const renderCharacterDetailsStep = () => {
     return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold mb-4">Upload Character Photo</h3>
+      <div className="space-y-6 animate-fadeIn">
+        <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
-        <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                  {photoPreview ? (
-            <div className="space-y-4">
-                      <img 
-                        src={photoPreview} 
-                        alt="Character preview" 
-                        className="w-28 h-28 object-cover mx-auto rounded-lg"
-                      />
-                      <button 
-                onClick={() => {
-                          setPhotoPreview(null);
-                  setCharacterData(prev => ({ ...prev, photoUrl: null }));
-                        }}
-                className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
-                      >
-                Remove Photo
-                      </button>
-                    </div>
-                  ) : (
-            <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    accept="image/*"
+        <div className="space-y-4">
+          {/* Name Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Character Name</label>
+            <input
+              type="text"
+              value={characterData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              className="w-full border border-gray-300 rounded-md py-2 px-3"
+              placeholder="Enter character name"
+            />
+          </div>
+          
+          {/* Character Type Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Character Type</label>
+            <select
+              value={characterData.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              className="w-full border border-gray-300 rounded-md py-2 px-3"
+            >
+              <option value="child">Child</option>
+              <option value="adult">Adult</option>
+              <option value="animal">Animal</option>
+              <option value="fantasy">Fantasy Creature</option>
+            </select>
+          </div>
+          
+          {/* Age Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+            <input
+              type="text"
+              value={characterData.age}
+              onChange={(e) => handleChange('age', e.target.value)}
+              className="w-full border border-gray-300 rounded-md py-2 px-3"
+              placeholder="Enter character age (optional)"
+            />
+          </div>
+          
+          {/* Gender Select */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+            <select
+              value={characterData.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="w-full border border-gray-300 rounded-md py-2 px-3"
+            >
+              <option value="">Select gender (optional)</option>
+              <option value="boy">Boy</option>
+              <option value="girl">Girl</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          {/* Character Description - Used for text-to-image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Character Description
+            </label>
+            <textarea
+              value={characterData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              className="w-full border border-gray-300 rounded-md py-2 px-3 h-20"
+              placeholder="Describe the character's appearance (used for image generation if no photo is uploaded)"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This description will be used to generate an image if you don't upload a photo
+            </p>
+          </div>
+          
+          {/* Text-to-Image Generation Prompt */}
+          <div className="pt-2">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="useTextToImage"
+                checked={characterData.useTextToImage}
+                onChange={(e) => handleChange('useTextToImage', e.target.checked)}
+                className="h-4 w-4 text-blue-600 rounded"
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100"
-              >
-                Upload Photo
-              </button>
-              <p className="text-sm text-gray-500 mt-2">
-                Upload a photo to be transformed into your character's style
-              </p>
-            </>
-          )}
-                </div>
+              <label htmlFor="useTextToImage" className="ml-2 block text-sm font-medium text-gray-700">
+                Generate character from description instead of photo
+              </label>
+            </div>
+            
+            {characterData.useTextToImage && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image Generation Prompt
+                </label>
+                <textarea
+                  value={characterData.generationPrompt}
+                  onChange={(e) => handleChange('generationPrompt', e.target.value)}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3 h-24"
+                  placeholder="Detailed prompt for image generation (e.g., 'A young boy with brown hair and blue eyes, wearing a red t-shirt and jeans, smiling')"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Be specific about appearance, clothing, pose, and expression for best results
+                </p>
               </div>
+            )}
+          </div>
+          
+          {/* Custom Role Field - Only show if initialRole is 'custom' */}
+          {initialRole === 'custom' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Custom Role</label>
+              <input
+                type="text"
+                value={characterData.customRole}
+                onChange={(e) => handleChange('customRole', e.target.value)}
+                className="w-full border border-gray-300 rounded-md py-2 px-3"
+                placeholder="Define this character's role in the story"
+              />
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+            disabled={!characterData.name}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     );
   };
   
@@ -698,110 +806,95 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the appearance step to use curated categories with API style mapping
   const renderAppearanceStep = () => {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold mb-4">Choose Art Style</h3>
-        
-        {isLoadingStyles ? (
-          <div className="flex items-center justify-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            <span className="ml-2">Loading available styles...</span>
-          </div>
-        ) : apiStyles.length === 0 ? (
-          <div className="p-4 bg-red-50 text-red-600 rounded-md">
-            <p>No art styles could be loaded from the API. Please try again later.</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {CURATED_STYLES.map((category, index) => (
-              <div key={index} className="space-y-2">
-                <h4 className="font-medium text-gray-700">{category.category}</h4>
-                <p className="text-sm text-gray-500">{category.description}</p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {category.styles.map(style => {
-                    // Match our curated style to an actual API style
-                    const apiStyle = matchStyleToAPIStyle(style, apiStyles);
-                    const actualStyleId = apiStyle?.style_code || null;
-                    
-                    if (!apiStyle) return null; // Skip if no matching API style found
-                    
-                    return (
-                    <div
-                      key={style.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                          characterData.artStyle === actualStyleId
-                            ? 'border-blue-500 bg-blue-50 shadow-md'
-                            : 'border-gray-200 hover:border-blue-200 hover:shadow'
-                        }`}
-                        onClick={() => handleChange('artStyle', actualStyleId)}
-                      >
-                        <div className="space-y-2">
-                          <img 
-                            src={style.imageUrl} 
-                          alt={style.name}
-                            className="w-full h-28 object-contain rounded hover:shadow-lg transition-shadow"
-                          />
-                          <div>
-                            <div className="font-medium flex justify-between">
-                              <span>{style.name}</span>
-                              {characterData.artStyle === actualStyleId && (
-                                <span className="text-blue-500">✓</span>
-                              )}
-                      </div>
-                            <div className="text-xs text-gray-500">{style.description}</div>
-                            <div className="text-xs text-gray-400 mt-1">API: {apiStyle.name}</div>
-                    </div>
-                </div>
-              </div>
-                    );
-                  })}
+    // Skip photo upload step if using text-to-image
+    if (characterData.useTextToImage || !photoPreview) {
+      return (
+        <div className="space-y-6 animate-fadeIn">
+          <h2 className="text-2xl font-bold mb-4">Character Appearance</h2>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+            <h3 className="font-medium text-blue-800 mb-2">Text-to-Image Generation</h3>
+            <p className="text-sm text-blue-700">
+              Your character will be generated from your description:
+            </p>
+            <div className="mt-2 p-3 bg-white rounded border border-blue-100">
+              <p className="text-sm italic">
+                {characterData.generationPrompt || characterData.description || "No description provided. Please go back and add a description."}
+              </p>
             </div>
-              </div>
-            ))}
+          </div>
+          
+          {/* Art style selection */}
+          <div>
+            <h3 className="font-medium mb-2">Select Art Style</h3>
+            <p className="text-sm text-gray-600 mb-4">Choose how your character should be illustrated</p>
             
-            {/* Advanced section with direct API styles */}
-            <div className="mt-8 pt-4 border-t border-gray-200">
-              <details className="group">
-                <summary className="flex items-center justify-between cursor-pointer">
-                  <h4 className="font-medium text-gray-700">🔍 More API Styles</h4>
-                  <div className="text-sm text-gray-500 group-open:rotate-180 transition-transform duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M8 4a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 1 1 .708-.708L7.5 10.293V4.5A.5.5 0 0 1 8 4z"/>
-                    </svg>
-                  </div>
-                </summary>
-                
-                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {apiStyles.slice(0, 16).map(style => (
-                    <div
-                      key={style.style_code}
-                      className={`p-2 border rounded-lg cursor-pointer text-sm ${
-                        characterData.artStyle === style.style_code
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-200'
-                      }`}
-                      onClick={() => handleChange('artStyle', style.style_code)}
-                    >
-                      <div className="flex flex-col space-y-1">
-                        {style.cover_url && (
-                          <img 
-                            src={style.cover_url} 
-                            alt={style.name}
-                            className="w-full h-16 object-contain rounded"
-                          />
-                        )}
-                        <div className="font-medium truncate">{style.name}</div>
-            </div>
+            {isLoadingStyles ? (
+              <div className="flex justify-center my-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Art style categories with styles */}
+                {getStyleCategories().map((category, index) => (
+                  <div key={index} className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-900">{category.category}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {category.styles.map(style => {
+                        // Match curated style to API style
+                        const apiStyle = matchStyleToAPIStyle(style, apiStyles);
+                        
+                        return (
+                          <div 
+                            key={style.id}
+                            onClick={() => handleChange('artStyle', apiStyle?.style_code || style.id)}
+                            className={`border rounded-md overflow-hidden ${
+                              characterData.artStyle === (apiStyle?.style_code || style.id) 
+                                ? 'ring-2 ring-blue-500 border-blue-400' 
+                                : 'border-gray-200 hover:border-blue-300'
+                            } cursor-pointer`}
+                          >
+                            <div className="h-32 overflow-hidden bg-gray-100">
+                              <img 
+                                src={style.imageUrl} 
+                                alt={style.name}
+                                className="w-full h-32 object-contain rounded hover:shadow-lg transition-shadow"
+                              />
+                            </div>
+                            <div className="p-2">
+                              <h5 className="font-medium text-sm">{style.name}</h5>
+                              <p className="text-xs text-gray-500 truncate">{style.description}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              </details>
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
+          
+          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleNext}
+              className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.artStyle ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+              disabled={!characterData.artStyle}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // ... existing photo upload UI ...
   };
   
   // Update the generateCharacterPreview function to use the selected API style directly
@@ -1295,85 +1388,89 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         .join(' ');
     };
     
+    // Determine if image was generated from text or transformed from photo
+    const generationMethod = characterData.useTextToImage 
+      ? "Generated from description" 
+      : photoPreview ? "Transformed from photo" : "Generated character";
+    
     return (
-      <div className="space-y-4 text-center">
-        <h3 className="text-lg font-semibold mb-4">Confirm Character</h3>
+      <div className="space-y-6 animate-fadeIn">
+        <h2 className="text-2xl font-bold mb-4">Character Preview</h2>
         
-        {/* API Status Indicator for troubleshooting */}
-        {apiStatus.checked && (
-          <div className={`text-sm p-2 rounded-md mb-4 ${apiStatus.working ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            <p className="font-semibold">API Status: {apiStatus.working ? 'Connected' : 'Connection Issue'}</p>
-            {!apiStatus.working && (
-              <p className="text-xs mt-1">{apiStatus.message}</p>
-            )}
-            {process.env.NODE_ENV === 'development' && (
-              <p className="text-xs mt-1 opacity-70">Developer info: {JSON.stringify({
-                checked: apiStatus.checked,
-                working: apiStatus.working,
-                details: apiStatus.details?.substring(0, 100)
-              })}</p>
-            )}
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-medium mb-1">{characterData.name}</h3>
+          <p className="text-gray-600">
+            {initialRole === 'custom' && characterData.customRole 
+              ? characterData.customRole 
+              : CHARACTER_ROLES.find(r => r.id === initialRole)?.label || 'Character'}
+          </p>
+        </div>
+        
+        <div className="flex flex-col items-center">
+          {/* Display image */}
+          {characterData.stylePreview ? (
+            <>
+              <img
+                src={characterData.stylePreview}
+                alt="Character Preview"
+                className="max-w-full max-h-[85vh] object-contain shadow-xl"
+                onClick={() => openImagePreview(characterData.stylePreview)}
+              />
+              <p className="text-sm text-gray-500 mt-2">{generationMethod}</p>
+              <p className="text-sm font-medium mt-1">Style: {getArtStyleDisplayName()}</p>
+            </>
+          ) : (
+            <div className="w-64 h-64 bg-gray-200 flex items-center justify-center rounded-lg">
+              <p className="text-gray-500">No preview available</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Generate button - allow regeneration */}
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={generateCharacterPreview}
+            disabled={isGenerating || !characterData.artStyle}
+            className={`px-6 py-2 rounded ${
+              isGenerating || !characterData.artStyle
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-purple-600 hover:bg-purple-700 text-white'
+            }`}
+          >
+            {isGenerating ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {progressMessage || 'Generating...'}
+              </span>
+            ) : characterData.stylePreview ? 'Regenerate Character' : 'Generate Character'}
+          </button>
+        </div>
+        
+        {/* Error message if any */}
+        {error && (
+          <div className="text-center text-red-500 mt-4">
+            {error}
           </div>
         )}
         
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-          {photoPreview && (
-          <div className="text-center">
-              <p className="text-sm text-gray-500 mb-2">Original Photo</p>
-              <div 
-                className="w-32 h-32 overflow-hidden rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => openImagePreview(photoPreview)}
-              >
-                <img 
-                  src={photoPreview} 
-                  alt="Original" 
-                      className="w-full h-full object-cover"
-                    />
-              </div>
-              <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
-                  </div>
-                )}
-                
-          <div className="text-center">
-            <p className="text-sm text-gray-500 mb-2">Character Preview</p>
-            {isGenerating ? (
-              <div className="flex flex-col items-center justify-center p-4 w-32 h-32 border border-gray-300 rounded-lg">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2"></div>
-                <span className="text-sm text-center">{progressMessage}</span>
-              </div>
-            ) : characterData.stylePreview ? (
-              <div className="text-center">
-                <div 
-                  className="w-32 h-32 overflow-hidden rounded-lg border border-blue-300 cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => openImagePreview(characterData.stylePreview)}
-                >
-                  <img 
-                    src={characterData.stylePreview} 
-                    alt="Style preview" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <p className="text-xs text-blue-500 mt-1">Click to enlarge</p>
-              </div>
-            ) : (
-              <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gray-100 rounded-lg text-sm text-gray-400">
-                No preview yet
-              </div>
-            )}
-              </div>
-            </div>
-            
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium">{characterData.name}</h4>
-          <p className="text-sm text-gray-600 mb-1">
-            {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || 'Character'} 
-            {characterData.age && `, ${characterData.age} years old`}
-            {characterData.gender && `, ${characterData.gender}`}
-          </p>
-          <p className="text-sm font-medium text-blue-600">
-            Art Style: {getArtStyleDisplayName()}
-          </p>
-            </div>
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleComplete}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+            disabled={!characterData.stylePreview}
+          >
+            Add to Story
+          </button>
+        </div>
       </div>
     );
   };
