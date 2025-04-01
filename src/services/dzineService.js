@@ -318,33 +318,90 @@ export const getTaskProgress = async (taskId) => {
     // Construct the correct endpoint according to docs
     const endpoint = `/get_task_status?task_id=${taskId}`;
     
-    const data = await fetchDzine(endpoint, { method: 'GET' });
+    // Use a more robust approach with direct fetch and timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
     
-    // Handle different response structures
-    if (data) {
-      // Debug log
-      console.log(`Task ${taskId} progress data:`, JSON.stringify(data));
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': API_KEY
+        },
+        signal: controller.signal
+      });
       
-      // Check if the response is in the data field
-      if (data.data) {
-        return data.data;
+      clearTimeout(timeoutId);
+      
+      // If we get a 404, it might be that the task ID format is wrong
+      // or that the task doesn't exist yet, return a "pending" status
+      if (response.status === 404) {
+        console.warn(`Task ${taskId} returned 404 - returning pending status`);
+        return { status: 'pending', message: 'Task is still initializing' };
       }
       
-      // Check if the response is directly in the root
-      if (data.status !== undefined) {
+      // For other non-200 responses, try to get error information
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Task ${taskId} API error: ${response.status} ${errorText}`);
+        return { 
+          status: 'error', 
+          error: `API error: ${response.status}`,
+          message: errorText
+        };
+      }
+      
+      // Process successful response
+      const responseText = await response.text();
+      let data;
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(`Task ${taskId} JSON parse error:`, parseError);
+        return { status: 'error', message: 'Invalid response format' };
+      }
+      
+      // Handle different response structures
+      if (data) {
+        // Debug log
+        console.log(`Task ${taskId} progress data:`, JSON.stringify(data));
+        
+        // Check if the response is in the data field
+        if (data.data) {
+          return data.data;
+        }
+        
+        // Check if the response is directly in the root
+        if (data.status !== undefined) {
+          return data;
+        }
+        
+        // If response doesn't match either pattern, log it and return raw data
+        console.warn('Unexpected response structure:', data);
         return data;
+      } else {
+        console.error('Empty response from task progress check');
+        return { status: 'pending', message: 'Empty response' };
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      // Special handling for abort (timeout)
+      if (fetchError.name === 'AbortError') {
+        console.warn(`Task ${taskId} check timed out - returning pending status`);
+        return { status: 'pending', message: 'Request timed out, still processing' };
       }
       
-      // If response doesn't match either pattern, log it and return raw data
-      console.warn('Unexpected response structure:', data);
-      return data;
-    } else {
-      console.error('Empty response from task progress check');
-      throw new Error('Empty response from API when checking task progress');
+      // Network errors should also return pending to keep polling
+      console.error(`Network error checking task ${taskId}:`, fetchError);
+      return { status: 'pending', message: 'Network error, retrying' };
     }
   } catch (error) {
+    // Any other error, log but don't fail completely
     console.error(`Error checking progress for task ${taskId}:`, error);
-    throw error;
+    return { status: 'pending', message: 'Error occurred, retrying' };
   }
 };
 

@@ -841,7 +841,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             }
           >
             Next
-          </button>
+              </button>
             </div>
           </div>
     );
@@ -1185,7 +1185,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Generate a unique ID for this polling session to avoid conflicts
     const pollingId = `poll_${Date.now()}`;
     let pollCount = 0;
-    const maxPolls = 30; // Maximum number of polling attempts (60 seconds)
+    const maxPolls = 30; // Maximum number of polling attempts (30 seconds)
+    
+    // Count consecutive errors
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 5; // Max consecutive errors before fallback
+    
+    // Create initial fallback image URL just in case
+    const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
+    const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
     
     // Store the interval in a ref so we can clear it from anywhere
     pollingSessionRef.current[pollingId] = setInterval(async () => {
@@ -1195,16 +1203,48 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       if (pollCount >= maxPolls) {
         console.log(`Reached maximum polling time (${maxPolls}s), stopping`);
-        setProgressMessage('Generation taking too long, stopping');
+        setProgressMessage('Generation taking too long - using fallback image');
         clearInterval(pollingSessionRef.current[pollingId]);
         setIsGenerating(false);
         delete pollingSessionRef.current[pollingId];
+        
+        // Use fallback on timeout
+        setCharacterData(prev => ({
+          ...prev,
+          stylePreview: fallbackPreview
+        }));
         return;
       }
       
       try {
-        // Fetch the task progress
-        const progressData = await getTaskProgress(taskId);
+        // Fetch the task progress with a light wrapper for safety
+        let progressData;
+        try {
+          progressData = await getTaskProgress(taskId);
+          // Reset consecutive errors counter on success
+          consecutiveErrors = 0;
+        } catch (fetchError) {
+          consecutiveErrors++;
+          console.warn(`Fetch error (${consecutiveErrors}/${maxConsecutiveErrors}):`, fetchError);
+          
+          // If we've had too many consecutive errors, use fallback
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            console.error(`Too many consecutive errors (${consecutiveErrors}), using fallback`);
+            setProgressMessage('Network issues - using fallback image');
+            clearInterval(pollingSessionRef.current[pollingId]);
+            setIsGenerating(false);
+            delete pollingSessionRef.current[pollingId];
+            
+            setCharacterData(prev => ({
+              ...prev,
+              stylePreview: fallbackPreview
+            }));
+            return;
+          }
+          
+          // Otherwise just continue polling
+          return;
+        }
         
         // Debug log all response data
         console.log(`Task ${taskId} progress data (attempt ${pollCount}):`, progressData);
@@ -1231,6 +1271,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           // Task is still running, continue polling
           console.log(`Task ${taskId} is still running`);
           setProgressMessage(`Generating image... (${pollCount}s)`);
+          
+          // If we're taking too long, show a hopeful message
+          if (pollCount > 15) {
+            setProgressMessage(`Almost there... (${pollCount}s)`);
+          }
         } else if (status === 'success' || status === 'completed') {
           // Task completed successfully
           console.log(`Task ${taskId} completed successfully`);
@@ -1329,15 +1374,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           }
           
           console.warn('Task completed but no images found in the response');
-          setProgressMessage('Task completed but no images found ⚠️');
+          setProgressMessage('Task completed but no images found - using fallback');
           clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
           
-          // Create a fallback placeholder if no image was found
-          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
-          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-          
+          // Use the fallback
           setCharacterData(prev => ({
             ...prev,
             stylePreview: fallbackPreview
@@ -1345,15 +1387,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         } else if (status === 'failed' || status === 'error') {
           // Task failed
           console.error('Task failed:', progressData);
-          setProgressMessage('Generation failed');
+          setProgressMessage('Generation failed - using fallback image');
           clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
           
-          // Create a fallback placeholder on error
-          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
-          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-          
+          // Use the fallback
           setCharacterData(prev => ({
             ...prev,
             stylePreview: fallbackPreview
@@ -1362,24 +1401,23 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         }
       } catch (error) {
         console.error(`Error in polling attempt ${pollCount}:`, error);
+        consecutiveErrors++;
         
-        if (pollCount >= maxPolls) {
-          setProgressMessage('Error occurred while generating');
+        // If we've had too many consecutive errors or reached max polls, use fallback
+        if (consecutiveErrors >= maxConsecutiveErrors || pollCount >= maxPolls) {
+          setProgressMessage('Error occurred - using fallback image');
           clearInterval(pollingSessionRef.current[pollingId]);
           setIsGenerating(false);
           delete pollingSessionRef.current[pollingId];
           
-          // Create a fallback placeholder on error
-          const bgColor = stringToColor(characterData.name + (characterData.artStyle || 'default'));
-          const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-          
+          // Use the fallback
           setCharacterData(prev => ({
             ...prev,
             stylePreview: fallbackPreview
           }));
         }
       }
-    }, 1000); // Poll every second instead of every 2 seconds
+    }, 1000); // Poll every second
   };
   
   // Helper function to extract image URLs from response
