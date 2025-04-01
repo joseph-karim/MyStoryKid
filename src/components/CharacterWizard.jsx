@@ -11,9 +11,6 @@ import {
   getStyleCode 
 } from '../services/dzineService';
 
-// Define a known safe default style code from the API list
-const SAFE_DEFAULT_API_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // "No Style v2"
-
 // Initialize form state with defaults
 const defaultCharacterData = {
   name: '',
@@ -77,36 +74,52 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       try {
         setIsLoadingStyles(true);
         console.log('Fetching Dzine API styles for wizard...');
-        const stylesData = await getDzineStyles();
+        const stylesData = await getDzineStyles(); // Assume this returns { list: [...] }
         
         if (stylesData?.list?.length > 0) {
           console.log(`Retrieved ${stylesData.list.length} styles from Dzine API`);
-          setApiStyles(stylesData.list);
           
-          // Set initial art style if none is selected
-          if (!characterData.artStyle) {
-            // Default to the first style in the list as fallback
-            const defaultStyle = stylesData.list[0]?.style_code || null;
-            
+          // --- Filter out potentially incompatible styles for img2img ---
+          const compatibleStyles = stylesData.list.filter(style => {
+            const img2imgIntensity = style.style_intensity?.img2img;
+            // Keep styles where img2img intensity is explicitly greater than 0
+            // Or keep if intensity object/value is missing (assume compatible by default)
+            const isCompatible = img2imgIntensity === undefined || img2imgIntensity > 0;
+            if (!isCompatible) {
+              console.log(`Filtering out style potentially incompatible with img2img: ${style.name} (${style.style_code}) - img2img intensity: ${img2imgIntensity}`);
+            }
+            return isCompatible;
+          });
+          console.log(`Filtered down to ${compatibleStyles.length} potentially compatible styles for img2img.`);
+          // ----------------------------------------------------------
+          
+          setApiStyles(compatibleStyles); // Set the filtered list
+          
+          // Set initial art style if none is selected and not forced
+          if (!forcedArtStyle && !characterData.artStyle && compatibleStyles.length > 0) {
             // Try to find a recommended style (like cartoon, 3D, pixie, etc)
-            const recommendedStyle = stylesData.list.find(style => 
+            const recommendedStyle = compatibleStyles.find(style => 
               style.name.toLowerCase().includes('cartoon') || 
               style.name.toLowerCase().includes('3d') ||
               style.name.toLowerCase().includes('pixie')
             );
+            // Default to the first compatible style in the list if no recommended found
+            const defaultStyle = recommendedStyle?.style_code || compatibleStyles[0]?.style_code || null;
             
-            setCharacterData(prev => ({
-              ...prev,
-              artStyle: forcedArtStyle || recommendedStyle?.style_code || defaultStyle
-            }));
+            if (defaultStyle) {
+                 setCharacterData(prev => ({ ...prev, artStyle: defaultStyle }));
+                 console.log(`[DEBUG] Setting initial style to: ${defaultStyle}`);
+            }
           }
         } else {
           console.error('No styles available from Dzine API');
           setError('Could not load art styles from the API');
+          setApiStyles([]); // Ensure state is empty array
         }
       } catch (err) {
         console.error('Error fetching Dzine styles:', err);
         setError('Failed to load art styles. Please try again later.');
+        setApiStyles([]); // Ensure state is empty array
       } finally {
         setIsLoadingStyles(false);
       }
@@ -1205,63 +1218,32 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
     } catch (error) {
       console.error('API error during image generation process:', error);
-      setProgressMessage(`Error: ${error.message}`);
+      
+      // Stop the loading indicator
+      setIsGenerating(false);
       
       // Check if the error is the specific "Style are invalid" error (code 108005)
       if (error.message && error.message.includes('108005') && error.message.toLowerCase().includes('style are invalid')) {
-        console.log('Style code rejected by API, attempting retry with default style');
-        setProgressMessage('Selected style is invalid for this image, trying default style...'); // User feedback
+        // Find the name of the failed style from the apiStyles state for a better error message
+        const failedStyleName = apiStyles.find(s => s.style_code === styleApiCode)?.name || styleApiCode;
+        const userErrorMessage = `The style "${failedStyleName}" cannot be used for image generation. Please choose a different style.`;
+        console.log('Style code rejected by API. Setting error for user:', userErrorMessage);
+        setError(userErrorMessage);
+        setProgressMessage('Error: Invalid style selected'); // Update progress indicator too
         
-        // --- Retry logic ---
-        try {
-          // Re-create payload explicitly with the SAFE_DEFAULT_API_STYLE_CODE
-          const retryPayload = {
-            prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`, 
-            style_code: SAFE_DEFAULT_API_STYLE_CODE, // Use the safe default API code
-            images: [{ base64_data: characterData.photoUrl }], 
-            color_match: 0,
-            face_match: 1,
-            style_intensity: 1.0, 
-            structure_match: 0.8, 
-            quality_mode: 1, 
-            generate_slots: [1, 1], 
-            output_format: 'webp', 
-            negative_prompt: characterData.negative_prompt || 'ugly, deformed, disfigured, poor quality, blurry, nsfw', // Get from state or use default
-            seed: Math.floor(Math.random() * 2147483647) + 1, // Use a new seed for retry
-          };
-          
-          console.log('Retrying img2img task with default style payload:', JSON.stringify({
-            ...retryPayload,
-            images: retryPayload.images.map(img => ({
-              base64_data: img.base64_data ? 'base64_data_present' : undefined,
-              url: img.url
-            }))
-          }, null, 2));
-
-          // Call the service function again
-          const retryTaskResponse = await createImg2ImgTask(retryPayload);
-                    
-          const retryTaskId = retryTaskResponse.task_id;
-          console.log('Retry task created with ID:', retryTaskId);
-          
-          // Start polling for the retry task result
-          await startPollingTask(retryTaskId, fallbackImage, generationId);
-          
-        } catch (retryError) {
-          console.error('Retry attempt also failed:', retryError);
-          setProgressMessage(`Retry failed: ${retryError.message}`);
-          useFallbackImage(fallbackImage); // Use fallback if retry also fails
-        }
-        // --- End Retry logic ---
+        // REMOVED: Automatic retry logic
+        // --- Retry logic --- ... --- End Retry logic ---
         
       } else {
-        // For any other non-style errors, just use the fallback image directly
-        console.log('Non-style error encountered, using fallback image.');
-        useFallbackImage(fallbackImage);
+        // For any other non-style errors, show a generic error message
+        console.log('Non-style error encountered during generation.');
+        setError(`Generation failed: ${error.message}. Please try again or contact support.`);
+        setProgressMessage('Error occurred during generation');
+        
+        // REMOVED: Automatic fallback logic for general errors (user should retry manually)
+        // useFallbackImage(fallbackImage);
       }
-      // Ensure isGenerating is set to false only after all attempts (including retry) are done or fallback is used
-      // We might need to move this into the startPollingTask completion logic
-      // setIsGenerating(false); 
+      // No longer need the final setIsGenerating(false) here as it's handled above or in polling completion
     }
   };
   
