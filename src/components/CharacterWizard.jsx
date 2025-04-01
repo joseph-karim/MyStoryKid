@@ -249,8 +249,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     // Validation for Step 1 (Details)
     if (step === 1) {
-      if (!characterData.name || !characterData.age || !characterData.gender) { 
-        setError('Please fill in all character details.');
+      if (!characterData.name || !characterData.age) { // Removed gender check as it's optional
+        setError('Please fill in the character name and age.');
         return;
       }
     }
@@ -270,6 +270,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     // Unlock the next step and navigate (Max step is 3 now)
     if (targetStep <= 3) { 
+      console.log(`[handleNext] Unlocking and setting step to: ${targetStep}`);
       setUnlockedSteps(prev => [...new Set([...prev, targetStep])]);
       setStep(targetStep);
     } else if (step === 3) {
@@ -405,6 +406,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Step 1: Basic character details
   const renderDetailsStep = () => {
+    console.log('[Render] renderDetailsStep');
     // Determine default isHuman value based on type
     const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
     
@@ -562,6 +564,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Update the appearance step to remove style selection entirely
   const renderAppearanceStep = () => {
+    console.log('[Render] renderAppearanceStep');
     return (
       <div className="space-y-6 animate-fadeIn">
         {/* REMOVED: Style Selection Section */}
@@ -1086,6 +1089,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    
    // Rename renderPreviewStep to renderConfirmStep
    const renderConfirmStep = () => {
+     console.log('[Render] renderConfirmStep');
      return (
        <div className="space-y-6 animate-fadeIn">
          <h2 className="text-2xl font-bold mb-4">Preview Character</h2>
