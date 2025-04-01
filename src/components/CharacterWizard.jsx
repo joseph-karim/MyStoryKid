@@ -287,74 +287,80 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const handleBack = () => {
-    // Don't allow going back from the first step
-    if (step <= 1) return;
-    
-    // If we're on the preview step (step 3), go back to photo upload (step 2)
-    if (step === 3) {
-      setStep(2);
-      return;
+    setError(''); // Clear errors on navigation
+    let targetStep = step - 1;
+    // --- Skip Step 3 (Appearance) if art style is forced ---
+    if (targetStep === 3 && forcedArtStyle) {
+      console.log('[NAV] Skipping Step 3 (Appearance) backwards because style is forced');
+      targetStep = 2; // Go back to Step 2 (Details) instead
     }
-    
-    // Regular step regression
-    setStep(Math.max(1, step - 1));
+    // -----------------------------------------------------
+    setStep(prev => Math.max(1, targetStep));
   };
   
   const handleNext = () => {
-    if (step === 1 && !characterData.name) {
-      setError('Please enter a name for your character.');
-      return;
+    setError(''); // Clear errors on navigation
+    let targetStep = step + 1;
+    
+    // Validation before proceeding (example for Step 1)
+    if (step === 1) {
+      if (!characterData.name || !characterData.type || !characterData.age || !characterData.gender) {
+        setError('Please fill in all character details.');
+        return;
+      }
     }
     
-    // Add validation for step 2
+    // Validation for Step 2 (Appearance)
     if (step === 2) {
-      // Check if using text description but no description provided
-      if (characterData.useTextToImage && !characterData.generationPrompt) {
-        setError('Please provide a description for your character.');
-        return;
+      // Ensure photo is uploaded if we are NOT forcing a style (meaning user must select style+photo)
+      if (!forcedArtStyle && !characterData.photoUrl) {
+         setError('Please upload a photo.');
+         return;
       }
-      
-      // Check if using photo but no photo uploaded
-      if (!characterData.useTextToImage && !characterData.photoUrl) {
-        setError('Please upload a photo for your character.');
-        return;
-      }
-      
-      // When moving from step 2 (appearance) to step 3 (preview),
-      // we need to generate the preview
-      const nextStep = 3; // Preview step
-      
-      // Unlock the next step if not already unlocked
-      if (!unlockedSteps.includes(nextStep)) {
-        setUnlockedSteps(prev => [...prev, nextStep]);
-      }
-      
-      setStep(nextStep);
-      
-      // Ensure we generate the preview
-      if (!characterData.stylePreview || !isGenerating) {
-        generateCharacterPreview();
-      }
-      return;
+       // If style is forced, we don't need to check for artStyle here as it's set
+       // If style is NOT forced, ensure one was selected in the UI
+       if (!forcedArtStyle && !characterData.artStyle) {
+           setError('Please select an art style.');
+           return;
+       }
     }
     
-    if (step === 3) {
-      // This is the final step
-      handleComplete();
-      return;
+    // --- Skip Step 3 (Appearance) if art style is forced ---
+    // If we are currently on Step 2 (Details) and moving next, check if we should skip Step 3
+    if (step === 2 && forcedArtStyle) {
+      console.log('[NAV] Skipping Step 3 (Appearance) forwards because style is forced');
+      targetStep = 4; // Jump directly to Step 4 (Confirm)
+      // Trigger generation automatically when skipping to confirm step?
+      // Need to ensure characterData is updated before calling this
+      // Maybe call generateCharacterPreview() inside a useEffect triggered by step change to 4
     }
-    
-    // Regular step progression
-    const nextStep = step + 1;
-    
-    // Unlock the next step if not already unlocked
-    if (!unlockedSteps.includes(nextStep)) {
-      setUnlockedSteps(prev => [...prev, nextStep]);
+    // -----------------------------------------------------
+
+    // Unlock the next step and navigate
+    if (targetStep <= 4) { // Assuming 4 is the last step (Confirm)
+      setUnlockedSteps(prev => [...new Set([...prev, targetStep])]);
+      setStep(targetStep);
+    } else {
+      // Handle final step / completion if needed
+      // For now, just stay on the last step
+      console.log('Already on the last step or beyond.');
     }
-    
-    setStep(nextStep);
-    setError('');
   };
+  
+  // Auto-generate preview when entering step 4 (Confirm step)
+  useEffect(() => {
+    if (step === 4 && !isGenerating && !characterData.stylePreview) { // Only generate if not already generating and no preview exists
+      // Ensure required data is present before generating
+      if (characterData.artStyle && characterData.photoUrl) {
+          console.log('[EFFECT] Step 4 reached, triggering character preview generation.');
+          generateCharacterPreview();
+      } else {
+         console.warn('[EFFECT] Step 4 reached, but missing artStyle or photoUrl, cannot generate preview.');
+         // Optionally set an error state here if this situation shouldn't happen
+         setError('Cannot generate preview. Missing photo or style information.')
+      }
+    }
+  }, [step]); // Re-run when step changes
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -660,15 +666,27 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Modified renderStep to avoid adding duplicate navigation buttons
   const renderStep = () => {
+    // --- Conditionally hide Step 3 content if style is forced ---
+    if (step === 3 && forcedArtStyle) {
+      // Optionally show a message or just nothing
+      console.log('[RENDER] Skipping render of Step 3 content because style is forced.');
+      return (
+         <div className="p-4 text-center text-gray-500">
+            <p>Art style already selected. Proceeding to confirmation...</p>
+            {/* You might want a loading indicator here if generation starts automatically */}
+         </div>
+      );
+    }
+    // ---------------------------------------------------------
+    
     switch (step) {
-      case 1:
-        return renderDetailsStep();
-      case 2:
-        return renderAppearanceStep();
-      case 3:
-        return renderPreviewStep(); // Preview is now step 3 (no art style step)
-      default:
-        return null;
+      case 1: return renderDetailsStep();
+      case 2: return renderAppearanceStep(); // Appearance/Photo step is now Step 2
+      case 3: // This case is now skipped by navigation logic if style is forced
+              // If reached, it means style is NOT forced, render the preview
+              return renderPreviewStep(); 
+      case 4: return renderConfirmStep(); // Confirm step is now Step 4
+      default: return <div>Unknown step</div>;
     }
   };
   
@@ -1190,6 +1208,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
   
+  // Update tab rendering logic if steps were renumbered
+  const stepsConfig = [
+    { index: 1, title: 'Details' },
+    { index: 2, title: 'Photo/Style' }, // Combined Photo & Style if style isn't forced
+    { index: 3, title: 'Preview' },   // Preview is now step 3
+    { index: 4, title: 'Confirm' }    // Confirm is now step 4
+  ];
+  
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -1204,56 +1230,32 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 </button>
             </div>
               
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-          <li className="mr-2">
-              <button
-              onClick={() => handleTabClick(1)}
-              className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                step === 1 
-                  ? 'text-blue-600 border-blue-600' 
-                  : unlockedSteps.includes(1)
-                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                    : 'text-gray-400 cursor-not-allowed border-transparent'
-              }`}
-              disabled={!unlockedSteps.includes(1)}
-            >
-              Details
-              </button>
-          </li>
-          <li className="mr-2">
+      {/* Tabs Navigation Example */}
+      <div className="flex border-b mb-4">
+        {stepsConfig.map(({ index, title }) => {
+          // --- Conditionally disable Appearance tab if style is forced ---
+          const isSkippable = index === 2 && forcedArtStyle;
+          const isDisabled = !unlockedSteps.includes(index) || isSkippable;
+          const isActive = step === index;
+          
+          return (
             <button
-              onClick={() => handleTabClick(2)}
-              className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                step === 2 
-                  ? 'text-blue-600 border-blue-600' 
-                  : unlockedSteps.includes(2)
-                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                    : 'text-gray-400 cursor-not-allowed border-transparent'
+              key={index}
+              onClick={() => !isDisabled && handleTabClick(index)}
+              disabled={isDisabled}
+              className={`py-2 px-4 text-sm font-medium ${
+                isActive
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : isDisabled
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
-              disabled={!unlockedSteps.includes(2)}
             >
-              Photo/Description
+              {title}
             </button>
-          </li>
-          <li className="mr-2">
-            <button
-              onClick={() => handleTabClick(3)}
-              className={`inline-block p-4 border-b-2 rounded-t-lg ${
-                step === 3 
-                  ? 'text-blue-600 border-blue-600' 
-                  : unlockedSteps.includes(3)
-                    ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
-                    : 'text-gray-400 cursor-not-allowed border-transparent'
-              }`}
-              disabled={!unlockedSteps.includes(3)}
-            >
-              Confirm
-            </button>
-          </li>
-        </ul>
-            </div>
+          );
+        })}
+      </div>
       
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -1261,10 +1263,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           </div>
         )}
       
-      {/* Step Content */}
-      <div className="mb-8 min-h-[400px]">
-        {renderStep()}
-      </div>
+      {/* Render active step content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step} // Ensures animation runs on step change
+          initial={{ opacity: 0, x: step > (step - 1) ? 50 : -50 }} // Slide direction based on nav
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: step > (step - 1) ? -50 : 50 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderStep()} { /* This calls the function that includes the conditional skip logic */ }
+        </motion.div>
+      </AnimatePresence>
       
       {/* Render Image Preview Modal */}
       <ImagePreviewModal 
