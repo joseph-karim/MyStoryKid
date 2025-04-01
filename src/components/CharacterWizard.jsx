@@ -230,18 +230,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     fetchStyles();
     
-    // Check API status
-    checkApiStatus();
-    
-    // Clean up polling when component unmounts
-    return () => {
-      pollingSessionRef.current = {};
-    };
-  }, [forcedArtStyle]);
-  
-  // Run API diagnostic check on mount
-  useEffect(() => {
-    const checkApi = async () => {
+    // Define the checkApiStatus function to check API connectivity
+    const checkApiStatus = async () => {
       try {
         console.log('Checking Dzine API connectivity...');
         const status = await checkApiAccess();
@@ -267,8 +257,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
     };
     
-    checkApi();
-  }, []);
+    // Check API status
+    checkApiStatus();
+    
+    // Clean up polling when component unmounts
+    return () => {
+      pollingSessionRef.current = {};
+    };
+  }, [forcedArtStyle]);
   
   // Cleanup function for any active polling
   useEffect(() => {
