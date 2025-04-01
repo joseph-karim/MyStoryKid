@@ -1757,10 +1757,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         // --- Retry logic ---
         try {
-          // Re-create payload with the default style code
+          // Re-create payload explicitly with the default style code
           const retryPayload = {
-            ...payload, // Use the original payload base
+            prompt: prompt || `Generate a character portrait of ${characterData.name} in the selected style`, // Use original prompt
             style_code: DEFAULT_STYLE_CODE, // Override with default style
+            images: [{ base64_data: characterData.photoUrl }], // Use original image data
+            // Re-add other parameters, using defaults matching the service layer
+            color_match: 0,
+            face_match: 1,
+            style_intensity: 1.0, // Or get from original payload if needed: payload.style_intensity
+            structure_match: 0.8, // Or get from original payload if needed: payload.structure_match
+            quality_mode: 1, // Or get from original payload if needed: payload.quality_mode
+            generate_slots: [1, 1], // Or get from original payload if needed: payload.generate_slots
+            output_format: 'webp', // Or get from original payload if needed: payload.output_format
+            negative_prompt: payload.negative_prompt || '', // Keep original negative prompt
             seed: Math.floor(Math.random() * 2147483647) + 1, // Use a new seed for retry
           };
           
