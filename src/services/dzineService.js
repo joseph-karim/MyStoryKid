@@ -69,6 +69,10 @@ export const fetchDzine = async (endpoint, options = {}) => {
 export const getDzineStyles = async () => {
   try {
     console.log('Attempting to fetch Dzine styles...');
+    
+    // Run full style analysis
+    await analyzeAllStyles();
+    
     // Using fetchDzine function with the correct endpoint and query parameters
     const data = await fetchDzine('/style/list?page_no=0&page_size=100', { 
       method: 'GET'
@@ -677,6 +681,150 @@ export const getStyleCode = (styleId) => {
   // Default fallback style if mapping fails
   console.warn(`Style ID "${styleId}" not found in style map, using default style`);
   return "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+};
+
+// Debug function to compare our style mappings with API
+export const compareStyleMappings = async () => {
+  try {
+    console.log('Comparing style mappings with API...');
+    
+    // Get styles from API
+    const { list: apiStyles } = await getDzineStyles();
+    
+    // Create a map of API styles for easy lookup
+    const apiStyleMap = {};
+    apiStyles.forEach(style => {
+      apiStyleMap[style.style_code] = style.name;
+    });
+    
+    // Compare our mappings with API
+    console.log('\nChecking our style codes against API:');
+    Object.entries(styleCodeMap).forEach(([ourName, ourCode]) => {
+      const apiName = apiStyleMap[ourCode];
+      if (!apiName) {
+        console.warn(`❌ Our style "${ourName}" with code ${ourCode} not found in API`);
+      } else if (apiName.toLowerCase() !== ourName.split('_').join(' ').toLowerCase()) {
+        console.warn(`⚠️ Style name mismatch for ${ourCode}:`);
+        console.warn(`   Our name: "${ourName}"`);
+        console.warn(`   API name: "${apiName}"`);
+      } else {
+        console.log(`✅ Style "${ourName}" matches API`);
+      }
+    });
+    
+    // Check for API styles we don't have
+    console.log('\nChecking API styles not in our mappings:');
+    apiStyles.forEach(apiStyle => {
+      const ourStyleName = Object.entries(styleCodeMap)
+        .find(([_, code]) => code === apiStyle.style_code)?.[0];
+      if (!ourStyleName) {
+        console.log(`➕ New API style available: "${apiStyle.name}" (${apiStyle.style_code})`);
+      }
+    });
+    
+    return {
+      apiStyles,
+      ourStyles: styleCodeMap
+    };
+  } catch (error) {
+    console.error('Error comparing style mappings:', error);
+    throw error;
+  }
+};
+
+// Debug function to fetch and analyze all styles from API
+export const analyzeAllStyles = async () => {
+  try {
+    console.log('Fetching complete style list from API...');
+    
+    // Make direct API call to get all styles
+    const response = await fetch('https://papi.dzine.ai/openapi/v1/style/list?page_no=0&page_size=1000', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      }
+    });
+
+    const data = await response.json();
+    
+    if (data.code === 200 && data.data && data.data.list) {
+      const apiStyles = data.data.list;
+      console.log(`\nFound ${apiStyles.length} styles in API`);
+      
+      // Create lookup maps
+      const apiStyleMap = {};
+      const ourStyleMap = {};
+      
+      // Map API styles by code
+      apiStyles.forEach(style => {
+        apiStyleMap[style.style_code] = style;
+      });
+      
+      // Map our styles by code
+      Object.entries(styleCodeMap).forEach(([name, code]) => {
+        ourStyleMap[code] = name;
+      });
+      
+      // Compare mappings
+      console.log('\n=== Style Code Analysis ===');
+      
+      // Check our styles against API
+      console.log('\n1. Checking our style codes against API:');
+      Object.entries(styleCodeMap).forEach(([ourName, ourCode]) => {
+        const apiStyle = apiStyleMap[ourCode];
+        if (!apiStyle) {
+          console.log(`❌ Our style "${ourName}" (${ourCode}) not found in API`);
+        } else {
+          const apiName = apiStyle.name;
+          if (apiName.toLowerCase() !== ourName.split('_').join(' ').toLowerCase()) {
+            console.log(`⚠️ Name mismatch for ${ourCode}:`);
+            console.log(`   Our name: "${ourName}"`);
+            console.log(`   API name: "${apiName}"`);
+          } else {
+            console.log(`✅ "${ourName}" matches API name "${apiName}"`);
+          }
+        }
+      });
+      
+      // Check API styles against ours
+      console.log('\n2. Checking API styles not in our mappings:');
+      apiStyles.forEach(apiStyle => {
+        if (!ourStyleMap[apiStyle.style_code]) {
+          console.log(`➕ Available API style: "${apiStyle.name}" (${apiStyle.style_code})`);
+        }
+      });
+      
+      // Specific check for Starlit Fantasy
+      console.log('\n3. Detailed check for Starlit Fantasy:');
+      const ourStarlitCode = styleCodeMap.starlit_fantasy;
+      const apiStarlitStyle = apiStyles.find(s => 
+        s.style_code === ourStarlitCode || 
+        s.name.toLowerCase().includes('starlit') || 
+        s.name.toLowerCase().includes('fantasy')
+      );
+      
+      if (apiStarlitStyle) {
+        console.log('Found potential Starlit Fantasy style in API:');
+        console.log(JSON.stringify(apiStarlitStyle, null, 2));
+      } else {
+        console.log('No style found in API matching Starlit Fantasy criteria');
+      }
+      
+      return {
+        totalApiStyles: apiStyles.length,
+        totalOurStyles: Object.keys(styleCodeMap).length,
+        apiStyles,
+        ourStyles: styleCodeMap
+      };
+    } else {
+      console.error('Unexpected API response structure:', data);
+      throw new Error('API response did not contain expected style list');
+    }
+  } catch (error) {
+    console.error('Error analyzing styles:', error);
+    throw error;
+  }
 };
 
 // --- Potentially add other functions like face detect/swap later if needed --- 
