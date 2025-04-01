@@ -47,6 +47,23 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   
+  // --- MOVED EFFECT: Update isHuman based on type --- 
+  useEffect(() => {
+    // Determine default isHuman value based on type
+    const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
+
+    // Check if isHuman is still at its initial undefined/null state OR if the type change *requires* a default change
+    const shouldSetDefault = characterData.isHuman === undefined || characterData.isHuman === null ||
+                             (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman);
+                             
+    if (shouldSetDefault) {
+        console.log(`[EFFECT - Top Level] Setting default isHuman based on type '${characterData.type}': ${defaultIsHuman}`);
+        // Use the state setter directly or ensure handleChange doesn't cause loops
+        setCharacterData(prev => ({ ...prev, isHuman: defaultIsHuman }));
+    }
+  }, [characterData.type]); // Dependency remains characterData.type
+  // --- END MOVED EFFECT --- 
+  
   // Reset the form state when the component mounts
   useEffect(() => {
     // Reset form to default values
@@ -407,23 +424,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Step 1: Basic character details
   const renderDetailsStep = () => {
     console.log('[Render] renderDetailsStep');
-    // Determine default isHuman value based on type
-    const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
-    
-    // Effect to update isHuman only when type changes AND isHuman hasn't been manually set
-    useEffect(() => {
-      // Check if isHuman is still at its initial undefined/null state OR if the type change *requires* a default change
-      // This prevents overriding a manual user selection unless the type fundamentally changes the default
-      const shouldSetDefault = characterData.isHuman === undefined || characterData.isHuman === null ||
-                               (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman);
-                               
-      if (shouldSetDefault) {
-          console.log(`[EFFECT] Setting default isHuman based on type '${characterData.type}': ${defaultIsHuman}`);
-          handleChange('isHuman', defaultIsHuman);
-      }
-    }, [characterData.type]); // Dependency remains characterData.type
-  
-  return (
+    return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
@@ -474,7 +475,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             <label className="block text-sm font-medium text-gray-700 mb-1">Use Face Matching?</label>
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2 text-sm">
-                  <input 
+                  <input
                   type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === true} 
@@ -484,7 +485,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <span>Yes (Try to keep facial features)</span>
               </label>
               <label className="flex items-center space-x-2 text-sm">
-                        <input 
+                  <input
                           type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === false} 
@@ -493,7 +494,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 />
                 <span>No (e.g., Pet, Creature)</span>
                       </label>
-                  </div>
+                </div>
             <p className="text-xs text-gray-500 mt-1">Select 'No' for pets or fantasy creatures if face matching causes issues.</p>
                 </div>
           {/* --- END: Is Human Toggle --- */}
@@ -504,7 +505,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
                 Age
               </label>
-                  <input
+                        <input
                     type="text"
                 id="age"
                 value={characterData.age || ''}
@@ -516,7 +517,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             <div>
               <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
                 Gender (Optional)
-              </label>
+                      </label>
               <select
                 id="gender"
                 value={characterData.gender || ''}
@@ -529,7 +530,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <option value="Non-binary">Non-binary</option>
                 <option value="Other">Other/Not applicable</option>
               </select>
-            </div>
+                  </div>
                 </div>
                 
             </div>
