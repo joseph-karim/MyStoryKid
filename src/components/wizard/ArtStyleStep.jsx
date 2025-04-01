@@ -405,15 +405,11 @@ function ArtStyleStep() {
                           </svg>
                         </div>
                       )}
-                      {/* Show API style name for transparency */}
-                      {isAvailable && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
-                          API: {apiStyle.name}
-                        </div>
-                      )}
                     </div>
                     <div className="p-3">
-                      <h4 className="font-medium mb-1">{styleDescriptions[styleItem.id]?.title || styleItem.id}</h4>
+                      <h4 className="font-medium mb-1">
+                        {isAvailable ? apiStyle.name : styleDescriptions[styleItem.id]?.title}
+                      </h4>
                       <p className="text-sm text-gray-600">{styleDescriptions[styleItem.id]?.description}</p>
                       {!isAvailable && (
                         <div className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-md inline-block">
