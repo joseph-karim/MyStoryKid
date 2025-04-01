@@ -59,6 +59,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [progressMessage, setProgressMessage] = useState('');
   const [apiStatus, setApiStatus] = useState({ checked: false, working: false, message: '' });
   const fileInputRef = useRef(null);
+  const pollingSessionRef = useRef({});
   
   // Character data
   const [characterData, setCharacterData] = useState(() => ({
@@ -754,133 +755,170 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         const pollingId = uuidv4();
         console.log(`Starting polling with ID ${pollingId} for task ${taskId}`);
         
+        // Mark this polling session as active
+        pollingSessionRef.current[pollingId] = true;
+        
         // Set up polling to check task progress
         const pollInterval = setInterval(async () => {
           try {
-            // If we're no longer generating, stop polling
-            if (!isGenerating) {
-              console.log(`Stopping poll ${pollingId} because isGenerating became false`);
+            // If component is unmounted or polling was explicitly canceled for this session
+            if (!pollingSessionRef.current[pollingId]) {
+              console.log(`Stopping poll ${pollingId} because polling was explicitly canceled`);
               clearInterval(pollInterval);
               return;
             }
             
             pollCount++;
+            setProgressMessage(`Checking progress... (attempt ${pollCount}/${maxPolls})`);
             
-            if (pollCount > maxPolls) {
-              console.log(`Stopping poll ${pollingId} due to max polls reached`);
-              clearInterval(pollInterval);
-              setProgressMessage('Generation is taking longer than expected...');
-              throw new Error(`Generation timed out after ${maxPolls * 2} seconds`);
-            }
+            // Check task progress
+            const progressData = await getTaskProgress(taskId);
+            console.log(`Poll ${pollCount}/${maxPolls} for task ${taskId}:`, progressData);
             
-            setProgressMessage(`Generating preview... (attempt ${pollCount}/${maxPolls})`);
-            console.log(`Polling attempt ${pollCount}/${maxPolls} for task ${taskId}`);
-            const progress = await getTaskProgress(taskId);
-            console.log('Task progress:', progress);
+            // Handle different status formats
+            const status = 
+              progressData.status || 
+              (progressData.data && progressData.data.status) || 
+              'unknown';
             
-            // Check if progress is valid
-            if (!progress || typeof progress !== 'object') {
-              console.error('Invalid progress response:', progress);
-              if (pollCount > 10) { // After 20 seconds of invalid responses, give up
-                console.log(`Stopping poll ${pollingId} due to invalid progress data`);
-                clearInterval(pollInterval);
-                throw new Error('Invalid progress data from API');
-              }
-              return; // Skip this polling cycle
-            }
+            console.log(`Task status: ${status}`);
             
-            if (progress.status === 'succeeded' || progress.status === 'succeed') {
-              console.log(`Stopping poll ${pollingId} due to success status`);
-              clearInterval(pollInterval);
-              setProgressMessage('Preview ready!');
+            if (status === 'succeed' || status === 'succeeded') {
+              // Task completed successfully
+              console.log('Task completed successfully!');
               
-              if (progress.generate_result_slots && progress.generate_result_slots.length > 0) {
-                // Get the first non-empty URL from the slots
-                const imageUrl = progress.generate_result_slots.find(url => url);
-                
-                if (imageUrl) {
-                  console.log('Preview generation completed successfully', imageUrl);
-                  setCharacterData(prev => ({
-                    ...prev,
-                    artStyle: styleIdToUse,
-                    stylePreview: imageUrl
-                  }));
-                  
-                  setIsGenerating(false);
-                } else {
-                  throw new Error('No valid image URL returned from generation');
-                }
+              // Look for the result image URL(s) in various places
+              let resultUrls = [];
+              
+              if (progressData.images) {
+                // Case 1: Direct images array
+                resultUrls = progressData.images;
+                console.log('Found images directly in progressData:', resultUrls);
+              } else if (progressData.data && progressData.data.images) {
+                // Case 2: Images in data object
+                resultUrls = progressData.data.images;
+                console.log('Found images in progressData.data:', resultUrls);
+              } else if (progressData.result && progressData.result.images) {
+                // Case 3: Images in result object
+                resultUrls = progressData.result.images;
+                console.log('Found images in progressData.result:', resultUrls);
               } else {
-                throw new Error('No images returned from generation');
-              }
-            } else if (progress.status === 'failed') {
-              console.log(`Stopping poll ${pollingId} due to failed status`);
-              clearInterval(pollInterval);
-              throw new Error(`Generation failed: ${progress.error_reason || 'Unknown error'}`);
-            } else if (progress.status === 'processing') {
-              // Still processing - continue polling
-              setProgressMessage(`Creating character... (${Math.min(90, pollCount * 5)}%)`);
-              console.log(`Processing: poll ${pollCount}/${maxPolls}`);
-            } else {
-              // Handle unknown status - check if we have image URLs which indicate completion
-              console.log(`Unknown status: ${progress.status} (poll ${pollCount}/${maxPolls})`);
-              
-              // If we have result images, treat as success even with unknown status
-              if (progress.generate_result_slots && progress.generate_result_slots.some(url => url)) {
-                console.log(`Stopping poll ${pollingId} - found images in result`);
-                clearInterval(pollInterval);
-                setProgressMessage('Preview ready!');
+                // Try to find images elsewhere in the response
+                console.log('Looking for images in full response:', progressData);
                 
-                const imageUrl = progress.generate_result_slots.find(url => url);
-                if (imageUrl) {
-                  setCharacterData(prev => ({
-                    ...prev,
-                    artStyle: styleIdToUse,
-                    stylePreview: imageUrl
-                  }));
-                  setIsGenerating(false);
-                  return;
-                }
+                // Case 4: Try to locate any URL that looks like an image
+                const extractUrls = (obj, prefix = '') => {
+                  let urls = [];
+                  if (typeof obj !== 'object' || obj === null) return urls;
+                  
+                  Object.keys(obj).forEach(key => {
+                    const path = prefix ? `${prefix}.${key}` : key;
+                    if (typeof obj[key] === 'string' && 
+                        (obj[key].includes('.png') || 
+                         obj[key].includes('.jpg') || 
+                         obj[key].includes('.jpeg') || 
+                         obj[key].includes('.webp'))) {
+                      console.log(`Found potential image URL at ${path}:`, obj[key]);
+                      urls.push(obj[key]);
+                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                      urls = [...urls, ...extractUrls(obj[key], path)];
+                    }
+                  });
+                  return urls;
+                };
+                
+                resultUrls = extractUrls(progressData);
+                console.log('Extracted possible image URLs:', resultUrls);
               }
               
-              // If no images found, continue polling but give up after a while
-              if (pollCount > 15) { // After 30 seconds of unknown status, give up
-                console.log(`Stopping poll ${pollingId} due to too many unknown status responses`);
+              // If we found any URLs, use the first one
+              if (resultUrls && resultUrls.length > 0) {
+                let imageUrl = null;
+                
+                // If the "URLs" are actually base64 data, use as is
+                if (resultUrls[0].startsWith('data:image')) {
+                  imageUrl = resultUrls[0];
+                } else {
+                  // Otherwise assume it's a URL
+                  imageUrl = resultUrls[0];
+                }
+                
+                console.log('Using image URL:', imageUrl);
+                
+                // Update the character data with the style preview
+                setCharacterData(prev => ({
+                  ...prev,
+                  stylePreview: imageUrl
+                }));
+                
+                // We're done polling
+                console.log(`Successful completion, ending poll ${pollingId}`);
                 clearInterval(pollInterval);
-                throw new Error(`Unknown task status: ${progress.status}`);
+                setIsGenerating(false);
+                delete pollingSessionRef.current[pollingId];
+                return;
+              } else {
+                console.warn('Task completed but no images found in the response');
+                setProgressMessage('Task completed but no images found ⚠️');
+              }
+            } else if (status === 'failed' || status === 'error') {
+              // Task failed
+              console.error('Task failed:', progressData);
+              setProgressMessage('The image generation task failed ❌');
+              clearInterval(pollInterval);
+              setIsGenerating(false);
+              delete pollingSessionRef.current[pollingId];
+              return;
+            } else if (status === 'pending' || status === 'processing' || status === 'unknown') {
+              // Task still in progress
+              // Extract progress percentage if available
+              let progress = null;
+              
+              if (typeof progressData.progress === 'number') {
+                progress = progressData.progress;
+              } else if (progressData.data && typeof progressData.data.progress === 'number') {
+                progress = progressData.data.progress;
+              }
+              
+              if (progress !== null) {
+                const percent = Math.round(progress * 100);
+                setProgressMessage(`Generating preview... ${percent}%`);
+              } else {
+                setProgressMessage(`Generating preview... (poll ${pollCount}/${maxPolls})`);
               }
             }
-          } catch (pollError) {
-            console.error('Polling error:', pollError);
-            console.log(`Stopping poll ${pollingId} due to error`);
-            clearInterval(pollInterval);
             
-            // Generate a fallback even on polling errors
-            throw pollError;
+            // If we've reached the maximum polling attempts, stop polling
+            if (pollCount >= maxPolls) {
+              console.log(`Reached maximum polling attempts (${maxPolls}), stopping`);
+              setProgressMessage('Generation taking longer than expected, please try again');
+              clearInterval(pollInterval);
+              setIsGenerating(false);
+              delete pollingSessionRef.current[pollingId];
+              return;
+            }
+          } catch (error) {
+            console.error(`Error in polling attempt ${pollCount}:`, error);
+            
+            if (pollCount >= maxPolls) {
+              setProgressMessage('Error checking progress, please try again');
+              clearInterval(pollInterval);
+              setIsGenerating(false);
+              delete pollingSessionRef.current[pollingId];
+            } else {
+              setProgressMessage(`Error checking progress, retrying... (${pollCount}/${maxPolls})`);
+            }
           }
-        }, 2000); // Poll every 2 seconds
+        }, 2000);
         
-        // Set a guaranteed timeout fallback
-        setTimeout(() => {
-          if (isGenerating) {
-            console.log(`Stopping poll ${pollingId} due to absolute timeout`);
-            clearInterval(pollInterval);
-            console.log('Forced timeout - generating fallback');
-            
-            // Create a colorful placeholder as fallback
-            const bgColor = stringToColor(characterData.name + styleIdToUse);
-            const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
-            
-            setCharacterData(prev => ({
-              ...prev,
-              artStyle: styleIdToUse,
-              stylePreview: fallbackPreview
-            }));
-            
-            setError('Generation timed out. Using placeholder instead.');
+        // Cleanup for this specific polling session when component unmounts or retry
+        useEffect(() => {
+          return () => {
+            console.log(`Component unmounting, cleaning up generation state`);
+            pollingSessionRef.current = {};
             setIsGenerating(false);
-          }
-        }, 45000); // Absolute maximum timeout - 45 seconds
+          };
+        }, []);
       } catch (apiError) {
         console.error('API Error:', apiError);
         throw new Error(`Dzine API error: ${apiError.message}`);
