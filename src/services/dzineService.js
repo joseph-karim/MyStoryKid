@@ -1,82 +1,107 @@
 const API_BASE_URL = 'https://papi.dzine.ai/openapi/v1';
 const API_KEY = import.meta.env.VITE_DZINE_API_KEY;
 
-// Helper function for making authenticated requests
-const fetchDzine = async (endpoint, options = {}) => {
-  if (!API_KEY) {
-    console.warn('Dzine API Key not found. Please set VITE_DZINE_API_KEY in your .env file.');
-    throw new Error('Dzine API Key not configured');
-  }
-
-  const url = `${API_BASE_URL}${endpoint}`;
-  const headers = {
-    'Authorization': API_KEY,
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
-
+// Generic fetch handler for Dzine API calls
+export const fetchDzine = async (endpoint, options = {}) => {
   try {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    // Make sure headers are included and API key is set
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': process.env.VITE_DZINE_API_KEY || ''
+    };
+    
+    console.log(`Calling Dzine API: ${url}`);
+    
     const response = await fetch(url, {
       ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      // Attempt to read error details from the response body
-      let errorBody = {};
-      try {
-        errorBody = await response.json();
-      } catch (e) {
-        // Ignore if response body is not JSON
+      headers: {
+        ...defaultHeaders,
+        ...options.headers
       }
-      console.error('Dzine API Error:', response.status, response.statusText, errorBody);
-      throw new Error(`Dzine API request failed: ${response.status} ${response.statusText} - ${errorBody.msg || 'Unknown error'}`);
+    });
+    
+    if (!response.ok) {
+      // Try to get error info from response
+      try {
+        const errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error('Dzine API error response:', errorData);
+          throw new Error(`API error (Code: ${errorData.code || response.status}): ${errorData.msg || response.statusText}`);
+        } catch (parseError) {
+          // If we can't parse the error as JSON
+          console.error('Error response (not JSON):', errorText);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+      } catch (e) {
+        // If we can't read the error as text
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
     }
-
-    const data = await response.json();
-    if (data.code !== 200) {
-      console.error('Dzine API Error (Code != 200):', data);
-      throw new Error(`Dzine API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
+    
+    // Read and parse response text manually to catch JSON errors
+    const responseText = await response.text();
+    
+    try {
+      return JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse JSON response:', parseError);
+      console.error('Response text:', responseText.slice(0, 500) + '...');
+      throw new Error(`Failed to parse API response: ${parseError.message}`);
     }
-    return data.data;
-
   } catch (error) {
-    console.error('Error calling Dzine API:', error);
-    throw error; // Re-throw the error to be handled by the caller
+    console.error('Error in fetchDzine:', error);
+    throw error;
   }
 };
 
 // Fetch all styles from Dzine API
 export const getDzineStyles = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/styles`, {
+    // Using the correct endpoint from the curl command
+    const response = await fetch('https://papi.dzine.ai/openapi/v1/style/list', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-KEY': process.env.REACT_APP_DZINE_API_KEY || ''
+        'Authorization': process.env.VITE_DZINE_API_KEY || ''
       }
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error fetching Dzine styles:', errorData);
-      throw new Error(`Failed to fetch styles: ${errorData.message || response.statusText}`);
+      // Get the response as text first to see what we're dealing with
+      const errorText = await response.text();
+      console.error('Error fetching Dzine styles - raw response:', errorText);
+      throw new Error(`Failed to fetch styles: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    
-    // Log available styles for debugging
-    console.log('Available Dzine styles:', data.list ? data.list.map(style => ({
-      name: style.name, 
-      style_code: style.style_code
-    })) : 'No styles available');
-    
-    // Store styles in local cache for reuse
-    if (data.list) {
-      localStorage.setItem('dzine_styles', JSON.stringify(data.list));
+    // Try to parse the response as JSON safely
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('Raw API response (first 100 chars):', responseText.substring(0, 100) + '...');
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error(`Failed to parse API response: ${parseError.message}`);
     }
     
-    return data;
+    // Log available styles for debugging
+    if (data && data.data && data.data.list) {
+      console.log('Available Dzine styles:', data.data.list.slice(0, 5).map(style => ({
+        name: style.name, 
+        style_code: style.style_code
+      })), '... and more');
+      
+      // Store styles in local cache for reuse
+      localStorage.setItem('dzine_styles', JSON.stringify(data.data.list));
+      
+      return { list: data.data.list };
+    } else {
+      console.error('Unexpected API response structure:', data);
+      throw new Error('API response did not contain expected style list');
+    }
   } catch (error) {
     console.error('Error in getDzineStyles:', error);
     
@@ -148,72 +173,47 @@ export const getTokenBalance = async () => {
 
 // 5. Image-to-Image Task Creation
 export const createImg2ImgTask = async (payload) => {
-  if (!API_KEY) {
-    throw new Error('Dzine API Key not configured. Please check your environment variables.');
-  }
-  
-  // Basic validation per API documentation
-  if (!payload.prompt || !payload.style_code || !payload.images) {
-    throw new Error('Missing required fields: prompt, style_code, or images');
-  }
-  
-  // Ensure style_code is a string as per documentation
-  const cleanPayload = {
-    ...payload,
-    style_code: String(payload.style_code) // Ensure it's a string
-  };
-  
-  // Log what we're sending (without the full base64 data)
-  const logPayload = {
-    ...cleanPayload,
-    images: cleanPayload.images.map(img => ({
-      ...img,
-      base64_data: img.base64_data ? (
-        img.base64_data.substring(0, 30) + '...'
-      ) : undefined
-    }))
-  };
-  
-  console.log('Sending to Dzine API:', JSON.stringify(logPayload, null, 2));
-  
   try {
-    // Make the API call with proper headers
-    const response = await fetch(`${API_BASE_URL}/create_task_img2img`, {
+    console.log('Sending to Dzine API:', JSON.stringify(payload, null, 2));
+    
+    const response = await fetchDzine('/img2img', {
       method: 'POST',
-      headers: {
-        'Authorization': API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cleanPayload)
+      body: JSON.stringify(payload)
     });
-
-    // Handle non-OK response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Dzine API HTTP error:', response.status, errorText);
-      throw new Error(`HTTP error ${response.status}: ${errorText}`);
-    }
-
-    // Parse the response
-    const data = await response.json();
-    console.log('Full Dzine API response:', data);
     
-    // Check response code
-    if (data.code !== 200) {
-      throw new Error(`Dzine API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
-    }
+    console.log('Full Dzine API response:', response);
     
-    return data.data;
+    if (response && response.code === 200 && response.data) {
+      return response.data;
+    } else {
+      throw new Error('Invalid response structure from API');
+    }
   } catch (error) {
-    console.error('Error calling Dzine API:', error);
+    console.error('Error in createImg2ImgTask:', error);
     throw error;
   }
 };
 
 // 7. Get Task Progress
 export const getTaskProgress = async (taskId) => {
-  if (!taskId) throw new Error('Task ID is required');
-  return fetchDzine(`/get_task_progress/${taskId}`, { method: 'GET' });
+  if (!taskId) {
+    throw new Error('Task ID is required');
+  }
+  
+  try {
+    const response = await fetchDzine(`/task/query?task_id=${taskId}`, {
+      method: 'GET'
+    });
+    
+    if (response && response.code === 200 && response.data) {
+      return response.data;
+    } else {
+      throw new Error('Invalid response structure from API');
+    }
+  } catch (error) {
+    console.error('Error checking task progress:', error);
+    throw error;
+  }
 };
 
 // --- Potentially add other functions like face detect/swap later if needed --- 

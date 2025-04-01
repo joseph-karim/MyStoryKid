@@ -503,17 +503,25 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             }
           } else {
             // If no API styles available, use our best guess
-            styleCode = "Style-00000001"; // This will likely fail but we'll handle the error
-            console.log("No styles available from API, using fallback:", styleCode);
+            styleCode = styleIdToCodeMap[styleIdToUse] || SAFE_STYLE_CODE;
+            console.log("Using mapped style code:", styleCode);
           }
         }
       } catch (styleError) {
         console.error("Error getting styles from API:", styleError);
-        // Just use a placeholder, we'll handle the error if generation fails
-        styleCode = "Style-00000001";
+        // Just use our style mapping
+        styleCode = styleIdToCodeMap[styleIdToUse] || SAFE_STYLE_CODE;
+        console.log("Using fallback mapped style code:", styleCode);
       }
       
-      // Create the payload for the API
+      // Add additional description to enhance the prompt
+      if (styleIdToUse === 'cartoon') {
+        prompt += ", Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories., vibrant cartoon style with clean lines and expressive features";
+      } else if (styleIdToUse === 'watercolor') {
+        prompt += ", Soft edges, delicate color washes, and a dreamy quality. Perfect for gentle, emotional stories.";
+      }
+      
+      // Create the payload for the API - matching the working parameters
       const payload = {
         prompt: prompt,
         style_code: styleCode,
@@ -522,11 +530,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             base64_data: base64Data
           }
         ],
-        style_intensity: 0.9,
-        structure_match: 0.8,
+        style_intensity: 0.8,      // Changed from 0.9 to match working version
+        structure_match: 0.7,      // Changed from 0.8 to match working version
         face_match: 1,
+        color_match: 0,            // Added to match working version
         quality_mode: 0,
-        generate_slots: [1, 0, 0, 0]
+        generate_slots: [1, 0, 0, 0],
+        output_format: "webp"      // Added to match working version
       };
       
       // Log the payload structure (without the full base64 data)
