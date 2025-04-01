@@ -1646,9 +1646,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       });
       
       // Prepare the base64 image from the character data
-      const baseImage = characterData.baseImage;
+      const baseImage = characterData.photoUrl;
+      console.log('IMAGE DEBUG:', {
+        hasBaseImage: !!baseImage,
+        baseImageType: typeof baseImage,
+        baseImageLength: baseImage ? baseImage.length : 0,
+        isBase64: baseImage ? baseImage.startsWith('data:image') : false
+      });
+
       if (!baseImage) {
         throw new Error('No base image available');
+      }
+
+      // Validate base64 image format
+      if (!baseImage.startsWith('data:image')) {
+        throw new Error('Invalid image format. Expected base64 data URL.');
       }
       
       // Create the API payload
@@ -1657,30 +1669,39 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         image: baseImage,
         prompt: prompt || 'Generate a character portrait in the selected style',
         color_match: 0.5,
-        face_match: 1.0, // Maximum face matching to preserve facial features
+        face_match: 1.0,
         style_intensity: 1.0,
         negative_prompt: 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
         num_images: 1,
         image_resolution: '512*512'
       };
-      
-      console.log('STYLE DEBUG: Using img2img with mapped API style_code=' + styleCode + ' with style_intensity=' + payload.style_intensity + ' and face_match=' + payload.face_match);
+
+      console.log('PAYLOAD DEBUG:', {
+        hasImage: !!payload.image,
+        imageType: typeof payload.image,
+        styleCode: payload.style_code,
+        prompt: payload.prompt,
+        colorMatch: payload.color_match,
+        faceMatch: payload.face_match,
+        styleIntensity: payload.style_intensity
+      });
       
       // Create the task
       const taskResponse = await createImg2ImgTask(payload);
       
-      if (!taskResponse || !taskResponse.task_id) {
-        console.error('Invalid task response:', taskResponse);
-        throw new Error('Failed to create generation task');
+      if (!taskResponse || !taskResponse.data || !taskResponse.data.task_id) {
+        throw new Error('Failed to create image generation task');
       }
       
+      const taskId = taskResponse.data.task_id;
+      console.log('Task created with ID:', taskId);
+      
       // Start polling for the result
-      startPollingTask(taskResponse.task_id, fallbackImage);
+      await startPollingTask(taskId, fallbackImage);
+      
     } catch (error) {
       console.error('API error in image-to-image:', error);
-      setProgressMessage('Error: ' + error.message);
-      setIsGenerating(false);
-      useFallbackImage(fallbackImage);
+      handleGenerationError(error, fallbackImage);
     }
   };
   
