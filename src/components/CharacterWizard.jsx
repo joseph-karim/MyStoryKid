@@ -61,6 +61,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const fileInputRef = useRef(null);
   const pollingSessionRef = useRef({});
   
+  // Add state for API styles
+  const [apiStyles, setApiStyles] = useState([]);
+  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
+  
   // Character data
   const [characterData, setCharacterData] = useState(() => ({
     id: uuidv4(), // Generate a unique ID each time the component mounts
@@ -71,10 +75,54 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     traits: [],
     interests: [],
     photoUrl: null,
-    artStyle: forcedArtStyle || 'cartoon',
+    artStyle: forcedArtStyle || null, // Will be set to first available style after fetch
     stylePreview: null,
     description: '',
   }));
+  
+  // Fetch styles from API on mount
+  useEffect(() => {
+    const fetchStyles = async () => {
+      try {
+        setIsLoadingStyles(true);
+        console.log('Fetching Dzine API styles for wizard...');
+        const stylesData = await getDzineStyles();
+        
+        if (stylesData?.list?.length > 0) {
+          console.log(`Retrieved ${stylesData.list.length} styles from Dzine API`);
+          setApiStyles(stylesData.list);
+          
+          // Set initial art style if none is selected
+          if (!characterData.artStyle) {
+            // Default to the first style in the list as fallback
+            const defaultStyle = stylesData.list[0]?.style_code || null;
+            
+            // Try to find a recommended style (like cartoon, 3D, pixie, etc)
+            const recommendedStyle = stylesData.list.find(style => 
+              style.name.toLowerCase().includes('cartoon') || 
+              style.name.toLowerCase().includes('3d') ||
+              style.name.toLowerCase().includes('pixie')
+            );
+            
+            setCharacterData(prev => ({
+              ...prev,
+              artStyle: forcedArtStyle || recommendedStyle?.style_code || defaultStyle
+            }));
+          }
+        } else {
+          console.error('No styles available from Dzine API');
+          setError('Could not load art styles from the API');
+        }
+      } catch (err) {
+        console.error('Error fetching Dzine styles:', err);
+        setError('Failed to load art styles. Please try again later.');
+      } finally {
+        setIsLoadingStyles(false);
+      }
+    };
+    
+    fetchStyles();
+  }, []);
   
   // Run API diagnostic check on mount
   useEffect(() => {
@@ -128,59 +176,88 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     { id: 'animal', name: 'Animal', description: 'A pet or wild animal companion' },
   ];
   
-  // Art styles with categories and descriptions to match CharactersStep component
-  const ART_STYLE_CATEGORIES = [
-    {
-      category: '🎨 Whimsical & Soft',
-      description: 'Warm, comforting styles with a dreamy quality',
-      styles: [
-        { id: 'watercolor', name: 'Watercolor', description: 'Soft, expressive, and magical. Great for fairy tales.' },
-        { id: 'pastel', name: 'Pastel', description: 'Soft-edged and calming, like chalk or crayon textures.' },
-        { id: 'pencil_wash', name: 'Gentle Pencil + Wash', description: 'Pencil lines with light color washes. Subtle and intimate.' },
-        { id: 'soft_digital', name: 'Soft Digital', description: 'Digital painting with a hand-drawn aesthetic.' }
-      ]
-    },
-    {
-      category: '✏️ Classic & Timeless',
-      description: 'Styles that evoke nostalgia and timelessness',
-      styles: [
-        { id: 'pencil_ink', name: 'Pencil & Ink', description: 'Monochrome or light inked outlines with shading.' },
-        { id: 'golden_books', name: 'Golden Books', description: 'Inspired by mid-century illustrations. Bright and detailed.' },
-        { id: 'beatrix_potter', name: 'Beatrix Potter', description: 'Classic English watercolor with fine detail.' }
-      ]
-    },
-    {
-      category: '✨ Modern & Colorful',
-      description: 'Bold styles that pop with energy and imagination',
-      styles: [
-        { id: 'cartoon', name: 'Cartoon', description: 'Clean lines, bright colors, and exaggerated expressions.' },
-        { id: 'flat_vector', name: 'Flat Vector', description: 'Bold, clean, and simple. Modern and educational.' },
-        { id: 'storybook_pop', name: 'Storybook Pop', description: 'Bright, slightly surreal, and energetic. Great for adventures.' },
-        { id: 'papercut', name: 'Paper Collage', description: 'Textured look like layers of paper or fabric.' }
-      ]
-    },
-    {
-      category: '🖼️ Artistic & Elevated',
-      description: 'More sophisticated, painterly styles',
-      styles: [
-        { id: 'oil_pastel', name: 'Oil Pastel', description: 'Thick brush strokes, vivid colors, tactile textures.' },
-        { id: 'stylized_realism', name: 'Stylized Realism', description: 'Semi-realistic with artistic lighting. Recognizable features.' },
-        { id: 'digital_painterly', name: 'Digital Painterly', description: 'Mimics classical painting with digital precision.' }
-      ]
-    },
-    {
-      category: '🌍 Cultural Styles',
-      description: 'Styles inspired by different traditions',
-      styles: [
-        { id: 'kawaii', name: 'Japanese Kawaii', description: 'Ultra-cute, rounded characters, soft palettes.' },
-        { id: 'scandinavian', name: 'Scandinavian Folk', description: 'Geometric shapes, bold colors, often nature-themed.' },
-        { id: 'african_pattern', name: 'African Pattern', description: 'Bright colors, bold patterns, and rich symbolism.' }
-      ]
+  // Helper function to categorize styles from API
+  const getStyleCategories = () => {
+    if (!apiStyles.length) return [];
+    
+    // Create categories based on patterns in style names
+    const categories = [
+      {
+        category: '🎨 3D & Cartoon Styles',
+        description: 'Modern 3D and cartoon art styles',
+        filter: style => 
+          style.name.toLowerCase().includes('3d') || 
+          style.name.toLowerCase().includes('cartoon') ||
+          style.name.toLowerCase().includes('pixie') ||
+          style.name.toLowerCase().includes('anime')
+      },
+      {
+        category: '🖌️ Artistic & Painterly',
+        description: 'Painterly and artistic styles with texture and depth',
+        filter: style => 
+          style.name.toLowerCase().includes('paint') || 
+          style.name.toLowerCase().includes('art') ||
+          style.name.toLowerCase().includes('water') ||
+          style.name.toLowerCase().includes('drawing')
+      },
+      {
+        category: '✏️ Classic & Illustration',
+        description: 'Classic illustration styles, perfect for storybooks',
+        filter: style => 
+          style.name.toLowerCase().includes('illustration') || 
+          style.name.toLowerCase().includes('classic') ||
+          style.name.toLowerCase().includes('golden') ||
+          style.name.toLowerCase().includes('story') ||
+          style.name.toLowerCase().includes('book')
+      },
+      {
+        category: '✨ Whimsical & Fun',
+        description: 'Playful, cute, and whimsical styles for young children',
+        filter: style => 
+          style.name.toLowerCase().includes('fun') || 
+          style.name.toLowerCase().includes('cute') ||
+          style.name.toLowerCase().includes('whimsical') ||
+          style.name.toLowerCase().includes('playful') ||
+          style.name.toLowerCase().includes('toy')
+      }
+    ];
+    
+    // Create the structured categories with styles
+    const structuredCategories = categories.map(category => {
+      const matchingStyles = apiStyles.filter(category.filter);
+      return {
+        ...category,
+        styles: matchingStyles.map(style => ({
+          id: style.style_code,
+          name: style.name,
+          description: `${style.name} style`,
+          imageUrl: style.cover_url
+        }))
+      };
+    });
+    
+    // Add an "All Styles" category for any remaining styles
+    const allCategorizedStyles = structuredCategories.flatMap(cat => cat.styles.map(s => s.id));
+    const uncategorizedStyles = apiStyles.filter(style => 
+      !allCategorizedStyles.includes(style.style_code)
+    );
+    
+    if (uncategorizedStyles.length > 0) {
+      structuredCategories.push({
+        category: '🌟 More Styles',
+        description: 'Additional art styles to explore',
+        styles: uncategorizedStyles.map(style => ({
+          id: style.style_code,
+          name: style.name,
+          description: `${style.name} style`,
+          imageUrl: style.cover_url
+        }))
+      });
     }
-  ];
-
-  // Flatten for easy lookup
-  const ALL_ART_STYLES = ART_STYLE_CATEGORIES.flatMap(category => category.styles);
+    
+    // Filter out any empty categories
+    return structuredCategories.filter(cat => cat.styles.length > 0);
+  };
   
   // Skip to the correct step if we have a forcedArtStyle
   useEffect(() => {
@@ -229,7 +306,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       traits: [],
       interests: [],
       photoUrl: null,
-      artStyle: forcedArtStyle || 'cartoon',
+      artStyle: forcedArtStyle || null,
       stylePreview: null,
       description: '',
     });
@@ -469,36 +546,60 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const renderAppearanceStep = () => {
+    const styleCategories = getStyleCategories();
+    
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold mb-4">Choose Art Style</h3>
         
-        <div className="space-y-6">
-          {ART_STYLE_CATEGORIES.map((category, index) => (
-            <div key={index} className="space-y-2">
-              <h4 className="font-medium text-gray-700">{category.category}</h4>
-              <p className="text-sm text-gray-500">{category.description}</p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {category.styles.map(style => (
+        {isLoadingStyles ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            <span className="ml-2">Loading available styles...</span>
+          </div>
+        ) : apiStyles.length === 0 ? (
+          <div className="p-4 bg-red-50 text-red-600 rounded-md">
+            <p>No art styles could be loaded from the API. Please try again later.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {styleCategories.map((category, index) => (
+              <div key={index} className="space-y-2">
+                <h4 className="font-medium text-gray-700">{category.category}</h4>
+                <p className="text-sm text-gray-500">{category.description}</p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {category.styles.map(style => (
                     <div
                       key={style.id}
-                    className={`p-3 border rounded-lg cursor-pointer ${
+                      className={`p-3 border rounded-lg cursor-pointer ${
                         characterData.artStyle === style.id
                           ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-200'
-                    }`}
-                    onClick={() => handleChange('artStyle', style.id)}
-                  >
-                    <div className="font-medium">{style.name}</div>
-                    <div className="text-xs text-gray-500">{style.description}</div>
+                          : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                      onClick={() => handleChange('artStyle', style.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {style.imageUrl && (
+                          <img 
+                            src={style.imageUrl} 
+                            alt={style.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        )}
+                        <div>
+                          <div className="font-medium">{style.name}</div>
+                          <div className="text-xs text-gray-500">{style.description}</div>
+                        </div>
+                      </div>
                     </div>
                   ))}
+                </div>
               </div>
-            </div>
-          ))}
-                  </div>
-            </div>
+            ))}
+          </div>
+        )}
+      </div>
     );
   };
   
@@ -569,7 +670,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     );
   };
   
-  // Generate character preview - updated to use Dzine API
+  // Update the generateCharacterPreview function to use the selected API style directly
   const generateCharacterPreview = async () => {
     setIsGenerating(true);
     setError('');
@@ -580,12 +681,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       setProgressMessage(`Warning: API check failed (${apiStatus.message}). Trying anyway...`);
     }
     
-    // Always use the forced art style if provided, otherwise use the one from character data
-    const styleIdToUse = forcedArtStyle || characterData.artStyle;
-    
     try {
       if (!characterData.photoUrl) {
         throw new Error('Please upload a photo first');
+      }
+      
+      if (!characterData.artStyle) {
+        throw new Error('Please select an art style');
       }
       
       // Extract the base64 data correctly
@@ -602,98 +704,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       if (characterData.age) prompt += `, ${characterData.age} years old`;
       if (characterData.gender) prompt += `, ${characterData.gender}`;
       
-      // REVISED STYLE CODE SELECTION - prioritize getting styles from API
-      let styleCode = "";
-      
-      try {
-        // First try to get fresh style list from the API
-        console.log("Fetching current available styles from API...");
-        const stylesData = await getDzineStyles();
-        
-        if (stylesData?.list?.length > 0) {
-          console.log(`Got ${stylesData.list.length} styles from the API`);
-          
-          // If styleIdToUse is already a full style code, verify it exists in the API list
-          if (styleIdToUse && styleIdToUse.startsWith('Style-')) {
-            const styleExists = stylesData.list.some(s => s.style_code === styleIdToUse);
-            if (styleExists) {
-              styleCode = styleIdToUse;
-              console.log("Direct style code verified in API list:", styleCode);
-            } else {
-              console.log("Style code not found in API list, will select an alternative");
-            }
-          }
-          
-          // If we don't have a valid style code yet, try matching by name/category
-          if (!styleCode) {
-            let matchedStyle = null;
-            
-            // Try different matching strategies
-            if (styleIdToUse === 'cartoon') {
-              matchedStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes('cartoon') || 
-                s.name.toLowerCase().includes('anime') ||
-                s.name.toLowerCase().includes('2d')
-              );
-            } else if (styleIdToUse === 'watercolor') {
-              matchedStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes('watercolor') || 
-                s.name.toLowerCase().includes('water color') ||
-                s.name.toLowerCase().includes('whimsy')
-              );
-            } else if (styleIdToUse === 'golden_books') {
-              matchedStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes('golden') || 
-                s.name.toLowerCase().includes('classic') ||
-                s.name.toLowerCase().includes('illustration') ||
-                s.name.toLowerCase().includes('storybook')
-              );
-            } else if (styleIdToUse === 'beatrix_potter') {
-              matchedStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes('fable') || 
-                s.name.toLowerCase().includes('classic') ||
-                s.name.toLowerCase().includes('warm')
-              );
-            } else {
-              // Generic search based on style ID
-              const searchTerm = styleIdToUse.replace(/_/g, ' ');
-              matchedStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes(searchTerm)
-              );
-            }
-            
-            if (matchedStyle) {
-              styleCode = matchedStyle.style_code;
-              console.log(`Found matching style "${matchedStyle.name}" with code:`, styleCode);
-            } else {
-              // Default to a safe style - always use 3D cartoon by default
-              const defaultStyle = stylesData.list.find(s => 
-                s.name.toLowerCase().includes('3d') || 
-                s.name.toLowerCase().includes('cartoon') ||
-                s.name.toLowerCase().includes('pixie')
-              ) || stylesData.list[0];
-              
-              styleCode = defaultStyle.style_code;
-              console.log(`Using default style "${defaultStyle.name}" with code:`, styleCode);
-            }
-          }
-        } else {
-          throw new Error('No styles available from the API');
-        }
-      } catch (styleError) {
-        console.error("Error getting styles from API:", styleError);
-        
-        // Fall back to "No Style" if all else fails - this is the last resort
-        styleCode = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
-        console.log("Using fallback 'No Style' code:", styleCode);
-      }
-      
-      // Add additional description to enhance the prompt
-      if (styleIdToUse === 'cartoon') {
-        prompt += ", Clean lines, bright colors, and exaggerated expressions. Great for action-packed or silly stories., vibrant cartoon style with clean lines and expressive features";
-      } else if (styleIdToUse === 'watercolor') {
-        prompt += ", Soft edges, delicate color washes, and a dreamy quality. Perfect for gentle, emotional stories.";
-      }
+      // Use the style code directly from character data (which is now set to the API style code)
+      const styleCode = characterData.artStyle;
+      console.log("Using style code directly from character data:", styleCode);
       
       // Create the payload for the API - matching the working parameters
       const payload = {
@@ -704,13 +717,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             base64_data: base64Data
           }
         ],
-        style_intensity: 0.8,      // Changed from 0.9 to match working version
-        structure_match: 0.7,      // Changed from 0.8 to match working version
+        style_intensity: 0.8,
+        structure_match: 0.7,
         face_match: 1,
-        color_match: 0,            // Added to match working version
+        color_match: 0,
         quality_mode: 0,
         generate_slots: [1, 0, 0, 0],
-        output_format: "webp"      // Added to match working version
+        output_format: "webp"
       };
       
       // Log the payload structure (without the full base64 data)
@@ -927,12 +940,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       console.error('Error creating Dzine task:', error);
       
       // Always fall back to placeholder on error
-      const bgColor = stringToColor(characterData.name + styleIdToUse);
+      const bgColor = stringToColor(characterData.name + styleCode);
       const fallbackPreview = createColorPlaceholder(bgColor, characterData.name);
       
       setCharacterData(prev => ({
         ...prev,
-        artStyle: styleIdToUse,
+        artStyle: styleCode,
         stylePreview: fallbackPreview
       }));
       
