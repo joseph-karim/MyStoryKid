@@ -61,8 +61,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const fileInputRef = useRef(null);
   
   // Character data
-  const [characterData, setCharacterData] = useState({
-    id: uuidv4(),
+  const [characterData, setCharacterData] = useState(() => ({
+    id: uuidv4(), // Generate a unique ID each time the component mounts
     name: '',
     type: 'child',
     age: '',
@@ -73,7 +73,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     artStyle: forcedArtStyle || 'cartoon',
     stylePreview: null,
     description: '',
-  });
+  }));
   
   // Run API diagnostic check on mount
   useEffect(() => {
@@ -105,6 +105,18 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     
     checkApi();
   }, []);
+  
+  // Cleanup function for any active polling
+  useEffect(() => {
+    // Return cleanup function
+    return () => {
+      // If we're still generating when component unmounts, set flag to false
+      if (isGenerating) {
+        console.log('Component unmounting, cleaning up generation state');
+        setIsGenerating(false);
+      }
+    };
+  }, [isGenerating]);
   
   // Character types
   const CHARACTER_TYPES = [
@@ -191,6 +203,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     });
   };
   
+  // Reset function to clear state
+  const resetCharacterState = () => {
+    setIsGenerating(false);
+    setError('');
+    setProgressMessage('');
+    setPhotoPreview(null);
+    // Reset character data with a new ID
+    setCharacterData({
+      id: uuidv4(),
+      name: '',
+      type: 'child',
+      age: '',
+      gender: '',
+      traits: [],
+      interests: [],
+      photoUrl: null,
+      artStyle: forcedArtStyle || 'cartoon',
+      stylePreview: null,
+      description: '',
+    });
+  };
+  
   const handleComplete = () => {
     if (!characterData.name) {
       setError('Please enter a name for your character.');
@@ -204,10 +238,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       artStyle: forcedArtStyle || characterData.artStyle
     };
     
+    // Reset for next use
+    resetCharacterState();
+    
     onComplete(newCharacter);
   };
   
   const handleCancel = () => {
+    // Reset for next use
+    resetCharacterState();
+    
     onComplete(null);
   };
   
@@ -288,9 +328,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             className="w-full p-2 border border-gray-300 rounded-md"
             placeholder="Enter character name"
           />
-        </div>
-        
-        <div>
+      </div>
+      
+          <div>
           <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
             Character Type
           </label>
@@ -306,27 +346,27 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               </option>
             ))}
           </select>
-        </div>
+          </div>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
               Age
-            </label>
-            <input
-              type="text"
-              id="age"
-              value={characterData.age}
+                      </label>
+                  <input
+                    type="text"
+                    id="age"
+                    value={characterData.age}
               onChange={(e) => handleChange('age', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
               placeholder="Age"
-            />
-          </div>
-          
+                  />
+                </div>
+                
           <div>
             <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
               Gender
-            </label>
+                      </label>
             <select
               id="gender"
               value={characterData.gender}
@@ -339,9 +379,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               <option value="non-binary">Non-binary</option>
               <option value="other">Other</option>
             </select>
-          </div>
-        </div>
-      </div>
+                  </div>
+                </div>
+              </div>
     );
   };
   
@@ -351,31 +391,31 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <h3 className="text-lg font-semibold mb-4">Upload Character Photo</h3>
         
         <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg">
-          {photoPreview ? (
+                  {photoPreview ? (
             <div className="space-y-4">
-              <img 
-                src={photoPreview} 
-                alt="Character preview" 
+                      <img 
+                        src={photoPreview} 
+                        alt="Character preview" 
                 className="w-32 h-32 object-cover mx-auto rounded-lg"
-              />
-              <button
+                      />
+                      <button 
                 onClick={() => {
-                  setPhotoPreview(null);
+                          setPhotoPreview(null);
                   setCharacterData(prev => ({ ...prev, photoUrl: null }));
-                }}
+                        }}
                 className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
-              >
+                      >
                 Remove Photo
-              </button>
-            </div>
-          ) : (
+                      </button>
+                    </div>
+                  ) : (
             <>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handlePhotoUpload}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
                 className="hidden"
-                accept="image/*"
+                    accept="image/*"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -388,8 +428,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               </p>
             </>
           )}
-        </div>
-      </div>
+                </div>
+              </div>
     );
   };
   
@@ -406,24 +446,24 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {category.styles.map(style => (
-                  <div
-                    key={style.id}
+                    <div
+                      key={style.id}
                     className={`p-3 border rounded-lg cursor-pointer ${
-                      characterData.artStyle === style.id
-                        ? 'border-blue-500 bg-blue-50'
+                        characterData.artStyle === style.id
+                          ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-blue-200'
                     }`}
                     onClick={() => handleChange('artStyle', style.id)}
                   >
                     <div className="font-medium">{style.name}</div>
                     <div className="text-xs text-gray-500">{style.description}</div>
-                  </div>
-                ))}
+                    </div>
+                  ))}
               </div>
             </div>
           ))}
-        </div>
-      </div>
+                  </div>
+            </div>
     );
   };
   
@@ -451,16 +491,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
           {photoPreview && (
-            <div className="text-center">
+          <div className="text-center">
               <p className="text-sm text-gray-500 mb-2">Original Photo</p>
               <img 
                 src={photoPreview} 
                 alt="Original" 
                 className="w-32 h-32 object-cover rounded-lg border border-gray-300" 
-              />
-            </div>
-          )}
-          
+                    />
+                  </div>
+                )}
+                
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-2">Character Preview</p>
             {isGenerating ? (
@@ -489,8 +529,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             {characterData.age && `, ${characterData.age} years old`}
             {characterData.gender && `, ${characterData.gender}`}
           </p>
-        </div>
-      </div>
+              </div>
+            </div>
     );
   };
   
@@ -615,12 +655,24 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         let pollCount = 0;
         let maxPolls = 20; // Maximum number of polling attempts (40 seconds at 2 second intervals)
         
+        // Create a unique ID for this polling session to avoid conflicts
+        const pollingId = uuidv4();
+        console.log(`Starting polling with ID ${pollingId} for task ${taskId}`);
+        
         // Set up polling to check task progress
         const pollInterval = setInterval(async () => {
           try {
+            // If we're no longer generating, stop polling
+            if (!isGenerating) {
+              console.log(`Stopping poll ${pollingId} because isGenerating became false`);
+              clearInterval(pollInterval);
+              return;
+            }
+            
             pollCount++;
             
             if (pollCount > maxPolls) {
+              console.log(`Stopping poll ${pollingId} due to max polls reached`);
               clearInterval(pollInterval);
               setProgressMessage('Generation is taking longer than expected...');
               throw new Error(`Generation timed out after ${maxPolls * 2} seconds`);
@@ -635,6 +687,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             if (!progress || typeof progress !== 'object') {
               console.error('Invalid progress response:', progress);
               if (pollCount > 10) { // After 20 seconds of invalid responses, give up
+                console.log(`Stopping poll ${pollingId} due to invalid progress data`);
                 clearInterval(pollInterval);
                 throw new Error('Invalid progress data from API');
               }
@@ -642,6 +695,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             }
             
             if (progress.status === 'succeeded' || progress.status === 'succeed') {
+              console.log(`Stopping poll ${pollingId} due to success status`);
               clearInterval(pollInterval);
               setProgressMessage('Preview ready!');
               
@@ -665,6 +719,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 throw new Error('No images returned from generation');
               }
             } else if (progress.status === 'failed') {
+              console.log(`Stopping poll ${pollingId} due to failed status`);
               clearInterval(pollInterval);
               throw new Error(`Generation failed: ${progress.error_reason || 'Unknown error'}`);
             } else if (progress.status === 'processing') {
@@ -677,7 +732,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               // If we have result images, treat as success even with unknown status
               if (progress.generate_result_slots && progress.generate_result_slots.some(url => url)) {
-                console.log('Found image URLs in result, treating as success');
+                console.log(`Stopping poll ${pollingId} - found images in result`);
                 clearInterval(pollInterval);
                 setProgressMessage('Preview ready!');
                 
@@ -695,12 +750,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               
               // If no images found, continue polling but give up after a while
               if (pollCount > 15) { // After 30 seconds of unknown status, give up
+                console.log(`Stopping poll ${pollingId} due to too many unknown status responses`);
                 clearInterval(pollInterval);
                 throw new Error(`Unknown task status: ${progress.status}`);
               }
             }
           } catch (pollError) {
             console.error('Polling error:', pollError);
+            console.log(`Stopping poll ${pollingId} due to error`);
             clearInterval(pollInterval);
             
             // Generate a fallback even on polling errors
@@ -711,6 +768,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         // Set a guaranteed timeout fallback
         setTimeout(() => {
           if (isGenerating) {
+            console.log(`Stopping poll ${pollingId} due to absolute timeout`);
             clearInterval(pollInterval);
             console.log('Forced timeout - generating fallback');
             
@@ -872,15 +930,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-        <button
+              <button
           onClick={handleCancel}
           className="text-gray-400 hover:text-gray-600"
-        >
+              >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
-      </div>
+              </button>
+            </div>
       
       {/* Progress Indicator */}
       <div className="mb-8">
@@ -905,8 +963,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-        </div>
-      )}
+          </div>
+        )}
       
       {/* Step Content */}
       <div className="mb-8 min-h-[300px]">
