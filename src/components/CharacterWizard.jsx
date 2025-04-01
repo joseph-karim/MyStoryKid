@@ -372,7 +372,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Reset function to clear state
   const resetCharacterState = () => {
-    setIsGenerating(false);
+      setIsGenerating(false);
     setError('');
     setProgressMessage('');
     setPhotoPreview(null);
@@ -507,21 +507,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold mb-4">Character Details</h3>
-        
-        <div>
+              
+              <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
             Character Name*
           </label>
-          <input
-            type="text"
+                  <input
+                    type="text"
             id="name"
-            value={characterData.name}
+                    value={characterData.name}
             onChange={(e) => handleChange('name', e.target.value)}
             className="w-full p-2 border border-gray-300 rounded-md"
-            placeholder="Enter character name"
-          />
-      </div>
-      
+                    placeholder="Enter character name"
+                  />
+                </div>
+                
           <div>
           <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
             Character Type
@@ -606,7 +606,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     type="file"
                     ref={fileInputRef}
                     onChange={handlePhotoUpload}
-                className="hidden"
+                    className="hidden"
                     accept="image/*"
               />
               <button
@@ -681,8 +681,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     if (!apiStyle) return null; // Skip if no matching API style found
                     
                     return (
-                      <div
-                        key={style.id}
+                    <div
+                      key={style.id}
                         className={`p-3 border rounded-lg cursor-pointer transition-all ${
                           characterData.artStyle === actualStyleId
                             ? 'border-blue-500 bg-blue-50 shadow-md'
@@ -693,7 +693,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                         <div className="space-y-2">
                           <img 
                             src={style.imageUrl} 
-                            alt={style.name}
+                          alt={style.name}
                             className="w-full h-32 object-cover rounded"
                           />
                           <div>
@@ -702,15 +702,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                               {characterData.artStyle === actualStyleId && (
                                 <span className="text-blue-500">✓</span>
                               )}
-                            </div>
+                      </div>
                             <div className="text-xs text-gray-500">{style.description}</div>
                             <div className="text-xs text-gray-400 mt-1">API: {apiStyle.name}</div>
-                          </div>
-                        </div>
-                      </div>
+                    </div>
+                </div>
+              </div>
                     );
                   })}
-                </div>
+            </div>
               </div>
             ))}
             
@@ -811,8 +811,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               </div>
             )}
           </div>
-        </div>
-        
+                </div>
+                
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium">{characterData.name}</h4>
           <p className="text-sm text-gray-600">
@@ -1201,7 +1201,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         <div className="text-center p-8">
           <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-600">Applying the story's art style to your character...</p>
-        </div>
+            </div>
       );
     }
     
@@ -1231,14 +1231,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-              <button
+                <button
           onClick={handleCancel}
           className="text-gray-400 hover:text-gray-600"
-              >
+                >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-              </button>
+                </button>
             </div>
       
       {/* Progress Indicator */}
@@ -1274,7 +1274,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       {/* Navigation */}
       <div className="flex justify-between">
-        <button
+              <button
           onClick={handleBack}
           className={`px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 ${
             step === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
@@ -1288,7 +1288,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           {step === 4 ? 'Complete' : 'Next'}
-        </button>
+              </button>
       </div>
     </div>
   );
