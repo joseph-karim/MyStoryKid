@@ -178,6 +178,27 @@ export const getTokenBalance = async () => {
 // 3. Upload Image (Optional, we'll use base64 first)
 // export const uploadImage = async (formData) => { ... };
 
+// Add new function to upload file to Dzine CDN
+export const uploadFileToDzine = async (file) => {
+  try {
+    // Create form data
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Make the API call
+    const response = await fetchDzine('/file/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    console.log('File upload response:', response);
+    return response.data.file_path;
+  } catch (error) {
+    console.error('Error uploading file to Dzine:', error);
+    throw error;
+  }
+};
+
 // 5. Image-to-Image Task Creation
 export const createImg2ImgTask = async (payload) => {
   try {
@@ -189,26 +210,40 @@ export const createImg2ImgTask = async (payload) => {
       }
     }
 
+    // If image is base64, convert it to a file and upload
+    let imageUrl = payload.image;
+    if (payload.image.startsWith('data:image')) {
+      const base64Data = payload.image.split(',')[1];
+      const binaryData = atob(base64Data);
+      const array = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        array[i] = binaryData.charCodeAt(i);
+      }
+      const blob = new Blob([array], { type: 'image/jpeg' });
+      const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+      imageUrl = await uploadFileToDzine(file);
+    }
+
     // Clean and prepare the payload
     const cleanPayload = {
       style_code: payload.style_code,
-      image: payload.image,
+      image: imageUrl, // Use the uploaded image URL
       prompt: payload.prompt,
-      color_match: payload.color_match || 0.5, // Default to 0.5 if not specified
-      face_match: payload.face_match || 1.0, // Default to 1.0 if not specified
+      color_match: payload.color_match || 0.5,
+      face_match: payload.face_match || 1.0,
       style_intensity: payload.style_intensity || 1.0,
       negative_prompt: payload.negative_prompt || '',
       seed: payload.seed || -1,
       num_images: payload.num_images || 1,
       image_resolution: payload.image_resolution || '512*512',
-      safety_check: payload.safety_check !== false, // Default to true
-      async_process: payload.async_process !== false // Default to true
+      safety_check: payload.safety_check !== false,
+      async_process: payload.async_process !== false
     };
 
     // Log the cleaned payload for debugging
     console.log('Creating img2img task with payload:', {
       ...cleanPayload,
-      image: cleanPayload.image ? 'base64_image_data' : 'no_image' // Don't log full image data
+      image: cleanPayload.image ? 'image_url' : 'no_image' // Don't log full image data
     });
 
     // Make the API call
