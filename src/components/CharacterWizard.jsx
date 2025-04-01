@@ -278,14 +278,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     if (step === 3 && !isGenerating && !characterData.stylePreview) { // Check step 3 now
       // Ensure required data is present before generating
       if (characterData.artStyle && characterData.photoUrl) {
-          console.log('[EFFECT] Step 3 reached, triggering character preview generation.');
+          console.log('[EFFECT] Step 3 reached & dependencies met, triggering character preview generation.');
           generateCharacterPreview();
       } else {
-         console.warn('[EFFECT] Step 3 reached, but missing artStyle or photoUrl, cannot generate preview.');
-         setError('Cannot generate preview. Missing photo or style information.')
+         // Log why it didn't trigger - this is normal if dependencies haven't updated yet
+         console.warn(`[EFFECT] Step 3 reached, but generation prerequisites not met: hasArtStyle=${!!characterData.artStyle}, hasPhotoUrl=${!!characterData.photoUrl}`);
+         // Do NOT set error here, let the effect re-run when dependencies update
+         // setError('Cannot generate preview. Missing photo or style information.')
       }
     }
-  }, [step]); // Re-run when step changes
+    // Add dependencies: Re-run if step becomes 3 OR if artStyle/photoUrl update WHILE step is 3.
+  }, [step, characterData.artStyle, characterData.photoUrl, isGenerating, characterData.stylePreview]); 
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -508,45 +511,45 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                       e.stopPropagation(); // Prevent radio button click trigger
                       fileInputRef.current && fileInputRef.current.click();
                     }}
-                  >
-                    {photoPreview ? (
+                >
+                  {photoPreview ? (
                       <div className="flex flex-col items-center">
-                        <img 
-                          src={photoPreview} 
+                      <img 
+                        src={photoPreview} 
                           alt="Character Preview" 
                           className="w-32 h-32 object-cover rounded-md mb-2 shadow"
-                        />
-                        <button 
+                      />
+                      <button 
                           className="text-sm text-blue-600 hover:text-blue-800"
-                          onClick={(e) => {
-                            e.stopPropagation(); 
-                            setPhotoPreview(null);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhotoPreview(null);
                             handleChange('photoUrl', null);
-                          }}
-                        >
+                        }}
+                      >
                           Remove Photo
-                        </button>
-                      </div>
-                    ) : (
+                      </button>
+                    </div>
+                  ) : (
                       <div className="flex flex-col items-center text-gray-500">
                          <svg className="mx-auto h-12 w-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 10v6m3-3h-6"></path></svg>
                         <span className="mt-2 block text-sm font-medium">
                           Click to upload a photo
                         </span>
                         <span className="mt-1 block text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</span>
-                      </div>
-                    )}
+                    </div>
+                  )}
                   </div>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     accept="image/png, image/jpeg, image/webp"
-                    ref={fileInputRef} 
-                    onChange={handlePhotoUpload} 
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
                     style={{ display: 'none' }} 
                   />
                 </div>
               )}
-            </div>
+              </div>
               
             {/* Text Description Option */}
             <div 
@@ -563,7 +566,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 mr-3"
                 />
                 <label htmlFor="textDescription" className="font-medium text-gray-700 cursor-pointer">Generate from Description</label>
-              </div>
+                      </div>
               
               {/* Textarea - only shown when this option is active */}
               {characterData.useTextToImage && (
@@ -574,21 +577,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     placeholder="Describe the character's appearance. E.g., 'A cheerful young wizard with glasses and a pointy hat', 'A friendly dragon with green scales and small wings'"
                     className="w-full p-3 border border-gray-300 rounded-md h-32 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
+                    </div>
               )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        
+            
         {/* Navigation Buttons */} 
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-          <button
+              <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
           >
             Back
-          </button>
-          <button
+              </button>
+              <button
             onClick={handleNext}
             // Enable Next only if either photo is uploaded OR description is provided
             className={`px-6 py-2 bg-blue-600 text-white rounded ${ 
@@ -598,9 +601,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             disabled={(!characterData.useTextToImage && !characterData.photoUrl) || (characterData.useTextToImage && !characterData.generationPrompt)}
           >
             Next
-          </button>
-        </div>
-      </div>
+              </button>
+            </div>
+          </div>
     );
   };
   
@@ -989,7 +992,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                         />
                       </div>
             </motion.div>
-                    </div>
+                  </div>
                 )}
       </AnimatePresence>
     );
@@ -1018,8 +1021,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     className="w-full h-full object-contain"
                   />
               </div>
-            </div>
-            
+                </div>
+                
               <h3 className="text-xl font-bold">{characterData.name}</h3>
               <p className="text-gray-600">
                 {characterData.age && `${characterData.age} years old • `}
@@ -1030,7 +1033,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
                   <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-                  </div>
+              </div>
               )}
             </div>
           </div>
@@ -1215,7 +1218,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           const isActive = step === index;
           
           return (
-            <button
+              <button
               key={index}
               onClick={() => !isDisabled && handleTabClick(index)}
               disabled={isDisabled}
@@ -1228,10 +1231,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               }`}
             >
               {title}
-            </button>
+              </button>
           );
         })}
-      </div>
+            </div>
       
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
