@@ -199,65 +199,83 @@ export const uploadFileToDzine = async (file) => {
   }
 };
 
-// 5. Image-to-Image Task Creation
+// 5. Image-to-Image Task Creation (Corrected Implementation)
 export const createImg2ImgTask = async (payload) => {
   try {
-    // Validate required fields
-    const requiredFields = ['style_code', 'image', 'prompt', 'color_match', 'face_match'];
-    for (const field of requiredFields) {
-      if (!payload[field]) {
-        throw new Error(`${field} is required`);
-      }
+    // --- Start Validation based on Documentation ---
+    if (!payload.style_code) throw new Error('style_code is required');
+    if (!payload.prompt) throw new Error('prompt is required');
+    if (!payload.images || !Array.isArray(payload.images) || payload.images.length === 0) {
+      throw new Error('images array is required and must not be empty');
     }
-
-    // If image is base64, convert it to a file and upload
-    let imageUrl = payload.image;
-    if (payload.image.startsWith('data:image')) {
-      const base64Data = payload.image.split(',')[1];
-      const binaryData = atob(base64Data);
-      const array = new Uint8Array(binaryData.length);
-      for (let i = 0; i < binaryData.length; i++) {
-        array[i] = binaryData.charCodeAt(i);
-      }
-      const blob = new Blob([array], { type: 'image/jpeg' });
-      const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-      imageUrl = await uploadFileToDzine(file);
+    if (!payload.images[0].base64_data && !payload.images[0].url) {
+      throw new Error('Each image object must contain either base64_data or url');
     }
+    if (payload.images[0].base64_data && !payload.images[0].base64_data.startsWith('data:image')) {
+      // Ensure base64_data includes the data URI prefix as per docs example
+      throw new Error('base64_data must be a valid data URL (e.g., data:image/png;base64,...)');
+    }
+    // --- End Validation ---
 
-    // Clean and prepare the payload
-    const cleanPayload = {
+    // Prepare the payload exactly as per documentation
+    // We don't need to upload manually, the API accepts base64_data directly
+    const apiPayload = {
+      prompt: payload.prompt.substring(0, 800), // Ensure prompt length limit
       style_code: payload.style_code,
-      image: imageUrl, // Use the uploaded image URL
-      prompt: payload.prompt,
-      color_match: payload.color_match || 0.5,
-      face_match: payload.face_match || 1.0,
-      style_intensity: payload.style_intensity || 1.0,
-      negative_prompt: payload.negative_prompt || '',
-      seed: payload.seed || -1,
-      num_images: payload.num_images || 1,
-      image_resolution: payload.image_resolution || '512*512',
-      safety_check: payload.safety_check !== false,
-      async_process: payload.async_process !== false
+      images: payload.images.map(img => ({ // Map to ensure only allowed fields are sent
+        base64_data: img.base64_data || undefined, // Send only if present
+        url: img.url || undefined // Send only if present
+      })),
+      // Optional fields with defaults or from payload
+      style_intensity: payload.style_intensity !== undefined ? payload.style_intensity : 0.8, // Default if not provided
+      structure_match: payload.structure_match !== undefined ? payload.structure_match : 0.8, // Default if not provided
+      quality_mode: payload.quality_mode !== undefined ? payload.quality_mode : 0, // Default if not provided
+      color_match: payload.color_match !== undefined ? payload.color_match : 0, // Default if not provided
+      face_match: payload.face_match !== undefined ? payload.face_match : 0, // Default if not provided
+      seed: payload.seed !== undefined ? payload.seed : Math.floor(Math.random() * 2147483647) + 1, // Random seed if not provided
+      generate_slots: payload.generate_slots || [1, 1], // Default for Model X is [1, 1] based on wizard code
+      output_format: payload.output_format || 'webp', // Default
+      negative_prompt: payload.negative_prompt || '', // Optional
     };
 
-    // Log the cleaned payload for debugging
-    console.log('Creating img2img task with payload:', {
-      ...cleanPayload,
-      image: cleanPayload.image ? 'image_url' : 'no_image' // Don't log full image data
-    });
+    // Log the final payload being sent (masking base64 data)
+    console.log('Creating img2img task with API payload:', JSON.stringify({
+      ...apiPayload,
+      images: apiPayload.images.map(img => ({
+        base64_data: img.base64_data ? 'base64_data_present' : undefined,
+        url: img.url
+      }))
+    }, null, 2));
 
-    // Make the API call
-    const response = await fetchDzine('/task/img2img', {
+    // Use the correct endpoint from the documentation
+    const endpoint = '/create_task_img2img';
+    console.log(`Calling documented img2img endpoint: POST ${endpoint}`);
+
+    // Make the API call using fetchDzine helper
+    const response = await fetchDzine(endpoint, {
       method: 'POST',
-      body: JSON.stringify(cleanPayload)
+      body: JSON.stringify(apiPayload)
     });
 
-    // Log the response for debugging
-    console.log('Img2img task creation response:', response);
+    // Log the raw response for debugging
+    console.log('Raw response from img2img API:', JSON.stringify(response));
 
-    return response;
+    // Process response - check for task_id
+    if (response && response.code === 200 && response.data && response.data.task_id) {
+      console.log('Img2img task created successfully:', response.data.task_id);
+      return response.data; // Return the data part containing task_id
+    } else if (response && response.task_id) {
+       console.log('Img2img task created successfully (direct task_id):', response.task_id);
+       return { task_id: response.task_id }; // Normalize response
+    } else {
+      console.error('Invalid response from img2img API:', response);
+      const errorMessage = response?.msg || 'Failed to create image generation task, invalid response structure.';
+      throw new Error(errorMessage);
+    }
   } catch (error) {
-    console.error('Error in createImg2ImgTask:', error);
+    // Log the specific error from validation or API call
+    console.error('Error in createImg2ImgTask:', error.message);
+    // Re-throw the error so the calling function (generateCharacterPreview) can handle it
     throw error;
   }
 };
