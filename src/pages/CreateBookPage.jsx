@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
 
@@ -11,24 +11,44 @@ import SummaryStep from '../components/wizard/SummaryStep';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
-  const { wizardState, resetWizard, updateStoryData } = useBookStore();
+  const { wizardState, resetWizard, updateStoryData, setWizardStep } = useBookStore();
   const navigate = useNavigate();
+  
+  // Track which steps are unlocked (completed)
+  const [unlockedSteps, setUnlockedSteps] = useState([1]);
   
   // Authentication check removed for testing
   
   // Reset wizard state when component mounts
   useEffect(() => {
     resetWizard();
+    setUnlockedSteps([1]); // Only the first step is unlocked initially
   }, [resetWizard]);
+  
+  // Update unlocked steps when wizard step changes
+  useEffect(() => {
+    // When a step is reached, it and all previous steps become unlocked
+    if (!unlockedSteps.includes(wizardState.step)) {
+      setUnlockedSteps(prev => [...prev, wizardState.step]);
+    }
+  }, [wizardState.step, unlockedSteps]);
   
   // Define wizard steps
   const steps = [
     { id: 1, name: 'Introduction' },
-    { id: 2, name: 'Art Style' },  // Add Art Style as a separate step
+    { id: 2, name: 'Art Style' },
     { id: 3, name: 'Characters' },
     { id: 4, name: 'Story Details' },
-    { id: 5, name: 'Summary & Generate' }
+    { id: 5, name: 'Summary' }
   ];
+  
+  // Handle tab click to navigate between steps
+  const handleTabClick = (stepId) => {
+    // Only allow navigation to unlocked steps
+    if (unlockedSteps.includes(stepId)) {
+      setWizardStep(stepId);
+    }
+  };
   
   // Render the current wizard step
   const renderStep = () => {
@@ -36,7 +56,7 @@ function CreateBookPage() {
       case 1:
         return <IntroStep />;
       case 2:
-        return <ArtStyleStep />;  // New Art Style step
+        return <ArtStyleStep />;
       case 3:
         return <CharactersStep />;
       case 4:
@@ -49,9 +69,9 @@ function CreateBookPage() {
     }
   };
   
-  // Calculate current step number for display (adjusting for generating step being #4)
-  const displayStepNumber = wizardState.step === 4 ? 4 : wizardState.step;
-  const totalDisplaySteps = 4; // Total steps including Generating
+  // Calculate current step number for display
+  const displayStepNumber = wizardState.step;
+  const totalDisplaySteps = 5;
   
   const getStepName = (step) => {
      switch (step) {
@@ -59,7 +79,7 @@ function CreateBookPage() {
          case 2: return 'Art Style';
          case 3: return 'Characters';
          case 4: return 'Story Details';
-         case 5: return 'Summary & Generate';
+         case 5: return 'Summary';
          default: return '';
      }
   };
@@ -74,7 +94,32 @@ function CreateBookPage() {
         </p>
       </div>
       
-      {/* Progress Bar - Updated for 4 steps */}
+      {/* Tab Navigation */}
+      <div className="mb-8">
+        <div className="border-b border-gray-200">
+          <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+            {steps.map((step) => (
+              <li key={step.id} className="mr-2">
+                <button
+                  onClick={() => handleTabClick(step.id)}
+                  className={`inline-block p-4 border-b-2 rounded-t-lg ${
+                    wizardState.step === step.id 
+                      ? 'text-blue-600 border-blue-600' 
+                      : unlockedSteps.includes(step.id)
+                        ? 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                        : 'text-gray-400 cursor-not-allowed border-transparent'
+                  }`}
+                  disabled={!unlockedSteps.includes(step.id)}
+                >
+                  {step.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      
+      {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
