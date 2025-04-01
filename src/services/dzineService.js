@@ -627,7 +627,7 @@ export const getFormattedApiKey = () => {
 
 // Map our human-readable style names to their API style codes
 export const styleCodeMap = {
-  starlit_fantasy: "Style-7cb66f12-50b8-425e-bb03-92f2213bbba7",
+  starlit_fantasy: "Style-541a2afd-904a-4968-bc60-8ad0ede22a86",
   cheerful_storybook: "Style-2c25986f-12e7-4cdb-9888-01c9a04a433d", 
   enchanted_elegance: "Style-dd2ada7a-70a9-4a3f-93f8-1daf83fdd4f0",
   glossy_elegance: "Style-0c99c2d7-ef7b-4eea-ac58-0f80af232590",
