@@ -362,7 +362,8 @@ export const getTaskProgress = async (taskId) => {
     console.log(`Checking progress for task: ${taskId}`);
     
     // Construct the correct endpoint according to docs
-    const endpoint = `/get_task_status?task_id=${taskId}`;
+    const endpoint = `/get_task_progress/${taskId}`;
+    console.log(`Polling task progress using endpoint: GET ${API_BASE_URL}${endpoint}`); // Log the endpoint being used
     
     // Use a more robust approach with direct fetch and timeout
     const controller = new AbortController();

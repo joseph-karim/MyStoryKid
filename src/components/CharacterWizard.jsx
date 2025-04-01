@@ -11,116 +11,6 @@ import {
   getStyleCode 
 } from '../services/dzineService';
 
-// Import art style images from the Dzine Styles folder
-import starlitFantasyImg from '../assets/dzine-styles/Starlit-Fantasy.png';
-import cheerfulStorybookImg from '../assets/dzine-styles/Cheerful-Storybook.png';
-import enchantedEleganceImg from '../assets/dzine-styles/Enchanted-Elegance.png';
-import glossyEleganceImg from '../assets/dzine-styles/Glossy-Elegance.png';
-import minimalistCuteImg from '../assets/dzine-styles/Minimalist-Cutesy.png';
-import watercolorWhimsyImg from '../assets/dzine-styles/Watercolor-Whimsy.png';
-import pleasantlyWarmImg from '../assets/dzine-styles/Pleasantly-Warm.png';
-import ancientChinaImg from '../assets/dzine-styles/Ancient-China.png';
-import lineAndWashImg from '../assets/dzine-styles/Line-&-Wash.png';
-import magicPortraitImg from '../assets/dzine-styles/Magic-Portrait.png';
-import warmPortraitImg from '../assets/dzine-styles/Warm-Portrait.png';
-import goldenHourImg from '../assets/dzine-styles/Golden-Hour.png';
-import dreamlikePortraitureImg from '../assets/dzine-styles/Dreamlike-Portraiture.png';
-import luminousNarrativesImg from '../assets/dzine-styles/Luminous-Narratives.png';
-import aquarelleLifeImg from '../assets/dzine-styles/Aquarelle-Life.png';
-import vividTableauxImg from '../assets/dzine-styles/Vivid-Tableaux.png';
-import whimsicalColoringImg from '../assets/dzine-styles/Whimsical-Coloring.png';
-import ceramicLifelikeImg from '../assets/dzine-styles/Ceramic-Lifelike.png';
-import joyfulClayImg from '../assets/dzine-styles/Joyful-Clay.png';
-import yarnRealismImg from '../assets/dzine-styles/Yarn-Realism.png';
-import fantasyHeroImg from '../assets/dzine-styles/Fantasy-Hero.png';
-import storytimeWhimsyImg from '../assets/dzine-styles/Storytime-Whimsy.png';
-import cuteExaggerationImg from '../assets/dzine-styles/Cute-Exaggeration.png';
-import enchantedCharacterImg from '../assets/dzine-styles/Enchanted-Character.png';
-import mysticalSovereigntyImg from '../assets/dzine-styles/Mystical-Sovereignty.png';
-import softRadianceImg from '../assets/dzine-styles/Soft-Radiance.png';
-
-// Map style IDs to the imported images
-const styleImageMap = {
-  watercolor_whimsy: watercolorWhimsyImg,
-  whimsical_coloring: whimsicalColoringImg,
-  enchanted_character: enchantedCharacterImg,
-  minimalist_cutesy: minimalistCuteImg,
-  
-  cheerful_storybook: cheerfulStorybookImg,
-  pleasantly_warm: pleasantlyWarmImg,
-  storytime_whimsy: storytimeWhimsyImg,
-  line_and_wash: lineAndWashImg,
-  golden_hour: goldenHourImg,
-  
-  cute_exaggeration: cuteExaggerationImg,
-  glossy_elegance: glossyEleganceImg,
-  starlit_fantasy: starlitFantasyImg,
-  fantasy_hero: fantasyHeroImg,
-  joyful_clay: joyfulClayImg,
-  
-  enchanted_elegance: enchantedEleganceImg,
-  warm_portrait: warmPortraitImg,
-  magic_portrait: magicPortraitImg,
-  vivid_tableaux: vividTableauxImg,
-  luminous_narratives: luminousNarrativesImg,
-  
-  // Additional styles
-  dreamlike_portraiture: dreamlikePortraitureImg,
-  aquarelle_life: aquarelleLifeImg,
-  ancient_china: ancientChinaImg,
-  ceramic_lifelike: ceramicLifelikeImg,
-  yarn_realism: yarnRealismImg,
-  mystical_sovereignty: mysticalSovereigntyImg,
-  soft_radiance: softRadianceImg
-};
-
-// Curated art style categories with representative styles
-const CURATED_STYLES = [
-  {
-    category: 'Whimsical & Soft (Ages 0–5)',
-    description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
-    styles: [
-      { id: 'watercolor_whimsy', name: 'Watercolor Whimsy', description: 'Rounded shapes and soft digital brushwork with gentle gradients', imageUrl: watercolorWhimsyImg, keywordMatch: ['water', 'soft', 'gentle'] },
-      { id: 'whimsical_coloring', name: 'Whimsical Coloring', description: 'Tender, soothing colors with a gentle, chalky texture', imageUrl: whimsicalColoringImg, keywordMatch: ['color', 'chalky', 'whimsical'] },
-      { id: 'enchanted_character', name: 'Enchanted Character', description: 'Magical characters with soft lighting and enchanting atmosphere', imageUrl: enchantedCharacterImg, keywordMatch: ['magical', 'enchanted', 'character'] },
-      { id: 'minimalist_cutesy', name: 'Minimalist Cutesy', description: 'Simple, cute designs with minimal details and soft colors', imageUrl: minimalistCuteImg, keywordMatch: ['simple', 'cute', 'minimal'] }
-    ]
-  },
-  {
-    category: 'Classic & Timeless (Ages 3–8)',
-    description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
-    styles: [
-      { id: 'cheerful_storybook', name: 'Cheerful Storybook', description: 'Bright, cheerful illustrations with bold colors and playful details', imageUrl: cheerfulStorybookImg, keywordMatch: ['cheerful', 'storybook', 'bright'] },
-      { id: 'pleasantly_warm', name: 'Pleasantly Warm', description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling', imageUrl: pleasantlyWarmImg, keywordMatch: ['warm', 'cozy', 'charming'] },
-      { id: 'storytime_whimsy', name: 'Storytime Whimsy', description: 'Whimsical, storybook-style illustrations with a classic feel', imageUrl: storytimeWhimsyImg, keywordMatch: ['storytime', 'whimsy', 'classic'] },
-      { id: 'line_and_wash', name: 'Line and Wash', description: 'Delicate pencil drawings with light watercolor washes for a timeless feel', imageUrl: lineAndWashImg, keywordMatch: ['pencil', 'wash', 'line'] },
-      { id: 'golden_hour', name: 'Golden Hour', description: 'Nostalgic illustrations with warm, golden lighting', imageUrl: goldenHourImg, keywordMatch: ['golden', 'nostalgic', 'warm'] }
-    ]
-  },
-  {
-    category: 'Modern & Colorful (Ages 4–9)',
-    description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
-    styles: [
-      { id: 'cute_exaggeration', name: 'Cute Exaggeration', description: 'Playful, exaggerated features with bright colors and clean lines', imageUrl: cuteExaggerationImg, keywordMatch: ['cute', 'exaggerated', 'playful'] },
-      { id: 'glossy_elegance', name: 'Glossy Elegance', description: 'Clean, sleek, modern illustrations with a glossy finish', imageUrl: glossyEleganceImg, keywordMatch: ['glossy', 'elegant', 'sleek'] },
-      { id: 'starlit_fantasy', name: 'Starlit Fantasy', description: 'Magical, dreamy illustrations with starry, fantastical elements', imageUrl: starlitFantasyImg, keywordMatch: ['starlit', 'fantasy', 'magical'] },
-      { id: 'fantasy_hero', name: 'Fantasy Hero', description: 'Bold, heroic character illustrations with a fantasy adventure feel', imageUrl: fantasyHeroImg, keywordMatch: ['fantasy', 'hero', 'bold'] },
-      { id: 'joyful_clay', name: 'Joyful Clay', description: 'Cheerful characters that look like they are made of colorful clay', imageUrl: joyfulClayImg, keywordMatch: ['clay', 'joyful', 'colorful'] }
-    ]
-  },
-  {
-    category: 'Realistic & Artistic (Ages 6–12)',
-    description: 'Sophisticated art styles with richer detail, ideal for preserving the likeness of your child.',
-    styles: [
-      { id: 'enchanted_elegance', name: 'Enchanted Elegance', description: 'Detailed illustrations with an elegant, enchanted quality', imageUrl: enchantedEleganceImg, keywordMatch: ['enchanted', 'elegant', 'detailed'] },
-      { id: 'warm_portrait', name: 'Warm Portrait', description: 'Realistic portraits with warm lighting and preserved facial features', imageUrl: warmPortraitImg, keywordMatch: ['portrait', 'warm', 'realistic'] },
-      { id: 'magic_portrait', name: 'Magic Portrait', description: 'Semi-stylized portraits with a magical, fantasy quality', imageUrl: magicPortraitImg, keywordMatch: ['magic', 'portrait', 'fantasy'] },
-      { id: 'vivid_tableaux', name: 'Vivid Tableaux', description: 'Rich, textured scenes with vibrant colors and detailed compositions', imageUrl: vividTableauxImg, keywordMatch: ['vivid', 'rich', 'textured'] },
-      { id: 'luminous_narratives', name: 'Luminous Narratives', description: 'Rich digital illustrations with painterly effects and detailed lighting', imageUrl: luminousNarrativesImg, keywordMatch: ['luminous', 'digital', 'painterly'] }
-    ]
-  }
-];
-
 // Define a known safe default style code from the API list
 const SAFE_DEFAULT_API_STYLE_CODE = "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // "No Style v2"
 
@@ -503,8 +393,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         
         // Store the image data in both places to be safe
         setPhotoPreview(imageData);
-        setCharacterData(prev => ({
-          ...prev,
+      setCharacterData(prev => ({
+        ...prev,
           photoUrl: imageData,
           // Also store in baseImage for backward compatibility
           baseImage: imageData
@@ -551,15 +441,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Step 1: Basic character details
   const renderDetailsStep = () => {
-    return (
+  return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
         <div className="space-y-6">
-              <div>
+          <div>
             <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
               Character Name
-            </label>
+                      </label>
                   <input
                     type="text"
               id="name"
@@ -691,46 +581,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <div 
             className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current && fileInputRef.current.click()}
-          >
-            {photoPreview ? (
+                >
+                  {photoPreview ? (
               <div className="flex flex-col items-center">
-                <img 
-                  src={photoPreview} 
+                      <img 
+                        src={photoPreview} 
                   alt="Character Preview" 
                   className="w-32 h-32 object-cover rounded-md mb-2 shadow"
-                />
-                <button 
+                      />
+                      <button 
                   className="text-sm text-blue-600 hover:text-blue-800"
-                  onClick={(e) => {
+                        onClick={(e) => {
                     e.stopPropagation(); // Prevent triggering the outer div's click
-                    setPhotoPreview(null);
+                          setPhotoPreview(null);
                     handleChange('photoUrl', null);
-                  }}
-                >
+                        }}
+                      >
                   Remove Photo
-                </button>
-              </div>
-            ) : (
+                      </button>
+                    </div>
+                  ) : (
               <div className="flex flex-col items-center text-gray-500">
                 <svg className="mx-auto h-12 w-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 10v6m3-3h-6"></path>
-                </svg>
+                      </svg>
                 <span className="mt-2 block text-sm font-medium">
                   Click to upload a photo
                 </span>
                 <span className="mt-1 block text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</span>
-              </div>
-            )}
+                    </div>
+                  )}
           </div>
-          <input 
-            type="file" 
+                  <input
+                    type="file"
             accept="image/png, image/jpeg, image/webp" // Be specific
-            ref={fileInputRef} 
-            onChange={handlePhotoUpload} 
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
             style={{ display: 'none' }} 
-          />
-        </div>
+                  />
+                </div>
 
         {/* Navigation Buttons - Copied from renderDetailsStep structure */}
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
@@ -750,7 +640,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           >
             Next
           </button>
-        </div>
+              </div>
       </div>
     );
   };
@@ -1177,10 +1067,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                   src={imageUrl}
                   alt="Character Preview"
                   className="max-w-full max-h-[85vh] object-contain shadow-xl"
-                  />
-                </div>
+                        />
+                      </div>
             </motion.div>
-                  </div>
+                    </div>
                 )}
       </AnimatePresence>
     );
@@ -1195,7 +1085,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <div className="flex flex-col items-center justify-center py-10">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
             <p className="text-gray-600">{progressMessage || 'Creating your character...'}</p>
-          </div>
+                </div>
         ) : characterData.stylePreview ? (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 flex flex-col items-center">
@@ -1208,8 +1098,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                     className="w-full h-full object-contain"
                   />
               </div>
-                </div>
-                
+            </div>
+            
               <h3 className="text-xl font-bold">{characterData.name}</h3>
               <p className="text-gray-600">
                 {characterData.age && `${characterData.age} years old • `}
@@ -1220,7 +1110,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
                   <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-              </div>
+                  </div>
               )}
             </div>
           </div>
@@ -1231,11 +1121,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         )}
         
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-                <button
+              <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                >
-            Back
+              >
+                Back
                 </button>
           <button
             onClick={handleComplete}
@@ -1243,9 +1133,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             disabled={!characterData.stylePreview || isGenerating}
           >
             Confirm Character
-          </button>
-        </div>
-      </div>
+              </button>
+            </div>
+          </div>
     );
   };
   
