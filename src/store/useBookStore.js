@@ -439,6 +439,7 @@ const useBookStore = create((set, get) => ({
       
       // Use our storyGenerator service to generate the book
       const result = await generateCompleteBook(storyData);
+      console.log('[generateBook Store] Result from generateCompleteBook:', result); // Log the raw result
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate book');
@@ -462,6 +463,7 @@ const useBookStore = create((set, get) => ({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      console.log('[generateBook Store] Created newBook object:', newBook); // Log the new book object
       
       // Add the new book to the store
       set((state) => ({
@@ -470,12 +472,13 @@ const useBookStore = create((set, get) => ({
       }));
       
       // Return the newly created book object so SummaryStep can navigate
+      console.log('[generateBook Store] Returning bookId:', newBook.id); // Log the ID being returned
       return { bookId: newBook.id };
-      
     } catch (error) {
-      console.error('Error in generateBook store action:', error);
+      console.error('Error generating book:', error);
+      throw error;
+    } finally {
       set({ isLoading: false });
-      throw error; // Re-throw the error to be caught in the component
     }
   },
 }));

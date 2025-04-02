@@ -110,7 +110,7 @@ function EditBookPage() {
   
   // Navigate to preview page
   const handlePreview = () => {
-    navigate(`/preview/${bookId}`);
+    navigate(`/book/${bookId}`);
   };
   
   // Simulated save function

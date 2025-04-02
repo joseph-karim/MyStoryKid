@@ -100,7 +100,7 @@ function DashboardPage() {
                       {book.status === 'draft' ? 'Continue Editing' : 'Edit'}
                     </Link>
                     <Link 
-                      to={`/preview/${book.id}`} 
+                      to={`/book/${book.id}`}
                       className="text-blue-600 hover:underline text-sm"
                     >
                       Preview
