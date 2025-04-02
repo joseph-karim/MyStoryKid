@@ -405,6 +405,26 @@ const useBookStore = create((set, get) => ({
   
   // Generate the complete book based on wizard data
   generateBook: async () => {
+    console.log("[DEPRECATED] Old generateBook function called from store. Redirecting to new implementation.");
+    
+    // Import the useNavigate hook from react-router-dom
+    try {
+      // Get window object and manually navigate (can't use useNavigate in a non-component context)
+      if (typeof window !== 'undefined') {
+        console.log("[DEPRECATED] Redirecting to /generate-book route");
+        window.location.href = '/generate-book';
+        return { success: true, redirected: true };
+      } else {
+        console.error("[DEPRECATED] Cannot redirect - window object not available");
+        return { success: false, error: "Environment does not support redirection" };
+      }
+    } catch (error) {
+      console.error('[DEPRECATED] Error redirecting to new generation flow:', error);
+      return { success: false, error: error.message || 'Failed to redirect to new book generation flow.' };
+    }
+    
+    // Remove or comment out all the old generation logic below
+    /*
     // Reset latest ID before starting
     set({ isLoading: true, latestGeneratedBookId: null }); 
     let result = null;
@@ -461,6 +481,7 @@ const useBookStore = create((set, get) => ({
       // throw error; 
     }
     // No finally block needed as set({isLoading: false}) is handled in try/catch
+    */
   },
 }));
 
