@@ -7,6 +7,7 @@ import CreateBookPage from './pages/CreateBookPage';
 import EditBookPage from './pages/EditBookPage';
 import PreviewPage from './pages/PreviewPage';
 import DzineStylesList from './scripts/getDzineStylesList';
+import GenerateBookStep from './components/wizard/GenerateBookStep';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/edit/:bookId" element={<EditBookPage />} />
         <Route path="/book/:bookId" element={<PreviewPage />} />
         <Route path="/styles" element={<DzineStylesList />} />
+        <Route path="/generate-book" element={<GenerateBookStep />} />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />
