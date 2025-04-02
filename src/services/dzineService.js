@@ -572,57 +572,59 @@ export const getFormattedApiKey = () => {
 };
 
 // Map our human-readable style names to their API style codes
-export const styleCodeMap = {
-  // Whimsical & Soft styles
-  watercolor_whimsy: "Style-7f3f81ad-1c2d-4a15-944d-66bf549641de",
-  whimsical_coloring: "Style-206baa8c-5bbe-4299-b984-9243d05dce9b",
-  enchanted_character: "Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e",
-  minimalist_cutesy: "Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7",
-  soft_radiance: "Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41",
+const styleCodeMap = {
+  // Whimsical & Soft
+  'watercolor_whimsy': { name: 'Watercolor Whimsy', code: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de' },
+  'enchanted_character': { name: 'Enchanted Character', code: 'Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e' },
+  'minimalist_cutesy': { name: 'Minimalist Cutesy', code: 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7' },
+  'soft_radiance': { name: 'Soft Radiance', code: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41' },
+  'cheerful_storybook': { name: 'Cheerful Storybook', code: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926' },
+  'pleasantly_warm': { name: 'Pleasantly Warm', code: 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c' },
+  'storytime_whimsy': { name: 'Storytime Whimsy', code: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5' },
 
-  // Classic & Timeless styles
-  cheerful_storybook: "Style-a941aee9-7964-4445-b76a-7c3ff912f926",
-  pleasantly_warm: "Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c",
-  storytime_whimsy: "Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5",
-  line_and_wash: "Style-bc151055-fd2b-4650-acd7-52e8e8818eb9",
-  golden_hour: "Style-90a8d36d-9a67-4619-a995-4036fda8474d",
-  ancient_china: "Style-666d19e1-2e33-4e64-95e8-588c8e20b02c",
+  // Classic & Timeless
+  'line_and_wash': { name: 'Line & Wash', code: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9' },
+  'golden_hour': { name: 'Golden Hour', code: 'Style-90a8d36d-9a67-4619-a995-4036fda8474d' },
+  'ancient_china': { name: 'Ancient China', code: 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c' },
+  'storybook_charm': { name: 'Storybook Charm', code: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf' },
+  'luminous_narratives': { name: 'Luminous Narratives', code: 'Style-ce7b4279-1398-4964-882c-19911e12aef3' },
+  'sketch_elegance': { name: 'Sketch Elegance', code: 'Style-e9021405-1b37-4773-abb9-bd80485527b0' },
 
-  // Modern & Colorful styles
-  cute_exaggeration: "Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f",
-  glossy_elegance: "Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280",
-  starlit_fantasy: "Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0",
-  fantasy_hero: "Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf",
-  joyful_clay: "Style-7729f1f6-578b-4035-8514-edaa0637dd6d",
-  ceramic_lifelike: "Style-3f616e35-6423-4c53-aa27-be28860a4a7d",
-  yarn_realism: "Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb",
-  mystical_sovereignty: "Style-04329eae-1af6-4f06-a97c-f4b2b48516de",
+  // Modern & Colorful
+  'cute_exaggeration': { name: 'Cute Exaggeration', code: 'Style-11393e3a-ec40-402f-82cf-57c19bea8d12' },
+  'glossy_elegance': { name: 'Glossy Elegance', code: 'Style-04d8cbcf-6496-4d68-997e-516303502507' },
+  'fantasy_hero': { name: 'Fantasy Hero', code: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf' },
+  'joyful_clay': { name: 'Joyful Clay', code: 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d' },
+  'starlit_fantasy': { name: 'Starlit Fantasy', code: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0' },
+  'paper_cutout': { name: 'Paper Cutout', code: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86' },
 
-  // Realistic & Artistic styles
-  enchanted_elegance: "Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25",
-  warm_portrait: "Style-4ab783c7-2955-4092-878e-965162241bf7",
-  magic_portrait: "Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4",
-  vivid_tableaux: "Style-589373f8-1283-4570-baf9-61d02eb13391",
-  luminous_narratives: "Style-ce7b4279-1398-4964-882c-19911e12aef3",
-  dreamlike_portraiture: "Style-c0bde410-94f1-42d1-a1f6-d968aabbf689",
-  aquarelle_life: "Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333"
+  // Realistic & Artistic
+  'ceramic_lifelike': { name: 'Ceramic Lifelike', code: 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d' },
+  'yarn_realism': { name: 'Yarn Realism', code: 'Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb' },
+  'mystical_sovereignty': { name: 'Mystical Sovereignty', code: 'Style-04329eae-1af6-4f06-a97c-f4b2b48516de' },
+  'enchanted_elegance': { name: 'Enchanted Elegance', code: 'Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25' },
+  'warm_portrait': { name: 'Warm Portrait', code: 'Style-4ab783c7-2955-4092-878e-965162241bf7' },
+  'magic_portrait': { name: 'Magic Portrait', code: 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4' },
+  'vivid_tableaux': { name: 'Vivid Tableaux', code: 'Style-589373f8-1283-4570-baf9-61d02eb13391' },
+  'dreamlike_portraiture': { name: 'Dreamlike Portraiture', code: 'Style-c0bde410-94f1-42d1-a1f6-d968aabbf689' },
+  'aquarelle_life': { name: 'Aquarelle Life', code: 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333' },
+  // ... add more styles as needed from the API list if they fit categories
 };
 
-// Function to get the proper style code when creating a task
-export const getStyleCode = (styleId) => {
+// Function to get the style code based on the friendly name
+export const getStyleCode = (friendlyName) => {
+  const style = Object.values(styleCodeMap).find(s => s.name === friendlyName);
   // If already a full style code (starts with "Style-"), use as is
-  if (styleId && styleId.startsWith('Style-')) {
-    return styleId;
+  if (friendlyName && friendlyName.startsWith('Style-')) {
+    return friendlyName;
   }
-  
-  // Look up in the map of our curated styles
-  if (styleId && styleCodeMap[styleId]) {
-    return styleCodeMap[styleId];
-  }
-  
-  // Default fallback style if mapping fails
-  console.warn(`Style ID "${styleId}" not found in style map, using default style`);
-  return "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // No Style v2
+  return style ? style.code : "Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2"; // Fallback to No Style v2 if lookup fails
+};
+
+// Function to get the friendly name based on the style code
+export const getFriendlyStyleName = (styleCode) => {
+  const entry = Object.entries(styleCodeMap).find(([key, value]) => value.code === styleCode);
+  return entry ? entry[1].name : 'Unknown Style'; // Return name or a default
 };
 
 // Debug function to compare our style mappings with API
@@ -676,80 +678,101 @@ export const compareStyleMappings = async () => {
 
 // Debug function to fetch and analyze all styles from API
 export const analyzeAllStyles = async () => {
+  const apiKey = localStorage.getItem('dzineApiKey');
+  if (!apiKey) {
+    console.error('Dzine API key not found in local storage.');
+    return;
+  }
+
+  const url = `${API_BASE_URL}/style/list?page_no=0&page_size=1000`; // Fetch a large number to get all styles
+
   try {
-    console.log('Fetching complete style list from API...');
-    
-    // Make direct API call to get all styles
-    const response = await fetch('https://papi.dzine.ai/openapi/v1/style/list?page_no=0&page_size=1000', {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': API_KEY
+        'Authorization': apiKey,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Dzine API error fetching all styles: ${response.status} ${response.statusText}`);
+      const errorBody = await response.json();
+      console.error('Error details:', errorBody);
+      return;
+    }
+
+    const data = await response.json();
+    const apiStyles = data?.data?.list;
+
+    if (!apiStyles || !Array.isArray(apiStyles)) {
+      console.error('Unexpected API response structure for all styles:', data);
+      return;
+    }
+
+    console.log(`🔍 Found ${apiStyles.length} styles in the API.`);
+
+    const localKeys = Object.keys(styleCodeMap);
+    const apiStyleMap = new Map(apiStyles.map(style => [style.style_code, style.name]));
+    const apiNameMap = new Map(apiStyles.map(style => [style.name.toLowerCase(), style.style_code])); // Map lowercase names to codes
+
+    console.log("--- Analyzing Local Style Codes vs API ---");
+
+    localKeys.forEach(localKey => {
+      const localStyle = styleCodeMap[localKey];
+      if (!localStyle || !localStyle.code) {
+         console.warn(`❓ Local key "${localKey}" has invalid data:`, localStyle);
+         return;
+      }
+      const localCode = localStyle.code;
+      const localName = localStyle.name;
+
+      if (apiStyleMap.has(localCode)) {
+        const apiName = apiStyleMap.get(localCode);
+        if (apiName.toLowerCase() === localName.toLowerCase()) {
+          console.log(`✅ Match: "${localKey}" (${localName}) - Code: ${localCode}`);
+        } else {
+          console.warn(`⚠️ Name Mismatch: "${localKey}" (Local: "${localName}", API: "${apiName}") - Code: ${localCode}`);
+        }
+      } else {
+         // Check if the name exists in the API with a different code
+         const apiCodeForName = apiNameMap.get(localName.toLowerCase());
+         if(apiCodeForName) {
+            console.error(`❌ Code Mismatch: "${localKey}" (Local Name: "${localName}", Local Code: ${localCode}) - API has this name with CODE: ${apiCodeForName}. UPDATE NEEDED!`);
+         } else {
+            console.error(`❌ Not Found in API: "${localKey}" (Local Name: "${localName}", Code: ${localCode}) - This style might be deprecated.`);
+         }
       }
     });
 
-    const data = await response.json();
-    
-    if (data.code === 200 && data.data && data.data.list) {
-      const apiStyles = data.data.list;
-      console.log(`\nFound ${apiStyles.length} styles in API`);
-      
-      // Create lookup maps
-      const apiStyleMap = {};
-      const ourStyleMap = {};
-      
-      // Map API styles by code
-      apiStyles.forEach(style => {
-        apiStyleMap[style.style_code] = style;
-      });
-      
-      // Map our styles by code
-      Object.entries(styleCodeMap).forEach(([name, code]) => {
-        ourStyleMap[code] = name;
-      });
-      
-      // Compare mappings
-      console.log('\n=== Style Code Analysis ===');
-      
-      // Check our styles against API
-      console.log('\n1. Checking our style codes against API:');
-      Object.entries(styleCodeMap).forEach(([ourName, ourCode]) => {
-        const apiStyle = apiStyleMap[ourCode];
-        if (!apiStyle) {
-          console.log(`❌ Our style "${ourName}" (${ourCode}) not found in API`);
-        } else {
-          const apiName = apiStyle.name;
-          if (apiName.toLowerCase() !== ourName.split('_').join(' ').toLowerCase()) {
-            console.log(`⚠️ Name mismatch for ${ourCode}:`);
-            console.log(`   Our name: "${ourName}"`);
-            console.log(`   API name: "${apiName}"`);
-          } else {
-            console.log(`✅ Style "${ourName}" matches API`);
-          }
-        }
-      });
-      
-      // Check for API styles we don't have
-      console.log('\nChecking API styles not in our mappings:');
-      apiStyles.forEach(apiStyle => {
-        const ourStyleName = Object.entries(styleCodeMap)
-          .find(([_, code]) => code === apiStyle.style_code)?.[0];
-        if (!ourStyleName) {
-          console.log(`➕ New API style available: "${apiStyle.name}" (${apiStyle.style_code})`);
-        }
-      });
-      
-      return {
-        apiStyles,
-        ourStyles: styleCodeMap
-      };
-    } else {
-      console.error('Unexpected API response structure:', data);
-      throw new Error('API response did not contain expected style list');
-    }
+    console.log("--- Analyzing API Styles Not in Local Map ---");
+    const localCodeSet = new Set(Object.values(styleCodeMap).map(s => s.code));
+    apiStyles.forEach(apiStyle => {
+      if (!localCodeSet.has(apiStyle.style_code)) {
+        console.log(`➕ New API Style: "${apiStyle.name}" - Code: ${apiStyle.style_code}`);
+      }
+    });
+
+     // Specific check for Starlit Fantasy again
+     const starlitLocal = styleCodeMap['starlit_fantasy'];
+     const starlitApiCode = apiNameMap.get('starlit fantasy');
+     console.log("--- Starlit Fantasy Check ---");
+     if (starlitLocal && starlitApiCode) {
+         if (starlitLocal.code === starlitApiCode) {
+             console.log(`✅ Starlit Fantasy mapping is correct: ${starlitLocal.code}`);
+         } else {
+             console.error(`❌ Starlit Fantasy MAPPING IS WRONG! Local code: ${starlitLocal.code}, API code: ${starlitApiCode}`);
+         }
+     } else if (starlitApiCode) {
+         console.error(`❌ Starlit Fantasy is in API (Code: ${starlitApiCode}) but not mapped correctly locally.`);
+     } else {
+         console.warn(`❓ Starlit Fantasy style not found in API under that name.`);
+     }
+     console.log("--- End Analysis ---");
+
+
   } catch (error) {
-    console.error('Error analyzing styles:', error);
-    throw error;
+    console.error('Error during full style analysis:', error);
   }
 };
 

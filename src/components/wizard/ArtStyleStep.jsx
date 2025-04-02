@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getDzineStyles, getAvailableStyles } from '../../services/dzineService';
+import { getDzineStyles, getAvailableStyles, getFriendlyStyleName } from '../../services/dzineService';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
@@ -31,6 +31,9 @@ import vividTableauxImg from '../../assets/dzine-styles/Vivid-Tableaux.png';
 import luminousNarrativesImg from '../../assets/dzine-styles/Luminous-Narratives.png';
 import dreamlikePortraitureImg from '../../assets/dzine-styles/Dreamlike-Portraiture.png';
 import aquarelleLifeImg from '../../assets/dzine-styles/Aquarelle-Life.png';
+import storybookCharmImg from '../../assets/dzine-styles/Storybook-Charm.png';
+import sketchEleganceImg from '../../assets/dzine-styles/Sketch-Elegance.png';
+import paperCutoutImg from '../../assets/dzine-styles/Paper-Cutout.png';
 
 // Map style IDs to the imported images - used for legacy code compatibility
 const styleImageMap = {
@@ -79,7 +82,7 @@ const dzineStyleImageMap = {
   // Classic & Timeless styles
   'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf': cheerfulStorybookImg,
   'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': pleasantlyWarmImg,
-  'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a': storytimeWhimsyImg,
+  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': storytimeWhimsyImg,
   'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': lineAndWashImg,
   'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': goldenHourImg,
   'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': ancientChinaImg,
@@ -160,7 +163,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
       },
       { 
         id: 'storytime_whimsy',
-        apiCode: 'Style-a97e1a5a-97d9-4eb1-a81e-0c1cf0dce23a',
+        apiCode: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
         title: 'Storytime Whimsy',
         description: 'Whimsical, storybook-style illustrations with a classic feel'
       },
@@ -567,7 +570,7 @@ function ArtStyleStep() {
   // Instead of actually checking the availability from the API (which might fail),
   // we'll now determine availability based on if the style exists in our predefined list
   const isStyleAvailable = (styleId) => {
-    // Just return true since we're using our curated list from ART_STYLE_CATEGORIES_STRUCTURE
+    // Just return true since we've curated these, they should be available
     return true;
   };
 

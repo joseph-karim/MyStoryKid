@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useBookStore } from '../../store';
+import { getFriendlyStyleName } from '../../services/dzineService';
 
 function SummaryStep() {
   const { wizardState, updateStoryData, setWizardStep, generateBook } = useBookStore();
@@ -150,6 +151,9 @@ function SummaryStep() {
     return sceneMap[sceneId] || 'Custom Setting';
   };
   
+  // Use the new function to get the friendly name for display
+  const selectedStyleName = getFriendlyStyleName(storyData.artStyle);
+  
   return (
     <div className="space-y-6 pb-12">
       <div className="text-center mb-6">
@@ -213,10 +217,11 @@ function SummaryStep() {
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Art Style</h3>
           <div className="mt-2">
-            <p className="font-medium">
-              {getStyleDisplayName(storyData.artStyleCode) || 'Not Selected'}
-            </p>
-            {storyData.artStyleCode === 'custom' && storyData.customStyleDescription && (
+            <div className="mb-4">
+              <h4 className="font-semibold text-gray-700">Art Style:</h4>
+              <p className="text-gray-600">{selectedStyleName || 'Not Selected'}</p>
+            </div>
+            {storyData.artStyle === 'custom' && storyData.customStyleDescription && (
               <p className="text-sm text-gray-600 mt-1">{storyData.customStyleDescription}</p>
             )}
           </div>
