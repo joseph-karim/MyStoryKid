@@ -1,15 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
 import { getFriendlyStyleName } from '../../services/dzineService';
 import { useNavigate } from 'react-router-dom';
 
 function SummaryStep() {
-  const { wizardState, updateStoryData, setWizardStep, generateBook } = useBookStore();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const {
+    wizardState,
+    updateStoryData,
+    setWizardStep,
+    generateBook,
+    isLoading,
+    latestGeneratedBookId,
+    resetWizard,
+  } = useBookStore();
   const [error, setError] = useState('');
   const navigate = useNavigate();
   
   const { storyData } = wizardState;
+  
+  useEffect(() => {
+    if (latestGeneratedBookId) {
+      console.log(`[SummaryStep] Detected new book ID: ${latestGeneratedBookId}. Navigating...`);
+      const bookId = latestGeneratedBookId; 
+      useBookStore.setState({ latestGeneratedBookId: null });
+      navigate(`/book/${bookId}`);
+    }
+  }, [latestGeneratedBookId, navigate, resetWizard]);
   
   const handleBack = () => {
     // Go back to Story Details step
@@ -17,32 +33,17 @@ function SummaryStep() {
   };
   
   const handleGenerate = async () => {
-    if (isGenerating) return; // Prevent multiple clicks
+    if (isLoading) return;
     
-    setIsGenerating(true);
     setError('');
     
     try {
-      // Call the generate function (this would be implemented in your bookStore)
-      const result = await generateBook();
-      
-      // Check if generation was successful and we got a bookId
-      if (result && result.bookId) {
-        console.log(`Book generation successful! Navigating to /book/${result.bookId}`);
-        // Navigate to the new book's page
-        navigate(`/book/${result.bookId}`);
-      } else {
-        // Handle cases where generation might succeed but not return an ID as expected
-        console.warn("Book generation finished, but no bookId was returned. Showing generic success message.");
-        // Optionally show a less disruptive success message here if needed
-        setError('Book generated, but couldn\'t navigate. Find it in \"My Books\".');
-      }
+      generateBook();
+      console.log("[SummaryStep] Called generateBook action. Waiting for store update...");
       
     } catch (err) {
-      console.error("Error generating book:", err);
-      setError(err.message || 'Failed to generate your book. Please try again.');
-    } finally {
-      setIsGenerating(false);
+      console.error("Error invoking generateBook action (should not happen if action handles errors):", err);
+      setError(err.message || 'Failed to start book generation.');
     }
   };
   
@@ -162,12 +163,11 @@ function SummaryStep() {
   const selectedStyleName = getFriendlyStyleName(storyData.artStyle);
   
   // --- Loading State UI ---
-  if (isGenerating) {
+  if (isLoading) {
     return (
       <div className="text-center py-16">
         <h2 className="text-2xl font-bold mb-4">Generating Your Magical Story...</h2>
-        <p className="text-gray-600 mb-6">Please wait while we bring your creation to life!</p>
-        {/* Optional: Add a spinner animation here */}
+        <p className="text-gray-600 mb-6">This may take a minute or two...</p>
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
       </div>
     );
@@ -425,20 +425,10 @@ function SummaryStep() {
           
           <button
             onClick={handleGenerate}
-            disabled={isGenerating}
-            className={`px-6 py-3 rounded-lg text-white font-medium ${
-              isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 w-full md:w-auto disabled:opacity-50"
+            disabled={isLoading}
           >
-            {isGenerating ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generating...
-              </span>
-            ) : 'Generate My Storybook'}
+            {isLoading ? 'Generating...' : 'Generate My Book'}
           </button>
         </div>
       </div>
