@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,6 +47,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   
+  // --- ADDED STATE: Track generation attempt ---
+  const [generationAttempted, setGenerationAttempted] = useState(false);
+  // ------------------------------------------
+  
   // --- MOVED EFFECT: Update isHuman based on type --- 
   useEffect(() => {
     // Determine default isHuman value based on type
@@ -73,6 +77,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setStep(1);
     setIsGenerating(false);
     setProgressMessage('');
+    setGenerationAttempted(false); // <-- Reset attempt tracker
     
     // Apply forced style if provided - This is the ONLY source now
     if (forcedArtStyle) {
@@ -174,6 +179,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setError('');
     setProgressMessage('');
     setPhotoPreview(null);
+    setGenerationAttempted(false); // <-- Reset attempt tracker
     // Reset character data with a new ID
     setCharacterData({
       id: uuidv4(),
@@ -299,9 +305,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Auto-generate preview when entering step 3 (Confirm step)
   useEffect(() => {
     // Log dependencies for debugging
-    console.log(`[EFFECT CHECK] Step: ${step}, isGenerating: ${isGenerating}, hasStylePreview: ${!!characterData.stylePreview}, hasForcedStyle: ${!!forcedArtStyle}, hasPhotoUrl: ${!!characterData.photoUrl}, hasGenPrompt: ${!!characterData.generationPrompt}`);
+    console.log(`[EFFECT CHECK] Step: ${step}, isGenerating: ${isGenerating}, generationAttempted: ${generationAttempted}, hasStylePreview: ${!!characterData.stylePreview}, hasForcedStyle: ${!!forcedArtStyle}, hasPhotoUrl: ${!!characterData.photoUrl}, hasGenPrompt: ${!!characterData.generationPrompt}`);
     
-    if (step === 3 && !isGenerating && !characterData.stylePreview) { 
+    // --- UPDATED CONDITION: Check generationAttempted flag --- 
+    if (step === 3 && !isGenerating && !generationAttempted && !characterData.stylePreview) { 
+    // -------------------------------------------------------
+      
       // Style MUST come from the forcedArtStyle prop now
       const styleToUse = forcedArtStyle;
       
@@ -310,9 +319,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       
       if (styleToUse && hasPhotoOrDesc) {
         console.log(`[EFFECT] Step 3 reached & dependencies met, using style: ${styleToUse}`);
-        // Ensure style is set in character data before generation
-        // No - don't update characterData here, generateCharacterPreview will read the latest state
-        // setCharacterData(prev => ({ ...prev, artStyle: styleToUse }));
+        // Mark that we are attempting generation
+        setGenerationAttempted(true); // <-- Set attempt tracker
         
         // PASS the correct isHuman flag to the generation function
         generateCharacterPreview(styleToUse, characterData.isHuman);
@@ -324,7 +332,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }
     }
     // Add characterData.isHuman to dependency array to ensure effect re-runs if it changes
-  }, [step, forcedArtStyle, characterData.photoUrl, characterData.generationPrompt, characterData.isHuman, isGenerating, characterData.stylePreview]);
+    // Add generationAttempted to dependencies
+  }, [step, forcedArtStyle, characterData.photoUrl, characterData.generationPrompt, characterData.isHuman, isGenerating, characterData.stylePreview, generationAttempted]);
+
+  // --- ADDED EFFECT: Reset generationAttempted if inputs change --- 
+  useEffect(() => {
+    // Reset the attempt flag if relevant inputs change, allowing a new attempt
+    setGenerationAttempted(false);
+  }, [forcedArtStyle, characterData.photoUrl, characterData.generationPrompt]);
+  // --------------------------------------------------------------
   
   // Add a function to handle tab navigation
   const handleTabClick = (tabStep) => {
@@ -425,7 +441,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Step 1: Basic character details
   const renderDetailsStep = () => {
     console.log('[Render] renderDetailsStep');
-    return (
+  return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
