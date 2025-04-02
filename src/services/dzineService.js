@@ -627,6 +627,52 @@ export const getFriendlyStyleName = (styleCode) => {
   return entry ? entry[1].name : 'Unknown Style'; // Return name or a default
 };
 
+// Scene name mapping (for the scene dropdown in the wizard)
+const sceneNameMap = {
+  // Adventure scenes
+  space: 'Space Adventure',
+  ocean: 'Undersea Quest',
+  jungle: 'Jungle Expedition',
+  mountains: 'Mountain Journey',
+  safari: 'Safari Adventure',
+  
+  // Bedtime scenes
+  dreams: 'Dream Journey',
+  stars: 'Starry Night',
+  bedroom: 'Bedtime Magic',
+  night_forest: 'Moonlit Forest',
+  cloud_kingdom: 'Cloud Kingdom',
+  
+  // Learning scenes
+  school: 'School Adventure',
+  library: 'Library Quest',
+  alphabet_land: 'Alphabet Land',
+  zoo_letters: 'Alphabet Zoo',
+  garden: 'Garden of Letters',
+  
+  // Birthday scenes
+  party: 'Birthday Party',
+  amusement_park: 'Amusement Park',
+  treasure_hunt: 'Treasure Hunt',
+  bakery: 'Bakery Adventure',
+  parade: 'Birthday Parade',
+  
+  // Fantasy scenes
+  enchanted_forest: 'Enchanted Forest',
+  dragon_mountain: 'Dragon Mountain',
+  fairy_kingdom: 'Fairy Kingdom',
+  wizard_castle: 'Wizard Castle',
+  crystal_caves: 'Crystal Caves',
+  
+  // Custom scene
+  custom_scene: 'Custom Setting',
+};
+
+// Function to get a friendly scene name from a scene ID
+export const getFriendlySceneName = (sceneId) => {
+  return sceneNameMap[sceneId] || 'Unknown Scene';
+};
+
 // Debug function to compare our style mappings with API
 export const compareStyleMappings = async () => {
   try {
