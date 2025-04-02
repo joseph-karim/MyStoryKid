@@ -16,6 +16,24 @@ function SummaryStep() {
   const bookDetails = storyData;
   const characters = storyData.bookCharacters || [];
   
+  // New function to safely get field values with fallbacks
+  const getFieldValue = (fieldName, alternativeNames = [], defaultValue = 'N/A') => {
+    // First check if the primary field exists
+    if (bookDetails && bookDetails[fieldName] && bookDetails[fieldName] !== '') {
+      return bookDetails[fieldName];
+    }
+    
+    // Then check alternative field names
+    for (const altName of alternativeNames) {
+      if (bookDetails && bookDetails[altName] && bookDetails[altName] !== '') {
+        return bookDetails[altName];
+      }
+    }
+    
+    // Return default if nothing found
+    return defaultValue;
+  };
+  
   useEffect(() => {
     // Debug log to see what data we actually have
     console.log("[SummaryStep] wizardState:", wizardState);
@@ -60,8 +78,20 @@ function SummaryStep() {
     return getFriendlySceneName(sceneId);
   };
   
-  const selectedStyleName = getStyleDisplayName(bookDetails?.artStyleCode);
-  const selectedSceneName = getSceneDisplayName(bookDetails?.mainScene);
+  // Get fields with fallbacks using our new helper function
+  const storyType = getFieldValue('storyType', [], 'standard');
+  const ageRange = getFieldValue('ageRange', ['targetAgeRange'], 'Not specified');
+  const theme = getFieldValue('coreTheme', ['category', 'theme'], 'Not specified');
+  const tone = getFieldValue('toneStyle', ['tone'], 'Not specified');
+  const plotIdea = getFieldValue('mainChallengePlot', ['storyStart', 'plotIdea'], 'Not specified');
+  const coreConcept = getFieldValue('coreConcept', ['concept'], 'Not specified');
+  const keyItems = getFieldValue('keyObjectsActions', ['keyItems'], 'Not specified');
+  
+  // Get style and scene names
+  const artStyleCode = getFieldValue('artStyleCode', ['styleCode'], '');
+  const mainScene = getFieldValue('mainScene', ['scene'], '');
+  const selectedStyleName = getStyleDisplayName(artStyleCode);
+  const selectedSceneName = getSceneDisplayName(mainScene);
   
   // --- Default Summary UI ---
   return (
@@ -78,56 +108,56 @@ function SummaryStep() {
       )}
       
       <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-        {/* Story Details - Adjust based on actual bookDetails structure */}
+        {/* Story Details - Using our getFieldValue helper */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Core Details</h3>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <p><span className="font-semibold">Type:</span> {bookDetails?.storyType || 'N/A'}</p>
-            <p><span className="font-semibold">Age Range:</span> {bookDetails?.targetAgeRange || 'N/A'}</p>
-            <p><span className="font-semibold">Theme:</span> {bookDetails?.coreTheme || 'N/A'}</p>
-            <p><span className="font-semibold">Tone:</span> {bookDetails?.tone || 'N/A'}</p>
-            <p className="md:col-span-2"><span className="font-semibold">Plot Idea:</span> {bookDetails?.mainChallengePlot || 'N/A'}</p>
-            {bookDetails?.storyType === 'board_book' && <p><span className="font-semibold">Concept:</span> {bookDetails?.coreConcept || 'N/A'}</p>}
-            {bookDetails?.storyType === 'board_book' && <p className="md:col-span-2"><span className="font-semibold">Key Items:</span> {bookDetails?.keyObjectsActions || 'N/A'}</p>}
+            <p><span className="font-semibold">Type:</span> {storyType}</p>
+            <p><span className="font-semibold">Age Range:</span> {ageRange}</p>
+            <p><span className="font-semibold">Theme:</span> {theme}</p>
+            <p><span className="font-semibold">Tone:</span> {tone}</p>
+            <p className="md:col-span-2"><span className="font-semibold">Plot Idea:</span> {plotIdea}</p>
+            {storyType === 'board_book' && <p><span className="font-semibold">Concept:</span> {coreConcept}</p>}
+            {storyType === 'board_book' && <p className="md:col-span-2"><span className="font-semibold">Key Items:</span> {keyItems}</p>}
           </div>
         </div>
         
-        {/* Main Scene/Setting - Assuming scene details are in bookDetails */}
+        {/* Main Scene/Setting */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Main Scene/Setting</h3>
           <div className="mt-2">
             <p className="font-medium">{selectedSceneName}</p>
-            {bookDetails?.mainScene === 'custom_scene' && bookDetails?.customSceneDescription && (
+            {mainScene === 'custom_scene' && bookDetails?.customSceneDescription && (
               <p className="text-sm text-gray-600 mt-1">{bookDetails.customSceneDescription}</p>
             )}
           </div>
         </div>
         
-        {/* Art Style - Assuming style code is in bookDetails */}
+        {/* Art Style */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Art Style</h3>
           <div className="mt-2">
             <p className="font-medium">{selectedStyleName}</p>
-            {bookDetails?.artStyleCode === 'custom' && bookDetails?.customStyleDescription && (
+            {artStyleCode === 'custom' && bookDetails?.customStyleDescription && (
               <p className="text-sm text-gray-600 mt-1">{bookDetails.customStyleDescription}</p>
             )}
           </div>
         </div>
         
-        {/* Characters - Assuming characters are directly in wizardState */}
+        {/* Characters */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Characters</h3>
           <div className="mt-2 space-y-3">
             {characters && characters.length > 0 ? (
               characters.map(character => (
-                <div key={character.id} className="flex items-start space-x-3">
+                <div key={character.id || character.name} className="flex items-start space-x-3">
                   <div className="w-12 h-12 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center">
                     {/* Placeholder for character image/icon */}
                     <span className="text-xl">{character.name ? character.name.charAt(0).toUpperCase() : '?'}</span>
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{character.name || 'Unnamed Character'}</p>
-                    <p className="text-sm text-gray-500">Role: {character.role || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Role: {character.role || character.type || 'N/A'}</p>
                     <p className="text-sm text-gray-500">Traits: {character.traits?.join(', ') || 'N/A'}</p>
                   </div>
                 </div>
