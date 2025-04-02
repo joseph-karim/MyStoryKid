@@ -318,6 +318,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       const hasPhotoOrDesc = characterData.photoUrl || characterData.generationPrompt;
       
       if (styleToUse && hasPhotoOrDesc) {
+        // --- ADDED LOG --- 
+        console.log(`[EFFECT - PRE-GENERATION CHECK] Triggering generation. Style code received via forcedArtStyle prop: ${styleToUse}`);
+        // -----------------
         console.log(`[EFFECT] Step 3 reached & dependencies met, using style: ${styleToUse}`);
         // Mark that we are attempting generation
         setGenerationAttempted(true); // <-- Set attempt tracker
