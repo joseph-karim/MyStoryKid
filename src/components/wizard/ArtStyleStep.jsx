@@ -31,9 +31,6 @@ import vividTableauxImg from '../../assets/dzine-styles/Vivid-Tableaux.png';
 import luminousNarrativesImg from '../../assets/dzine-styles/Luminous-Narratives.png';
 import dreamlikePortraitureImg from '../../assets/dzine-styles/Dreamlike-Portraiture.png';
 import aquarelleLifeImg from '../../assets/dzine-styles/Aquarelle-Life.png';
-import storybookCharmImg from '../../assets/dzine-styles/Storybook-Charm.png';
-import sketchEleganceImg from '../../assets/dzine-styles/Sketch-Elegance.png';
-import paperCutoutImg from '../../assets/dzine-styles/Paper-Cutout.png';
 
 // Map style IDs to the imported images - used for legacy code compatibility
 const styleImageMap = {
@@ -151,7 +148,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
     styleIds: [
       { 
         id: 'cheerful_storybook',
-        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
+        apiCode: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926',
         title: 'Cheerful Storybook',
         description: 'Bright, cheerful illustrations with bold colors and playful details'
       },
