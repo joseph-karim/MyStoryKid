@@ -52,7 +52,7 @@ Interactions with the OpenAI API are handled through `src/services/openaiService
 
 ## State Management (Zustand)
 
-*   **Main Wizard State (`useBookWizardStore`)**: Located in `src/store/useBookWizardStore.js`. Manages the overall wizard progress and collected story data.
+*   **Main Wizard State (`useBookStore`)**: Located in `src/store/useBookStore.js`. Manages the overall wizard progress and collected story data.
     *   `wizardState`: Contains `currentStep`, `bookDetails`, and `characters`.
     *   `bookDetails`: Holds user inputs like `category`, `artStyleCode`, `targetAgeRange`, `coreTheme`, `mainChallengePlot`, etc.
     *   `characters`: Array of character objects with properties like `id`, `name`, `role`, `imageUrl`, etc.
@@ -86,7 +86,7 @@ Interactions with the OpenAI API are handled through `src/services/openaiService
     *   Calls `onComplete` with the final character data.
 
 4.  **`GenerateBookStep.jsx`**: Handles the complete book generation process.
-    *   Reads data from `useBookWizardStore`.
+    *   Reads data from `useBookStore`.
     *   Implements a multi-phase generation process:
         1. **Outline Generation**: Constructs a detailed prompt and calls `openaiService.generateOutlineFromPrompt()`.
         2. **Page Content Generation**: For each spread in the outline, calls `openaiService.generateSpreadContentFromPrompt()`.
@@ -122,7 +122,7 @@ The book generation process follows these steps:
 
 ## Architecture Decisions/Notes
 
-*   Separation of main wizard state (`useBookWizardStore`) and internal character creation state (`useCharacterStore`).
+*   Separation of main wizard state (`useBookStore`) and internal character creation state (`useCharacterStore`).
 *   Two-step book generation process (outline first, then page-by-page content) provides better narrative structure.
 *   Style codes are mapped locally but validated against the API using `analyzeAllStyles`.
 *   Image generation is asynchronous, requiring polling (`getTaskProgress`).

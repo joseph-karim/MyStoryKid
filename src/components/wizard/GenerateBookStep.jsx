@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBookWizardStore } from '../../store/useBookWizardStore';
+import { useBookStore } from '../../store/useBookStore';
 import * as openaiService from '../../services/openaiService';
 import * as dzineService from '../../services/dzineService';
 
@@ -101,7 +101,7 @@ Return a JSON object with two properties:
 
 const GenerateBookStep = () => {
   const navigate = useNavigate();
-  const wizardState = useBookWizardStore(state => state.wizardState);
+  const wizardState = useBookStore(state => state.wizardState);
   const { bookDetails = {}, characters = [] } = wizardState || {};
   
   // Generation state management
