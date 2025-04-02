@@ -6,12 +6,10 @@ import { useNavigate } from 'react-router-dom';
 function SummaryStep() {
   const {
     wizardState,
-    updateStoryData,
     setWizardStep,
     generateBook,
     isLoading,
     latestGeneratedBookId,
-    resetWizard,
   } = useBookStore();
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -25,25 +23,21 @@ function SummaryStep() {
       useBookStore.setState({ latestGeneratedBookId: null });
       navigate(`/book/${bookId}`);
     }
-  }, [latestGeneratedBookId, navigate, resetWizard]);
+  }, [latestGeneratedBookId, navigate]);
   
   const handleBack = () => {
     // Go back to Story Details step
     setWizardStep(5);
   };
   
-  const handleGenerate = async () => {
-    if (isLoading) return;
-    
+  const handleGenerateClick = () => {
+    console.log("[SummaryStep] Generate button clicked. isLoading check:", isLoading);
     setError('');
-    
-    try {
-      generateBook();
-      console.log("[SummaryStep] Called generateBook action. Waiting for store update...");
-      
-    } catch (err) {
-      console.error("Error invoking generateBook action (should not happen if action handles errors):", err);
-      setError(err.message || 'Failed to start book generation.');
+    if (!isLoading) {
+        console.log("[SummaryStep] isLoading is false, calling generateBook().");
+        generateBook(); 
+    } else {
+        console.log("[SummaryStep] isLoading is true, generateBook() call skipped.");
     }
   };
   
@@ -424,7 +418,7 @@ function SummaryStep() {
           </div>
           
           <button
-            onClick={handleGenerate}
+            onClick={handleGenerateClick}
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 w-full md:w-auto disabled:opacity-50"
             disabled={isLoading}
           >
