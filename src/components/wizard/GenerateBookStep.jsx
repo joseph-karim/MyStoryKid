@@ -117,6 +117,7 @@ const GenerateBookStep = () => {
   
   // Start the generation process
   useEffect(() => {
+    console.log("🚀 GenerateBookStep mounted! This new component is being used!");
     console.log("GenerateBookStep mounted. Book Details:", bookDetails);
     console.log("Characters:", characters);
     
