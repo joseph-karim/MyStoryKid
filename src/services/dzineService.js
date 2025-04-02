@@ -288,22 +288,34 @@ export const createImg2ImgTask = async (payload, applyFaceMatch = true) => {
 };
 
 // 6. Text-to-Image Task Creation
-export const createTxt2ImgTask = async (payload) => {
+export const createTxt2ImgTask = async (promptText, styleCode, options = {}) => {
   try {
-    // Validate style code first
-    if (!payload.style_code) {
+    // Validate required parameters
+    if (!promptText) {
+      throw new Error('Prompt text is required');
+    }
+    
+    if (!styleCode) {
       console.error('Missing style_code in payload');
       throw new Error('Style code is required');
     }
     
-    // Log style details for debugging
-    console.log('Style parameters for txt2img:', {
-      styleCode: payload.style_code,
-      styleIntensity: payload.style_intensity,
-      promptStrength: payload.prompt_strength,
-      cfgScale: payload.cfg_scale
-    });
+    // Create a properly structured payload according to the API documentation
+    const payload = {
+      prompt: promptText.substring(0, 800), // Ensure prompt stays within 800 char limit
+      style_code: styleCode,
+      target_h: options.target_h || 1024, // Default height if not specified
+      target_w: options.target_w || 1024, // Default width if not specified
+      
+      // Optional parameters with defaults
+      style_intensity: options.style_intensity !== undefined ? options.style_intensity : 0.8,
+      quality_mode: options.quality_mode !== undefined ? options.quality_mode : 1, // Default to high quality
+      seed: options.seed || Math.floor(Math.random() * 2147483647) + 1, // Random seed if not provided
+      generate_slots: options.generate_slots || [1, 1, 0, 0], // Default configuration
+      output_format: options.output_format || 'webp'
+    };
     
+    // Log the final request for debugging
     console.log('Sending Text-to-Image request to Dzine API:', JSON.stringify(payload, null, 2));
     
     // Use the EXACT endpoint from the documentation
@@ -318,39 +330,41 @@ export const createTxt2ImgTask = async (payload) => {
     // Log full response for debugging
     console.log(`Raw response from Text-to-Image API:`, JSON.stringify(data));
     
-    // Check for task_id in different possible response structures
-    if (data) {
-      console.log(`Success with endpoint ${endpoint}:`, data);
+    // Handle response based on documented structure
+    if (data && data.code === 200 && data.data && data.data.task_id) {
+      console.log(`Success! Task ID: ${data.data.task_id}`);
+      return data.data;
+    } 
+    // Fallback handler for potentially different response structures
+    else if (data) {
+      console.log(`Processing alternative response structure:`, data);
       
-      // Case 1: Standard structure with code 200
-      if (data.code === 200 && data.data && data.data.task_id) {
-        console.log(`Found task_id in standard structure:`, data.data.task_id);
-        return data.data;
-      }
+      // Try to extract task_id from different possible locations
+      let taskId = null;
       
-      // Case 2: Direct task_id in data
       if (data.task_id) {
-        console.log(`Found direct task_id:`, data.task_id);
-        return { task_id: data.task_id };
+        taskId = data.task_id;
+      } else if (data.data && data.data.task) {
+        taskId = data.data.task;
+      } else if (typeof data === 'string' && data.includes('task_id')) {
+        // Try to parse a string response that might contain task_id
+        try {
+          const parsedData = JSON.parse(data);
+          taskId = parsedData.data?.task_id || parsedData.task_id;
+        } catch (e) {
+          console.error('Failed to parse string response:', e);
+        }
       }
       
-      // Case 3: Nested in a different structure
-      if (data.data && data.data.task) {
-        console.log(`Found task in nested structure:`, data.data.task);
-        return { task_id: data.data.task };
+      if (taskId) {
+        console.log(`Found task_id: ${taskId}`);
+        return { task_id: taskId };
       }
       
-      // Check for style-related errors
-      if (data.msg && data.msg.toLowerCase().includes('style')) {
-        throw new Error(`Style error: ${data.msg}`);
-      }
-      
-      // If we got here, log the structure for debugging
-      console.warn(`Could not find task_id in response structure:`, data);
-      throw new Error('Could not find task_id in API response');
+      // If we reach here, we couldn't extract a task_id
+      throw new Error('Could not find task_id in API response: ' + JSON.stringify(data));
     } else {
-      console.error(`Empty response from ${endpoint}`);
-      throw new Error('Empty response from API');
+      throw new Error('Empty or invalid response from API');
     }
   } catch (error) {
     console.error('Error in createTxt2ImgTask:', error);

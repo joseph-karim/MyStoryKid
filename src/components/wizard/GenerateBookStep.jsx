@@ -316,10 +316,16 @@ const GenerateBookStep = () => {
           
           console.log(`Creating image task for spread ${i+1} with style code: ${styleCode}`);
           
-          // Create a text-to-image task
+          // Create a text-to-image task with the updated function signature
           const result = await dzineService.createTxt2ImgTask(
-            spread.imagePrompt, 
-            styleCode
+            spread.imagePrompt,  // prompt text
+            styleCode,           // style code
+            {                    // options
+              target_h: 1024,
+              target_w: 1024,
+              quality_mode: 1,   // high quality
+              generate_slots: [1, 1, 0, 0] // Generate 2 images
+            }
           );
           
           if (result && result.task_id) {
