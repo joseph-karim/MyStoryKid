@@ -441,10 +441,10 @@ function CharactersStep() {
     });
     
     // Continue to Story Details step
-    setWizardStep(4);
+    setWizardStep(5);
     
     // Log for debugging
-    console.log("Navigating to Story Details step (step 4)");
+    console.log("Navigating to Story Details step (step 5)");
   };
 
   // New function to generate previews for all characters at once
