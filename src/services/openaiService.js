@@ -3,8 +3,8 @@ import OpenAI from 'openai';
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 // Ensure the key is present. Handle the error appropriately in a real app.
 if (!apiKey) {
-  console.error('OpenAI API key not found. Please set VITE_OPENAI_API_KEY in your .env file.');
-  // Potentially throw an error or return a mock response
+  console.error('OpenAI API key not found. Make sure VITE_OPENAI_API_KEY is set.');
+  // Potentially throw an error or handle this state appropriately
 }
 
 const openai = new OpenAI({ apiKey: apiKey, dangerouslyAllowBrowser: true }); // Enable browser usage (ensure security implications are understood)
@@ -323,3 +323,140 @@ export const generateStoryPages = async (storyData, numPages = 8) => {
      }));
   }
 };
+
+/**
+ * Generates a story outline using OpenAI based on a detailed prompt.
+ * Expects the prompt to request a JSON array of strings as output.
+ */
+export const generateOutlineFromPrompt = async (prompt) => {
+  console.log("[openaiService] Generating outline...");
+  if (!apiKey) return { success: false, error: "OpenAI API key not configured." };
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", // Or another suitable model like gpt-4-turbo
+      messages: [
+        { role: "system", content: "You are a helpful assistant designed to create structured outlines for children's books. Output ONLY valid JSON." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.6, // Adjust for creativity vs consistency
+      response_format: { type: "json_object" },
+    });
+
+    const responseJsonString = completion.choices[0]?.message?.content;
+    if (!responseJsonString) {
+      throw new Error('No content received from OpenAI for outline.');
+    }
+
+    console.log("[openaiService] Raw outline response string:", responseJsonString);
+
+    // Attempt to parse the JSON response
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseJsonString);
+    } catch (parseError) {
+      console.error("[openaiService] Failed to parse outline JSON:", parseError);
+      console.error("[openaiService] Raw string was:", responseJsonString);
+      throw new Error(`AI returned invalid JSON format for outline: ${parseError.message}`);
+    }
+
+    // Validate the parsed response structure (expecting an array)
+    // Sometimes the model might wrap the array in a key like {"outline": [...]}
+    let outlineArray = null;
+    if (Array.isArray(parsedResponse)) {
+        outlineArray = parsedResponse;
+    } else if (typeof parsedResponse === 'object' && parsedResponse !== null) {
+        // Check for common key names if it's an object
+        const possibleKeys = ['outline', 'spreads', 'result', 'data'];
+        const key = possibleKeys.find(k => Array.isArray(parsedResponse[k]));
+        if (key) {
+            outlineArray = parsedResponse[key];
+        }
+    }
+
+    if (!outlineArray || !Array.isArray(outlineArray)) {
+         console.error("[openaiService] Parsed outline response is not an array or in expected object wrapper:", parsedResponse);
+        throw new Error('AI response for outline was not in the expected array format.');
+    }
+
+    // Further validation: check if all elements are strings?
+    if (!outlineArray.every(item => typeof item === 'string')) {
+        console.warn("[openaiService] Outline array contains non-string elements:", outlineArray);
+        // Decide how to handle this - maybe try to convert or filter?
+        // For now, let's proceed but be aware.
+    }
+
+    console.log("[openaiService] Successfully parsed outline:", outlineArray);
+    return { success: true, outline: outlineArray };
+
+  } catch (error) {
+    console.error("[openaiService] Error generating outline:", error);
+    return { success: false, error: error.message || 'Failed to generate outline from OpenAI.' };
+  }
+};
+
+/**
+ * Generates spread content (text and image prompt) using OpenAI based on a detailed prompt.
+ * Expects the prompt to request a JSON object like { "text": "...", "imagePrompt": "..." }.
+ */
+export const generateSpreadContentFromPrompt = async (prompt) => {
+  console.log("[openaiService] Generating spread content...");
+  if (!apiKey) return { success: false, error: "OpenAI API key not configured." };
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", // Or another suitable model
+      messages: [
+        { role: "system", content: "You are a helpful assistant designed to write children's book page text and corresponding image prompts. Output ONLY valid JSON." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7, // Slightly higher for more creative text?
+      response_format: { type: "json_object" },
+    });
+
+    const responseJsonString = completion.choices[0]?.message?.content;
+    if (!responseJsonString) {
+      throw new Error('No content received from OpenAI for spread content.');
+    }
+
+    console.log("[openaiService] Raw spread content response string:", responseJsonString);
+
+    // Attempt to parse the JSON response
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseJsonString);
+    } catch (parseError) {
+      console.error("[openaiService] Failed to parse spread content JSON:", parseError);
+      console.error("[openaiService] Raw string was:", responseJsonString);
+      throw new Error(`AI returned invalid JSON format for spread content: ${parseError.message}`);
+    }
+
+    // Validate the parsed response structure
+    if (typeof parsedResponse !== 'object' || parsedResponse === null || typeof parsedResponse.text !== 'string' || typeof parsedResponse.imagePrompt !== 'string') {
+      console.error("[openaiService] Parsed spread content response does not match expected format {text: string, imagePrompt: string}:", parsedResponse);
+      // Attempt to find the data if nested?
+       let content = null;
+       if (typeof parsedResponse === 'object' && parsedResponse !== null) {
+           const possibleKeys = ['content', 'spread', 'result', 'data'];
+           const key = possibleKeys.find(k => typeof parsedResponse[k] === 'object' && parsedResponse[k] !== null && typeof parsedResponse[k].text === 'string' && typeof parsedResponse[k].imagePrompt === 'string');
+           if (key) {
+               content = parsedResponse[key];
+           }
+       }
+       if (!content) {
+          throw new Error('AI response for spread content did not match the expected format {text: string, imagePrompt: string}.');
+       }
+       parsedResponse = content; // Use the nested content
+    }
+
+    console.log("[openaiService] Successfully parsed spread content:", parsedResponse);
+    return { success: true, content: parsedResponse };
+
+  } catch (error) {
+    console.error("[openaiService] Error generating spread content:", error);
+    return { success: false, error: error.message || 'Failed to generate spread content from OpenAI.' };
+  }
+};
+
+// Optional: Add any other OpenAI related functions you might need here
+// e.g., function for suggesting titles, themes, etc.

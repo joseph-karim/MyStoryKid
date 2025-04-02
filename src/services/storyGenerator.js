@@ -7,7 +7,8 @@
  */
 
 // Import OpenAI integration
-import { generateStoryPages } from './openaiService';
+import { generateOutlineFromPrompt, generateSpreadContentFromPrompt } from './openaiService';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Step 1: Generate the Story Outline
@@ -488,68 +489,260 @@ function generateImagePromptFromOutline(
  * This orchestrates the two-step process
  */
 export const generateCompleteBook = async (storyData) => {
+  console.log("[generateCompleteBook] Starting generation with data:", storyData);
   try {
-    // Step 1: Generate the story outline
-    console.log("Generating story outline...");
-    const outlineResult = await generateStoryOutline(storyData);
-    
-    if (!outlineResult.success) {
-      throw new Error(`Failed to generate story outline: ${outlineResult.error}`);
+    // --- Validate Input Data ---
+    const errors = [];
+    if (!storyData.category) errors.push('Story category is required');
+    if (!storyData.mainScene) errors.push('Main scene/setting is required');
+    if (!storyData.artStyleCode) errors.push('Art style is required');
+    if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) errors.push('At least one character is required');
+    else if (!storyData.bookCharacters.find(char => char.role === 'main')) errors.push('A main character is required');
+    // Add validation for story structure elements?
+    if (!storyData.storyStart) errors.push('Story Start is required');
+    if (!storyData.mainHurdle) errors.push('Main Hurdle is required');
+    if (!storyData.bigTry) errors.push('Big Try is required');
+    if (!storyData.turningPoint) errors.push('Turning Point is required');
+    if (!storyData.resolution) errors.push('Resolution is required');
+    if (!storyData.takeaway) errors.push('Takeaway is required');
+
+
+    if (errors.length > 0) {
+      console.error("[generateCompleteBook] Validation failed:", errors);
+      return { success: false, error: errors.join('. ') };
     }
-    
-    const outline = outlineResult.outline;
-    console.log("Story outline generated:", outline);
-    
-    // Determine number of spreads from the outline
-    const numSpreads = outline.length;
-    
-    // Step 2: Generate content for each spread
-    console.log(`Generating content for ${numSpreads} spreads...`);
-    const spreads = [];
-    
-    for (let i = 1; i <= numSpreads; i++) {
-      console.log(`Generating content for spread ${i}...`);
-      const spreadResult = await generateSpreadContent(storyData, outline, i);
-      
-      if (!spreadResult.success) {
-        throw new Error(`Failed to generate content for spread ${i}: ${spreadResult.error}`);
-      }
-      
-      spreads.push(spreadResult.spreadContent);
-    }
-    
-    // Step 3: Compile the book
+
     const mainCharacter = storyData.bookCharacters.find(char => char.role === 'main');
-    
-    // Get scene name for title
-    const sceneName = getSceneFriendlyName(storyData.mainScene);
-    
-    // Generate a title if none provided
-    const title = storyData.title || 
-      `${mainCharacter.name}'s ${getCategoryTitle(storyData.category, sceneName)}`;
-    
-    // Create the complete book structure
-    const book = {
-      title,
-      outline,
-      spreads,
-      storyData,
-      generatedAt: new Date().toISOString()
+    const numSpreads = storyData.storyType === 'board_book' ? 6 : (storyData.desiredLengthWords <= 400 ? 12 : 16); // Adjust based on length/type
+    const sceneDesc = storyData.mainScene === 'custom_scene' ? storyData.customSceneDescription : getSceneDescription(storyData.mainScene);
+    const artStyleDesc = storyData.artStyleCode === 'custom' ? storyData.customStyleDescription : `using the style identifier '${storyData.artStyleCode}'`; // Or lookup friendly name?
+
+    // --- STEP 1: Generate Outline ---
+    console.log("[generateCompleteBook] Formatting Step 1 prompt (Outline)...");
+    const outlinePrompt = `
+      **Goal:** Generate a concise spread-by-spread outline for a children's book.
+
+      **Core Book Details:**
+      * Target Reading Age Range: ${storyData.ageRange || '3-8'} years old
+      * Target Illustration Age Range: ${storyData.ageRange || '3-8'} years old
+      * Main Character(s): ${storyData.bookCharacters.map(c => `${c.name} (${c.type}, ${c.age}, ${c.gender}, Traits: ${c.traits?.join(', ') || 'N/A'})`).join('; ')}
+      * Supporting Characters (Optional): ${storyData.bookCharacters.filter(c => c.role !== 'main').map(c => c.name).join(', ') || 'None'}
+      * Art Style: ${artStyleDesc}
+      * Core Theme: ${storyData.coreTheme || 'Not specified'}
+      * Overall Length: ${numSpreads} Spreads (${numSpreads * 2} pages, excluding cover/title)
+      * Story Spark: ${storyData.storyStart === 'custom' ? storyData.customStoryStart : storyData.storyStart}
+      * Main Hurdle: ${storyData.mainHurdle === 'custom' ? storyData.customMainHurdle : storyData.mainHurdle}
+      * Character's Big Try: ${storyData.bigTry === 'custom' ? storyData.customBigTry : storyData.bigTry}
+      * Key Turning Point: ${storyData.turningPoint === 'custom' ? storyData.customTurningPoint : storyData.turningPoint}
+      * Happy Ending: ${storyData.resolution === 'custom' ? storyData.customResolution : storyData.resolution}
+      * Takeaway: ${storyData.takeaway === 'custom' ? storyData.customTakeaway : storyData.takeaway}
+      * Setting: ${sceneDesc}
+      ${storyData.specificRequests ? `* Specific Requests: ${storyData.specificRequests}` : ''}
+
+      **Instructions for AI:**
+      1. Based on all the core book details, create a brief outline distributing the story events across the specified ${numSpreads} spreads. Define a "spread" as two facing pages (e.g., Spread 1 = Pages 2-3).
+      2. For each spread (from 1 to ${numSpreads}), write 1-2 sentences describing the main action/event and how it connects to the plot points.
+      3. Ensure logical progression according to the Story Details. Keep descriptions concise.
+
+      **Output Format:** Provide the output as a JSON array of strings, where each string is the outline for one spread. Example for 2 spreads: ["Spread 1: Description...", "Spread 2: Description..."]
+    `;
+
+    // Assuming generateOutlineFromPrompt takes the prompt and returns { success: true, outline: ["...", "..."] } or { success: false, error: "..." }
+    const outlineResult = await generateOutlineFromPrompt(outlinePrompt);
+
+    if (!outlineResult || !outlineResult.success || !Array.isArray(outlineResult.outline) || outlineResult.outline.length !== numSpreads) {
+       console.error("[generateCompleteBook] Failed to generate valid outline:", outlineResult);
+      throw new Error(outlineResult?.error || `Failed to generate a valid story outline with ${numSpreads} spreads.`);
+    }
+    const storyOutline = outlineResult.outline;
+    console.log("[generateCompleteBook] Successfully generated outline:", storyOutline);
+
+    // --- STEP 2: Generate Spread Content (Loop) ---
+    const bookPagesContent = [];
+    console.log(`[generateCompleteBook] Starting Step 2 loop for ${numSpreads} spreads...`);
+
+    for (let i = 0; i < numSpreads; i++) {
+      const currentSpreadNum = i + 1;
+      const outlineSnippet = storyOutline[i];
+      const pageNumbers = `${currentSpreadNum * 2}-${currentSpreadNum * 2 + 1}`; // e.g., 2-3, 4-5
+
+      console.log(`[generateCompleteBook] Formatting Step 2 prompt for Spread ${currentSpreadNum}...`);
+      const spreadPrompt = `
+        **Goal:** Generate page text AND an inferred image prompt for a specific children's book spread.
+
+        **Core Book Details (Reminder):**
+        * Target Reading Age Range: ${storyData.ageRange || '3-8'} years old
+        * Target Illustration Age Range: ${storyData.ageRange || '3-8'} years old
+        * Main Character(s): ${storyData.bookCharacters.map(c => `${c.name} (${c.type}, ${c.age}, ${c.gender})`).join('; ')}
+        * Art Style: ${artStyleDesc}
+        * Core Theme: ${storyData.coreTheme || 'Not specified'}
+        * Full Story Outline: ${JSON.stringify(storyOutline)}
+
+        **Current Target:** Spread ${currentSpreadNum} (Pages ${pageNumbers})
+
+        **Outline Snippet for THIS Spread:** ${outlineSnippet}
+
+        **Instructions for AI:**
+        1.  **Generate Page Text:** Write text for Spread ${currentSpreadNum} / Pages ${pageNumbers}, reflecting the **Outline Snippet**. Adhere strictly to the **Target Reading Age Range** (${storyData.ageRange || '3-8'}) for vocabulary and sentence structure (very short for board books, 1-4 simple sentences per spread for picture books). Reflect character personalities.
+        2.  **Generate Inferred Image Prompt:** Based *only* on the **Page Text you just generated**, plus **Characters** and **Art Style**, create a descriptive image prompt. Specify: Subjects & Action, Setting elements, Composition/Focus, Art Style (${artStyleDesc}), Mood/Atmosphere. **DO NOT include page text in the image prompt.**
+
+        **Output Format:** Provide the output as a JSON object with keys "text" (string) and "imagePrompt" (string). Example: {"text": "Generated text...", "imagePrompt": "Generated prompt..."}
+      `;
+
+      // Assuming generateSpreadContentFromPrompt takes the prompt and returns { success: true, content: { text: "...", imagePrompt: "..." } } or { success: false, error: "..." }
+      const spreadResult = await generateSpreadContentFromPrompt(spreadPrompt);
+
+      if (!spreadResult || !spreadResult.success || !spreadResult.content || !spreadResult.content.text || !spreadResult.content.imagePrompt) {
+        console.error(`[generateCompleteBook] Failed to generate content for Spread ${currentSpreadNum}:`, spreadResult);
+        // Option: Allow partial generation? Or fail the whole book? For now, let's fail.
+        throw new Error(spreadResult?.error || `Failed to generate content for Spread ${currentSpreadNum}.`);
+      }
+
+      console.log(`[generateCompleteBook] Successfully generated content for Spread ${currentSpreadNum}`);
+      bookPagesContent.push({
+        pageNumber: currentSpreadNum, // Store spread number for reference
+        text: spreadResult.content.text,
+        imagePrompt: spreadResult.content.imagePrompt,
+      });
+
+      // Optional: Add a small delay between API calls if needed
+      // await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // --- STEP 3: Assemble Book Object ---
+    console.log("[generateCompleteBook] Assembling final book object...");
+    const bookId = `book-${uuidv4()}`;
+    const bookTitle = storyData.title || `A Story for ${mainCharacter?.name || 'You'}`; // Consider letting AI suggest title in Step 1?
+
+    // Define structure for pages, including placeholders for images
+    const finalPages = [];
+
+    // Placeholder Cover
+    finalPages.push({
+      id: `page-${bookId}-cover`,
+      pageNumber: 0, // Or use specific identifier
+      type: 'cover',
+      text: bookTitle,
+      imagePrompt: `Cover image for the children's book titled '${bookTitle}' featuring ${mainCharacter?.name}. Style: ${artStyleDesc}`,
+      imageUrl: null // Image generation happens later
+    });
+
+     // Placeholder Title Page
+     finalPages.push({
+      id: `page-${bookId}-titlepage`,
+      pageNumber: 0.5, // Or use specific identifier
+      type: 'title',
+      text: `${bookTitle}
+A Story for ${mainCharacter?.name}`,
+      imagePrompt: null, // No image usually
+      imageUrl: null
+    });
+
+    // Add generated content pages (adjusting numbering if needed)
+    bookPagesContent.forEach((content, index) => {
+       const spreadNum = index + 1;
+       // Assign page numbers (e.g., Spread 1 -> Pages 2, 3; Spread 2 -> Pages 4, 5)
+       // This structure assumes one text block and one image per SPREAD.
+       // If you want one image per PAGE, you'll need to adjust this structure.
+       finalPages.push({
+         id: `page-${bookId}-${spreadNum}`,
+         spreadNumber: spreadNum, // Keep track of the spread
+         pageNumbers: [spreadNum * 2, spreadNum * 2 + 1], // e.g., [2, 3], [4, 5]
+         type: 'content',
+         text: content.text,
+         imagePrompt: content.imagePrompt,
+         imageUrl: null // Image generation happens later
+       });
+    });
+
+     // Placeholder Back Cover
+     finalPages.push({
+      id: `page-${bookId}-back`,
+      pageNumber: numSpreads + 1, // Or use specific identifier
+      type: 'back-cover',
+      text: 'The End',
+      imagePrompt: null,
+      imageUrl: null
+    });
+
+
+    const newBook = {
+      id: bookId,
+      title: bookTitle,
+      characters: storyData.bookCharacters, // From the wizard
+      pages: finalPages, // Assembled pages with prompts
+      // Add other relevant metadata from storyData
+      category: storyData.category,
+      artStyleCode: storyData.artStyleCode, // Store the selected code
+      customStyleDescription: storyData.customStyleDescription,
+      ageRange: storyData.ageRange,
+      storyType: storyData.storyType,
+      wordCount: storyData.desiredLengthWords, // Target word count
+      // Store the outline and structure choices for potential editing later?
+      generationData: {
+          outline: storyOutline,
+          storyStart: storyData.storyStart,
+          mainHurdle: storyData.mainHurdle,
+          // ... store other structure choices
+      }
+      // status, createdAt, etc., will be added in the store action
     };
-    
-    return {
-      success: true,
-      book
-    };
-    
+
+    console.log("[generateCompleteBook] Successfully created book object:", newBook);
+    return { success: true, book: newBook }; // Return the structured book data
+
   } catch (error) {
-    console.error("Error generating complete book:", error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('[generateCompleteBook] Failed:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred during book generation.' };
   }
 };
+
+
+// --- Functions below might be needed later for image generation ---
+
+/**
+ * Placeholder function to generate images for a book using the stored prompts.
+ * This would likely call the Dzine API service.
+ */
+/*
+export const generateImagesForBook = async (book) => {
+  console.log(`Starting image generation for book: ${book.id}`);
+  const imageGenerationService = // ... import your Dzine service ...
+
+  const updatedPages = await Promise.all(book.pages.map(async (page) => {
+    if (page.imagePrompt && !page.imageUrl) {
+      console.log(`Generating image for page ${page.pageNumber || page.id} using prompt: ${page.imagePrompt}`);
+      try {
+        // Replace with actual call to your image generation service (e.g., Dzine)
+        const imageResult = await imageGenerationService.generateImage({
+           prompt: page.imagePrompt,
+           style_code: book.artStyleCode,
+           // ... other necessary parameters (size, quality etc.)
+        });
+
+        if (imageResult.success && imageResult.imageUrl) {
+           console.log(`Successfully generated image for page ${page.pageNumber || page.id}`);
+          return { ...page, imageUrl: imageResult.imageUrl };
+        } else {
+          console.error(`Failed to generate image for page ${page.pageNumber || page.id}:`, imageResult.error);
+          return page; // Return original page data on failure
+        }
+      } catch (error) {
+        console.error(`Error during image generation for page ${page.pageNumber || page.id}:`, error);
+        return page; // Return original page data on error
+      }
+    }
+    return page; // Return page as-is if no prompt or image already exists
+  }));
+
+  return { ...book, pages: updatedPages };
+};
+*/
+
+// --- Remove Old Mock/Placeholder Functions ---
+// Remove generateStoryOutline, generateSpreadContent (old versions),
+// generateMockOutline, generateProperPageContent etc.
+
 
 /**
  * Helper to generate a more readable name for a scene
