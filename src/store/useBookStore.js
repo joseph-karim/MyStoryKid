@@ -443,16 +443,20 @@ const useBookStore = create((set, get) => ({
         wordCount: storyData.desiredLengthWords,
         generationData: book.generationData // Assuming service includes this now
       };
-      console.log('[generateBook Store] Assembled newBook object:', newBook); // Log the assembled book object
+      console.log('[generateBook Store] Assembled newBook object:', newBook);
       
       // Add the new book to the store
-      set((state) => ({
-        books: [...state.books, newBook],
-        isLoading: false,
-      }));
+      // Use await here just in case there's an unexpected timing issue with set
+      await new Promise(resolve => {
+          set((state) => ({
+            books: [...state.books, newBook],
+            isLoading: false, // Set loading false *after* state update
+          }));
+          resolve(); 
+      });
       
       // Return the newly created book object so SummaryStep can navigate
-      console.log('[generateBook Store] Returning bookId:', newBook.id);
+      console.log('[generateBook Store] Returning bookId AFTER set:', newBook.id);
       return { bookId: newBook.id }; // Return the ID!
 
     } catch (error) {
