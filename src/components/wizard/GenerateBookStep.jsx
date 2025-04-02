@@ -186,20 +186,37 @@ const GenerateBookStep = () => {
     const url = imageUrls[index];
     if (!url) return null;
     
-    // Validate URL
-    if (!validateAndLogImageUrl(url, index)) return null;
+    // Log the URL for debugging
+    console.log(`[ImageDebug] Processing image URL for spread ${index}: ${url}`);
     
-    // If the URL doesn't have https protocol, add it
-    if (url.startsWith('//')) {
-      return `https:${url}`;
+    try {
+      // Clean up the URL if it has extra quotes or characters
+      let cleanUrl = url.trim();
+      
+      // Remove any quotes that might be in the URL
+      if ((cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) || 
+          (cleanUrl.startsWith("'") && cleanUrl.endsWith("'"))) {
+        cleanUrl = cleanUrl.substring(1, cleanUrl.length - 1);
+      }
+      
+      // If the URL doesn't have https protocol, add it
+      if (cleanUrl.startsWith('//')) {
+        cleanUrl = `https:${cleanUrl}`;
+      }
+      
+      // If the URL has no protocol at all, add https
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
+      
+      // Validate the URL format
+      new URL(cleanUrl);
+      console.log(`[ImageDebug] Valid URL for spread ${index}: ${cleanUrl}`);
+      return cleanUrl;
+    } catch (e) {
+      console.error(`[ImageDebug] Invalid URL format for spread ${index}: ${e.message}`);
+      return null;
     }
-    
-    // If the URL has no protocol at all, add https
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return `https://${url}`;
-    }
-    
-    return url;
   };
   
   // Add detailed logging of all available fields to help debug
@@ -299,49 +316,119 @@ const GenerateBookStep = () => {
       setProgressInfo('Creating illustrations for your book...');
       
       const taskIds = {};
+      const batchSize = 2; // Process images in smaller batches to avoid rate limiting
+      const batchDelay = 6000; // 6 seconds between batches
       
-      for (let i = 0; i < spreadResults.length; i++) {
-        const spread = spreadResults[i];
-        setProgressInfo(`Generating image ${i + 1} of ${spreadResults.length}...`);
+      // Staggered approach to image generation
+      for (let batchStart = 0; batchStart < spreadResults.length; batchStart += batchSize) {
+        const batchEnd = Math.min(batchStart + batchSize, spreadResults.length);
+        setProgressInfo(`Processing illustrations ${batchStart + 1}-${batchEnd} of ${spreadResults.length}...`);
         
-        try {
-          // Use the art style code from bookDetails - make sure it's properly formatted
-          // The artStyleCode may include 'Style-' prefix or not, handle both cases
-          let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9'; // Default to a style if none selected
+        // Process this batch
+        for (let i = batchStart; i < batchEnd; i++) {
+          const spread = spreadResults[i];
+          setProgressInfo(`Generating image ${i + 1} of ${spreadResults.length}...`);
           
-          // Ensure the style code begins with 'Style-' as expected by the API
-          if (styleCode && !styleCode.startsWith('Style-')) {
-            styleCode = `Style-${styleCode}`;
-          }
-          
-          console.log(`Creating image task for spread ${i+1} with style code: ${styleCode}`);
-          
-          // Create a text-to-image task with the updated function signature
-          const result = await dzineService.createTxt2ImgTask(
-            spread.imagePrompt,  // prompt text
-            styleCode,           // style code
-            {                    // options
-              target_h: 1024,
-              target_w: 1024,
-              quality_mode: 1,   // high quality
-              generate_slots: [1, 1, 0, 0] // Generate 2 images
+          try {
+            // Use the art style code from bookDetails - make sure it's properly formatted
+            // The artStyleCode may include 'Style-' prefix or not, handle both cases
+            let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9'; // Default to a style if none selected
+            
+            // Ensure the style code begins with 'Style-' as expected by the API
+            if (styleCode && !styleCode.startsWith('Style-')) {
+              styleCode = `Style-${styleCode}`;
             }
-          );
-          
-          if (result && result.task_id) {
-            console.log(`Created image generation task for spread ${i + 1}, task ID: ${result.task_id}`);
-            taskIds[i] = result.task_id;
-          } else {
-            console.error(`Failed to create image generation task for spread ${i + 1}`);
+            
+            console.log(`Creating image task for spread ${i+1} with style code: ${styleCode}`);
+            
+            // Create a text-to-image task with the updated function signature
+            const result = await dzineService.createTxt2ImgTask(
+              spread.imagePrompt,  // prompt text
+              styleCode,           // style code
+              {                    // options
+                target_h: 1024,
+                target_w: 1024,
+                quality_mode: 1,   // high quality
+                generate_slots: [1, 1, 0, 0] // Generate 2 images
+              }
+            );
+            
+            if (result && result.task_id) {
+              console.log(`Created image generation task for spread ${i + 1}, task ID: ${result.task_id}`);
+              taskIds[i] = result.task_id;
+            } else {
+              console.error(`Failed to create image generation task for spread ${i + 1}`);
+            }
+          } catch (err) {
+            if (err.message && err.message.includes('Too many requests')) {
+              console.warn(`Rate limit hit for spread ${i + 1}, will retry later`);
+              // Don't mark as failed, we'll retry these at the end
+            } else {
+              console.error(`Error creating image generation task for spread ${i + 1}:`, err);
+            }
           }
-        } catch (err) {
-          console.error(`Error creating image generation task for spread ${i + 1}:`, err);
-          // Continue with other images even if one fails
+          
+          // Add delay between individual requests within a batch
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
         
-        // Short delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Add a longer delay between batches
+        if (batchEnd < spreadResults.length) {
+          console.log(`Waiting ${batchDelay/1000} seconds before processing next batch...`);
+          await new Promise(resolve => setTimeout(resolve, batchDelay));
+        }
       }
+      
+      // Retry any spreads that don't have task IDs due to rate limiting
+      const retryMissingTasks = async () => {
+        const missingSpreads = spreadResults.filter((_, i) => !taskIds[i]);
+        
+        if (missingSpreads.length > 0) {
+          console.log(`Retrying ${missingSpreads.length} spreads that failed due to rate limiting...`);
+          
+          for (let i = 0; i < spreadResults.length; i++) {
+            if (taskIds[i]) continue; // Skip spreads that already have task IDs
+            
+            const spread = spreadResults[i];
+            setProgressInfo(`Retrying image ${i + 1}...`);
+            
+            try {
+              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retry
+              
+              let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9';
+              if (styleCode && !styleCode.startsWith('Style-')) {
+                styleCode = `Style-${styleCode}`;
+              }
+              
+              console.log(`Retrying image task for spread ${i+1} with style code: ${styleCode}`);
+              
+              const result = await dzineService.createTxt2ImgTask(
+                spread.imagePrompt, 
+                styleCode,
+                {
+                  target_h: 1024,
+                  target_w: 1024,
+                  quality_mode: 1,
+                  generate_slots: [1, 1, 0, 0]
+                }
+              );
+              
+              if (result && result.task_id) {
+                console.log(`Successfully retried task for spread ${i + 1}, task ID: ${result.task_id}`);
+                taskIds[i] = result.task_id;
+              }
+            } catch (err) {
+              console.error(`Failed retry for spread ${i + 1}:`, err);
+            }
+            
+            // Longer delay between retries to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 8000));
+          }
+        }
+      };
+      
+      // Try to get any missing task IDs
+      await retryMissingTasks();
       
       // ---------- STEP 4: Poll for image results ----------
       setGenerationState('pollingImages');
@@ -370,7 +457,7 @@ const GenerateBookStep = () => {
               const result = await dzineService.getTaskProgress(taskId);
               console.log(`[PollingDebug] Poll result for task ${taskId}:`, result);
               
-              if (result && result.status === 'SUCCESS' || result?.status === 'succeed') {
+              if (result && (result.status === 'SUCCESS' || result.status === 'succeed')) {
                 // Image ready - look in multiple possible locations for the image URL
                 console.log(`[PollingDebug] ✅ Success! Image for spread ${spreadIndex} ready`);
                 
@@ -388,8 +475,9 @@ const GenerateBookStep = () => {
                 else if (result.data?.generate_result_slots && result.data.generate_result_slots.length > 0) {
                   // Try each slot until we find a non-empty one
                   for (let i = 0; i < result.data.generate_result_slots.length; i++) {
-                    if (result.data.generate_result_slots[i]) {
-                      imageUrl = result.data.generate_result_slots[i];
+                    const slotUrl = result.data.generate_result_slots[i];
+                    if (slotUrl && typeof slotUrl === 'string' && slotUrl.length > 0) {
+                      imageUrl = slotUrl;
                       console.log(`[PollingDebug] Found image at result.data.generate_result_slots[${i}]:`, imageUrl);
                       break;
                     }
@@ -402,8 +490,19 @@ const GenerateBookStep = () => {
                   delete pendingTaskIds[spreadIndex];
                   console.log(`[PollingDebug] Successfully saved image URL for spread ${spreadIndex}:`, imageUrl);
                 } else {
-                  console.error(`[PollingDebug] ❌ Task status is success but no image URL found for spread ${spreadIndex}:`, result);
-                  delete pendingTaskIds[spreadIndex]; // Remove from pending to avoid infinite polling
+                  // Try a more direct approach - look for any string in the response that looks like a URL
+                  const responseStr = JSON.stringify(result);
+                  const urlMatch = responseStr.match(/(https?:\/\/[^"'\s]+\.(?:png|jpg|jpeg|webp))/i);
+                  if (urlMatch && urlMatch[1]) {
+                    imageUrl = urlMatch[1];
+                    console.log(`[PollingDebug] Found image URL using regex:`, imageUrl);
+                    newImageUrls[spreadIndex] = imageUrl;
+                    setImageUrls({ ...newImageUrls });
+                    delete pendingTaskIds[spreadIndex];
+                  } else {
+                    console.error(`[PollingDebug] ❌ Task status is success but no image URL found for spread ${spreadIndex}:`, result);
+                    delete pendingTaskIds[spreadIndex]; // Remove from pending to avoid infinite polling
+                  }
                 }
               } else if (result && (result.status === 'FAILED' || result.status === 'ERROR' || result.status === 'error' || result.status === 'failed')) {
                 // Task failed
@@ -528,25 +627,48 @@ const GenerateBookStep = () => {
                   <div className="p-4 md:flex">
                     {/* Image */}
                     <div className="md:w-1/2 p-4">
-                      {getImageUrl(index) ? (
-                        <div>
-                          <img 
-                            src={getImageUrl(index)} 
-                            alt={`Illustration for spread ${index + 1}`}
-                            className="rounded-md shadow-sm mx-auto max-h-64 object-contain"
-                            onError={(e) => {
-                              console.error(`[ImageDebug] Error loading image for spread ${index + 1}: ${e}`);
-                              e.target.onerror = null; // Prevent infinite error loop
-                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage loading error%3C/text%3E%3C/svg%3E";
-                            }}
-                          />
-                          <p className="text-xs text-center text-gray-500 mt-2">Click image to enlarge</p>
-                        </div>
-                      ) : (
-                        <div className="bg-gray-200 rounded-md h-48 flex items-center justify-center">
-                          <p className="text-gray-500">Image unavailable</p>
-                        </div>
-                      )}
+                      {(() => {
+                        const imgUrl = getImageUrl(index);
+                        
+                        if (imgUrl) {
+                          return (
+                            <div className="relative">
+                              <img 
+                                src={imgUrl} 
+                                alt={`Illustration for spread ${index + 1}`}
+                                className="rounded-md shadow-sm mx-auto max-h-64 object-contain"
+                                onError={(e) => {
+                                  console.error(`[ImageDebug] Error loading image for spread ${index + 1}: ${e}`);
+                                  e.target.onerror = null; // Prevent infinite error loop
+                                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage loading error%3C/text%3E%3C/svg%3E";
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
+                                <span className="bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">Click to enlarge</span>
+                              </div>
+                            </div>
+                          );
+                        } else if (pollingStatus[index] === 'PROCESSING' || pollingStatus[index] === 'processing') {
+                          return (
+                            <div className="bg-gray-100 rounded-md h-48 flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="w-10 h-10 border-t-2 border-blue-500 border-solid rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-gray-500">Image processing...</p>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="bg-gray-200 rounded-md h-48 flex items-center justify-center">
+                              <p className="text-gray-500">
+                                {pollingStatus[index] === 'FAILED' || pollingStatus[index] === 'failed' || pollingStatus[index] === 'ERROR' || pollingStatus[index] === 'error'
+                                  ? 'Image generation failed'
+                                  : 'Image unavailable'}
+                              </p>
+                            </div>
+                          );
+                        }
+                      })()}
                     </div>
                     
                     {/* Text */}
