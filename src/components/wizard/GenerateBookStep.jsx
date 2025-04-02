@@ -16,24 +16,51 @@ const createOutlinePrompt = (bookDetails, characters) => {
   } else if (bookDetails.storyType === 'picture_book') {
     numSpreads = 12; // longer for picture books
   }
+
+  // Get available fields from bookDetails with defaults
+  const storyType = bookDetails.storyType || 'standard';
+  const targetAgeRange = bookDetails.targetAgeRange || '4-8 years old';
+  const coreTheme = bookDetails.coreTheme || 'Friendship, adventure, and discovery';
+  const mainChallengePlot = bookDetails.mainChallengePlot || `A story about ${mainCharacter.name || 'the main character'}'s adventure finding something new`;
+  
+  // Extract more plot elements (some might be named differently or missing)
+  const mainHurdle = bookDetails.mainHurdle || bookDetails.hurdle || 'Character faces a challenge that requires creativity to overcome';
+  const bigTry = bookDetails.bigTry || bookDetails.characterBigTry || 'Character makes several attempts to solve the problem';
+  const turningPoint = bookDetails.turningPoint || bookDetails.keyTurningPoint || 'Character realizes they need a different approach';
+  const happyEnding = bookDetails.happyEnding || bookDetails.resolution || bookDetails.ending || 'Character succeeds and learns a valuable lesson';
+  const takeaway = bookDetails.takeaway || bookDetails.lesson || 'The importance of perseverance and friendship';
+  
+  // Debug what we're actually using
+  console.log("[createOutlinePrompt] Using story parameters:", {
+    storyType,
+    targetAgeRange, 
+    coreTheme,
+    mainChallengePlot,
+    mainHurdle, 
+    bigTry,
+    turningPoint,
+    happyEnding,
+    takeaway,
+    numSpreads
+  });
   
   return `
 **Goal:** Generate a concise page-by-page OR spread-by-spread outline for a children's book based on the provided details.
 
 **Core Book Details:**
-* **Target Reading Age Range:** ${bookDetails.targetAgeRange || '4-8 years old'}
-* **Target Illustration Age Range:** ${bookDetails.targetAgeRange || '4-8 years old'}
+* **Target Reading Age Range:** ${targetAgeRange}
+* **Target Illustration Age Range:** ${targetAgeRange}
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
 * **Supporting Characters (Optional):** ${supportingCharacters.map(c => `${c.name}: ${c.traits?.join(', ')}`).join('; ') || 'None'}
 * **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style'} 
-* **Core Theme:** ${bookDetails.coreTheme || 'Friendship and adventure'}
+* **Core Theme:** ${coreTheme}
 * **Overall Length:** ${numSpreads} Spreads (${numSpreads * 2} pages)
-* **Story Spark:** ${bookDetails.mainChallengePlot || `A story about ${mainCharacter.name || 'the main character'}'s adventure`}
-* **Main Hurdle:** ${bookDetails.mainHurdle || 'Character faces a challenge that requires creativity to overcome'}
-* **Character's Big Try:** ${bookDetails.bigTry || 'Character makes several attempts to solve the problem'}
-* **Key Turning Point:** ${bookDetails.turningPoint || 'Character realizes they need a different approach'}
-* **Happy Ending:** ${bookDetails.happyEnding || 'Character succeeds and learns a valuable lesson'}
-* **Takeaway:** ${bookDetails.takeaway || 'The importance of perseverance and friendship'}
+* **Story Spark:** ${mainChallengePlot}
+* **Main Hurdle:** ${mainHurdle}
+* **Character's Big Try:** ${bigTry}
+* **Key Turning Point:** ${turningPoint}
+* **Happy Ending:** ${happyEnding}
+* **Takeaway:** ${takeaway}
 
 **Instructions for AI:**
 1.  Based on all the core book details, create a brief outline distributing the story events across the specified **Overall Length** (${numSpreads} spreads). Define a "spread" as two facing pages (e.g., Spread 1 = Pages 2-3).
@@ -57,15 +84,30 @@ Return a JSON array of strings, where each string describes one spread. Example:
 const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex, spreadOutline) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
   
+  // Extract fields with defaults for consistent access
+  const targetAgeRange = bookDetails.targetAgeRange || '4-8 years old';
+  const coreTheme = bookDetails.coreTheme || 'Friendship, adventure, and discovery';
+  const artStyle = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style';
+  
+  // Debug what we're actually using
+  console.log(`[createSpreadContentPrompt] Spread ${spreadIndex + 1} parameters:`, {
+    targetAgeRange,
+    coreTheme,
+    artStyle,
+    mainCharacterName: mainCharacter.name || 'Main Character',
+    mainCharacterTraits: mainCharacter.traits?.join(', ') || 'friendly and adventurous',
+    spreadOutline
+  });
+  
   return `
 **Goal:** Generate the page text AND an inferred image prompt for a specific page/spread of the children's book, using the outline and core details.
 
 **Core Book Details (Reminder):**
-* **Target Reading Age Range:** ${bookDetails.targetAgeRange || '4-8 years old'}
-* **Target Illustration Age Range:** ${bookDetails.targetAgeRange || '4-8 years old'}
+* **Target Reading Age Range:** ${targetAgeRange}
+* **Target Illustration Age Range:** ${targetAgeRange}
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
-* **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style'}
-* **Core Theme:** ${bookDetails.coreTheme || 'Friendship and adventure'}
+* **Art Style:** ${artStyle}
+* **Core Theme:** ${coreTheme}
 * **Full Story Outline:** 
 ${outline.map((item, i) => `${item}`).join('\n')}
 
@@ -99,6 +141,47 @@ Return a JSON object with two properties:
 `;
 };
 
+// Add debugging and validation for image URLs
+const validateAndLogImageUrl = (imageUrl, spreadIndex) => {
+  if (!imageUrl) {
+    console.error(`[ImageDebug] No image URL provided for spread ${spreadIndex}`);
+    return false;
+  }
+  
+  console.log(`[ImageDebug] Processing image URL for spread ${spreadIndex}: ${imageUrl}`);
+  
+  // Check if URL is well-formed
+  try {
+    new URL(imageUrl);
+    console.log(`[ImageDebug] URL format is valid for spread ${spreadIndex}`);
+    return true;
+  } catch (e) {
+    console.error(`[ImageDebug] Invalid URL format for spread ${spreadIndex}: ${e.message}`);
+    return false;
+  }
+};
+
+// Add to make image URLs more robust
+const getImageUrl = (index) => {
+  const url = imageUrls[index];
+  if (!url) return null;
+  
+  // Validate URL
+  if (!validateAndLogImageUrl(url, index)) return null;
+  
+  // If the URL doesn't have https protocol, add it
+  if (url.startsWith('//')) {
+    return `https:${url}`;
+  }
+  
+  // If the URL has no protocol at all, add https
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `https://${url}`;
+  }
+  
+  return url;
+};
+
 const GenerateBookStep = () => {
   const navigate = useNavigate();
   const wizardState = useBookStore(state => state.wizardState);
@@ -107,6 +190,21 @@ const GenerateBookStep = () => {
   const { storyData = {} } = wizardState || {};
   const bookDetails = storyData;
   const characters = storyData.bookCharacters || [];
+  
+  // Add detailed logging of all available fields to help debug
+  useEffect(() => {
+    console.log("[GenerateBookStep] ⭐️ FULL STORE STATE DEBUG:", useBookStore.getState());
+    console.log("[GenerateBookStep] ⭐️ Full story data keys:", Object.keys(storyData));
+    console.log("[GenerateBookStep] ⭐️ All bookDetails fields:", storyData);
+    console.log("[GenerateBookStep] ⭐️ Characters:", characters);
+    
+    // Add more fine-grained debugging for specific fields
+    console.log("[GenerateBookStep] Story type:", bookDetails.storyType);
+    console.log("[GenerateBookStep] Target age range:", bookDetails.targetAgeRange);
+    console.log("[GenerateBookStep] Core theme:", bookDetails.coreTheme);
+    console.log("[GenerateBookStep] Main challenge plot:", bookDetails.mainChallengePlot);
+    console.log("[GenerateBookStep] Art style code:", bookDetails.artStyleCode);
+  }, []);
   
   // Generation state management
   const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'pollingImages', 'displayingPreview', 'error'
@@ -243,6 +341,9 @@ const GenerateBookStep = () => {
         const newImageUrls = { ...imageUrls };
         let attempts = 0;
         
+        // Debug what tasks we're polling for
+        console.log(`[PollingDebug] Starting to poll for ${Object.keys(pendingTaskIds).length} tasks:`, pendingTaskIds);
+        
         while (Object.keys(pendingTaskIds).length > 0 && attempts < maxAttempts) {
           attempts++;
           setProgressInfo(`Waiting for illustrations to complete (${Object.keys(imageUrls).length} of ${spreadResults.length} done)...`);
@@ -251,20 +352,53 @@ const GenerateBookStep = () => {
             const taskId = pendingTaskIds[spreadIndex];
             
             try {
+              console.log(`[PollingDebug] Polling attempt ${attempts} for task ${taskId} (spread ${spreadIndex})`);
               const result = await dzineService.getTaskProgress(taskId);
+              console.log(`[PollingDebug] Poll result for task ${taskId}:`, result);
               
-              if (result && result.status === 'SUCCESS' && result.image_list && result.image_list.length > 0) {
-                // Image ready
-                console.log(`Image for spread ${spreadIndex} is ready:`, result.image_list[0]);
-                newImageUrls[spreadIndex] = result.image_list[0];
-                setImageUrls({ ...newImageUrls });
-                delete pendingTaskIds[spreadIndex];
-              } else if (result && (result.status === 'FAILED' || result.status === 'ERROR')) {
+              if (result && result.status === 'SUCCESS' || result?.status === 'succeed') {
+                // Image ready - look in multiple possible locations for the image URL
+                console.log(`[PollingDebug] ✅ Success! Image for spread ${spreadIndex} ready`);
+                
+                let imageUrl = null;
+                
+                // Try to get the image URL from one of the known response patterns
+                if (result.image_list && result.image_list.length > 0) {
+                  imageUrl = result.image_list[0];
+                  console.log(`[PollingDebug] Found image at result.image_list[0]:`, imageUrl);
+                } 
+                else if (result.data?.image_list && result.data.image_list.length > 0) {
+                  imageUrl = result.data.image_list[0];
+                  console.log(`[PollingDebug] Found image at result.data.image_list[0]:`, imageUrl);
+                }
+                else if (result.data?.generate_result_slots && result.data.generate_result_slots.length > 0) {
+                  // Try each slot until we find a non-empty one
+                  for (let i = 0; i < result.data.generate_result_slots.length; i++) {
+                    if (result.data.generate_result_slots[i]) {
+                      imageUrl = result.data.generate_result_slots[i];
+                      console.log(`[PollingDebug] Found image at result.data.generate_result_slots[${i}]:`, imageUrl);
+                      break;
+                    }
+                  }
+                }
+                
+                if (imageUrl) {
+                  newImageUrls[spreadIndex] = imageUrl;
+                  setImageUrls({ ...newImageUrls });
+                  delete pendingTaskIds[spreadIndex];
+                  console.log(`[PollingDebug] Successfully saved image URL for spread ${spreadIndex}:`, imageUrl);
+                } else {
+                  console.error(`[PollingDebug] ❌ Task status is success but no image URL found for spread ${spreadIndex}:`, result);
+                  delete pendingTaskIds[spreadIndex]; // Remove from pending to avoid infinite polling
+                }
+              } else if (result && (result.status === 'FAILED' || result.status === 'ERROR' || result.status === 'error' || result.status === 'failed')) {
                 // Task failed
-                console.error(`Image generation for spread ${spreadIndex} failed:`, result);
+                console.error(`[PollingDebug] ❌ Image generation for spread ${spreadIndex} failed:`, result);
                 delete pendingTaskIds[spreadIndex];
+              } else {
+                // Still in progress
+                console.log(`[PollingDebug] ⏳ Task ${taskId} for spread ${spreadIndex} still in progress`);
               }
-              // Else still in progress
               
               // Update status for UI
               setPollingStatus(prev => ({
@@ -272,23 +406,25 @@ const GenerateBookStep = () => {
                 [spreadIndex]: result?.status || 'UNKNOWN'
               }));
             } catch (err) {
-              console.error(`Error polling for spread ${spreadIndex}:`, err);
-              // Keep trying on error
+              console.error(`[PollingDebug] ❌ Error polling for spread ${spreadIndex}:`, err);
+              // Keep trying on error - don't delete from pendingTaskIds as we want to retry
             }
           }
           
           // Wait before next poll if there are still pending tasks
           if (Object.keys(pendingTaskIds).length > 0) {
+            console.log(`[PollingDebug] Waiting ${pollInterval/1000}s before next poll. ${Object.keys(pendingTaskIds).length} tasks still pending.`);
             await new Promise(resolve => setTimeout(resolve, pollInterval));
           }
         }
         
         // If we reached max attempts but still have pending tasks
         if (Object.keys(pendingTaskIds).length > 0) {
-          console.warn(`Some images did not complete generation within the time limit: ${Object.keys(pendingTaskIds).join(', ')}`);
+          console.warn(`[PollingDebug] ⚠️ Some images did not complete within the time limit: ${Object.keys(pendingTaskIds).join(', ')}`);
         }
         
         // Proceed to displaying the preview even if some images failed
+        console.log(`[PollingDebug] 🎉 Polling complete. Moving to preview with ${Object.keys(imageUrls).length} images`);
         setGenerationState('displayingPreview');
       };
       
@@ -303,7 +439,14 @@ const GenerateBookStep = () => {
   };
   
   const handleBack = () => {
-    navigate('/wizard/summary');
+    // Navigate to the wizard's summary step instead of a specific route
+    // The URL should be the CreateBookPage URL with the summary step
+    console.log("[GenerateBookStep] Navigating back to summary...");
+    navigate('/create'); // Navigate to the create book wizard
+    
+    // This will trigger useEffect in CreateBookPage, so we also need to
+    // make sure the step is set to summary (6)
+    useBookStore.getState().setWizardStep(6);
   };
   
   const handleSave = () => {
@@ -335,18 +478,21 @@ const GenerateBookStep = () => {
                     <div key={index} className="flex items-center space-x-2">
                       <span className="text-sm">Spread {index + 1}:</span>
                       {imageUrls[index] ? (
-                        <span className="text-green-500">✓ Complete</span>
+                        <span className="text-green-500">✅ Complete</span>
                       ) : (
                         <span className="text-gray-500">
-                          {pollingStatus[index] === 'PROCESSING' ? 'Processing...' : 
-                           pollingStatus[index] === 'FAILED' ? 'Failed' : 
-                           pollingStatus[index] === 'SUCCESS' ? 'Complete' : 
-                           'Waiting...'}
+                          {pollingStatus[index] === 'PROCESSING' || pollingStatus[index] === 'processing' ? '⏳ Processing...' : 
+                           pollingStatus[index] === 'FAILED' || pollingStatus[index] === 'failed' || pollingStatus[index] === 'ERROR' || pollingStatus[index] === 'error' ? '❌ Failed' : 
+                           pollingStatus[index] === 'SUCCESS' || pollingStatus[index] === 'succeed' ? '✅ Complete' : 
+                           '⏳ Waiting...'}
                         </span>
                       )}
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mt-4">
+                  Task ID Debug Info: {JSON.stringify(Object.keys(pollingStatus)).substring(0, 60) + "..."}
+                </p>
               </div>
             )}
           </div>
@@ -368,12 +514,20 @@ const GenerateBookStep = () => {
                   <div className="p-4 md:flex">
                     {/* Image */}
                     <div className="md:w-1/2 p-4">
-                      {imageUrls[index] ? (
-                        <img 
-                          src={imageUrls[index]} 
-                          alt={`Illustration for spread ${index + 1}`}
-                          className="rounded-md shadow-sm mx-auto max-h-64 object-contain" 
-                        />
+                      {getImageUrl(index) ? (
+                        <div>
+                          <img 
+                            src={getImageUrl(index)} 
+                            alt={`Illustration for spread ${index + 1}`}
+                            className="rounded-md shadow-sm mx-auto max-h-64 object-contain"
+                            onError={(e) => {
+                              console.error(`[ImageDebug] Error loading image for spread ${index + 1}: ${e}`);
+                              e.target.onerror = null; // Prevent infinite error loop
+                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage loading error%3C/text%3E%3C/svg%3E";
+                            }}
+                          />
+                          <p className="text-xs text-center text-gray-500 mt-2">Click image to enlarge</p>
+                        </div>
                       ) : (
                         <div className="bg-gray-200 rounded-md h-48 flex items-center justify-center">
                           <p className="text-gray-500">Image unavailable</p>
