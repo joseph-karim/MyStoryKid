@@ -19,9 +19,9 @@ const createOutlinePrompt = (bookDetails, characters) => {
 
   // Get available fields from bookDetails with defaults
   const storyType = bookDetails.storyType || 'standard';
-  const targetAgeRange = bookDetails.targetAgeRange || '4-8 years old';
-  const coreTheme = bookDetails.coreTheme || 'Friendship, adventure, and discovery';
-  const mainChallengePlot = bookDetails.mainChallengePlot || `A story about ${mainCharacter.name || 'the main character'}'s adventure finding something new`;
+  const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
+  const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
+  const mainChallengePlot = bookDetails.mainChallengePlot || bookDetails.storyStart || `A story about ${mainCharacter.name || 'the main character'}'s adventure finding something new`;
   
   // Extract more plot elements (some might be named differently or missing)
   const mainHurdle = bookDetails.mainHurdle || bookDetails.hurdle || 'Character faces a challenge that requires creativity to overcome';
@@ -85,8 +85,8 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
   
   // Extract fields with defaults for consistent access
-  const targetAgeRange = bookDetails.targetAgeRange || '4-8 years old';
-  const coreTheme = bookDetails.coreTheme || 'Friendship, adventure, and discovery';
+  const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
+  const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
   const artStyle = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style';
   
   // Debug what we're actually using
@@ -161,27 +161,6 @@ const validateAndLogImageUrl = (imageUrl, spreadIndex) => {
   }
 };
 
-// Add to make image URLs more robust
-const getImageUrl = (index) => {
-  const url = imageUrls[index];
-  if (!url) return null;
-  
-  // Validate URL
-  if (!validateAndLogImageUrl(url, index)) return null;
-  
-  // If the URL doesn't have https protocol, add it
-  if (url.startsWith('//')) {
-    return `https:${url}`;
-  }
-  
-  // If the URL has no protocol at all, add https
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return `https://${url}`;
-  }
-  
-  return url;
-};
-
 const GenerateBookStep = () => {
   const navigate = useNavigate();
   const wizardState = useBookStore(state => state.wizardState);
@@ -190,21 +169,6 @@ const GenerateBookStep = () => {
   const { storyData = {} } = wizardState || {};
   const bookDetails = storyData;
   const characters = storyData.bookCharacters || [];
-  
-  // Add detailed logging of all available fields to help debug
-  useEffect(() => {
-    console.log("[GenerateBookStep] ⭐️ FULL STORE STATE DEBUG:", useBookStore.getState());
-    console.log("[GenerateBookStep] ⭐️ Full story data keys:", Object.keys(storyData));
-    console.log("[GenerateBookStep] ⭐️ All bookDetails fields:", storyData);
-    console.log("[GenerateBookStep] ⭐️ Characters:", characters);
-    
-    // Add more fine-grained debugging for specific fields
-    console.log("[GenerateBookStep] Story type:", bookDetails.storyType);
-    console.log("[GenerateBookStep] Target age range:", bookDetails.targetAgeRange);
-    console.log("[GenerateBookStep] Core theme:", bookDetails.coreTheme);
-    console.log("[GenerateBookStep] Main challenge plot:", bookDetails.mainChallengePlot);
-    console.log("[GenerateBookStep] Art style code:", bookDetails.artStyleCode);
-  }, []);
   
   // Generation state management
   const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'pollingImages', 'displayingPreview', 'error'
@@ -216,6 +180,42 @@ const GenerateBookStep = () => {
   const [spreadContents, setSpreadContents] = useState([]);
   const [pollingStatus, setPollingStatus] = useState({});
   const [imageUrls, setImageUrls] = useState({});
+  
+  // Add to make image URLs more robust
+  const getImageUrl = (index) => {
+    const url = imageUrls[index];
+    if (!url) return null;
+    
+    // Validate URL
+    if (!validateAndLogImageUrl(url, index)) return null;
+    
+    // If the URL doesn't have https protocol, add it
+    if (url.startsWith('//')) {
+      return `https:${url}`;
+    }
+    
+    // If the URL has no protocol at all, add https
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}`;
+    }
+    
+    return url;
+  };
+  
+  // Add detailed logging of all available fields to help debug
+  useEffect(() => {
+    console.log("[GenerateBookStep] ⭐️ FULL STORE STATE DEBUG:", useBookStore.getState());
+    console.log("[GenerateBookStep] ⭐️ Full story data keys:", Object.keys(storyData));
+    console.log("[GenerateBookStep] ⭐️ All bookDetails fields:", storyData);
+    console.log("[GenerateBookStep] ⭐️ Characters:", characters);
+    
+    // Add more fine-grained debugging for specific fields
+    console.log("[GenerateBookStep] Story type:", bookDetails.storyType);
+    console.log("[GenerateBookStep] Target age range:", bookDetails.ageRange || bookDetails.targetAgeRange);
+    console.log("[GenerateBookStep] Core theme:", bookDetails.coreTheme || bookDetails.category);
+    console.log("[GenerateBookStep] Main challenge plot:", bookDetails.mainChallengePlot || bookDetails.storyStart);
+    console.log("[GenerateBookStep] Art style code:", bookDetails.artStyleCode);
+  }, []);
   
   // Start the generation process
   useEffect(() => {
@@ -305,8 +305,16 @@ const GenerateBookStep = () => {
         setProgressInfo(`Generating image ${i + 1} of ${spreadResults.length}...`);
         
         try {
-          // Use the art style code from bookDetails
-          const styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9'; // Default to a style if none selected
+          // Use the art style code from bookDetails - make sure it's properly formatted
+          // The artStyleCode may include 'Style-' prefix or not, handle both cases
+          let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9'; // Default to a style if none selected
+          
+          // Ensure the style code begins with 'Style-' as expected by the API
+          if (styleCode && !styleCode.startsWith('Style-')) {
+            styleCode = `Style-${styleCode}`;
+          }
+          
+          console.log(`Creating image task for spread ${i+1} with style code: ${styleCode}`);
           
           // Create a text-to-image task
           const result = await dzineService.createTxt2ImgTask(
@@ -346,7 +354,7 @@ const GenerateBookStep = () => {
         
         while (Object.keys(pendingTaskIds).length > 0 && attempts < maxAttempts) {
           attempts++;
-          setProgressInfo(`Waiting for illustrations to complete (${Object.keys(imageUrls).length} of ${spreadResults.length} done)...`);
+          setProgressInfo(`Waiting for illustrations to complete (${Object.keys(newImageUrls).length} of ${spreadResults.length} done)...`);
           
           for (const spreadIndex in pendingTaskIds) {
             const taskId = pendingTaskIds[spreadIndex];
@@ -424,7 +432,7 @@ const GenerateBookStep = () => {
         }
         
         // Proceed to displaying the preview even if some images failed
-        console.log(`[PollingDebug] 🎉 Polling complete. Moving to preview with ${Object.keys(imageUrls).length} images`);
+        console.log(`[PollingDebug] 🎉 Polling complete. Moving to preview with ${Object.keys(newImageUrls).length} images`);
         setGenerationState('displayingPreview');
       };
       
