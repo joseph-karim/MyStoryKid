@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useBookWizardStore } from '../../store/useBookWizardStore';
+import { useBookStore } from '../../store';
 import { getFriendlyStyleName, getFriendlySceneName } from '../../services/dzineService';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ function SummaryStep() {
   const {
     wizardState,
     setWizardStep,
-  } = useBookWizardStore();
+  } = useBookStore();
   const [error, setError] = useState('');
   const navigate = useNavigate();
   
