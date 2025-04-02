@@ -102,7 +102,11 @@ Return a JSON object with two properties:
 const GenerateBookStep = () => {
   const navigate = useNavigate();
   const wizardState = useBookStore(state => state.wizardState);
-  const { bookDetails = {}, characters = [] } = wizardState || {};
+  
+  // Get data from the correct location in the store
+  const { storyData = {} } = wizardState || {};
+  const bookDetails = storyData;
+  const characters = storyData.bookCharacters || [];
   
   // Generation state management
   const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'pollingImages', 'displayingPreview', 'error'
@@ -120,6 +124,10 @@ const GenerateBookStep = () => {
     console.log("🚀 GenerateBookStep mounted! This new component is being used!");
     console.log("GenerateBookStep mounted. Book Details:", bookDetails);
     console.log("Characters:", characters);
+    
+    // Additional debugging for the store structure
+    console.log("Raw wizardState:", wizardState);
+    console.log("Story Data:", storyData);
     
     // Validate required data
     if (!bookDetails || !characters || characters.length === 0) {

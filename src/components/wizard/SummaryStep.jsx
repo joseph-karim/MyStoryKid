@@ -11,11 +11,22 @@ function SummaryStep() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   
-  const { bookDetails, characters } = wizardState;
+  // Get data from the correct location in the store
+  const { storyData = {} } = wizardState || {};
+  const bookDetails = storyData;
+  const characters = storyData.bookCharacters || [];
+  
+  useEffect(() => {
+    // Debug log to see what data we actually have
+    console.log("[SummaryStep] wizardState:", wizardState);
+    console.log("[SummaryStep] storyData:", storyData);
+    console.log("[SummaryStep] extracted bookDetails:", bookDetails);
+    console.log("[SummaryStep] characters:", characters);
+  }, [wizardState, storyData]);
   
   const handleBack = () => {
     // Go back to the previous step (e.g., Story Details or whichever is appropriate)
-    setWizardStep('storyDetails'); // Adjust step name/number as needed
+    setWizardStep(5); // Story Details step number
   };
   
   const handleGenerateClick = (e) => {
