@@ -448,76 +448,34 @@ const useBookStore = create((set, get) => ({
       const { book } = result;
       
       // Find the main character to use as the book title
-      const mainCharacter = storyData.bookCharacters.find(char => char.role === 'main');
+      const mainCharacter = book.characters.find(c => c.role === 'main');
+      const bookTitle = book.title || `A Story for ${mainCharacter?.name || 'You'}`;
       
-      // Add additional book metadata
       const newBook = {
-        id: `book-${Date.now()}`,
-        title: book.title,
-        status: 'draft',
-        childName: mainCharacter.name,
+        ...book,
+        id: book.id || `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Use provided ID or generate one
+        title: bookTitle,
+        status: 'draft', // Initially draft status
+        childName: mainCharacter?.name || '',
         category: storyData.category,
-        mainScene: storyData.mainScene, // Store the selected scene
-        customSceneDescription: storyData.customSceneDescription, // Store custom scene description if any
         artStyle: storyData.artStyleCode,
-        customStyleDescription: storyData.customStyleDescription,
-        characters: storyData.bookCharacters,
-        
-        // Create a pages array from the generated spreads
-        pages: [
-          // Cover page
-          {
-            id: 'page-cover',
-            type: 'cover',
-            text: book.title,
-            imageUrl: 'https://via.placeholder.com/600x800?text=Cover+Image',
-          },
-          // Title page
-          {
-            id: 'page-title',
-            type: 'title',
-            text: `${book.title}\n\nA story about ${mainCharacter.name}`,
-            imageUrl: '',
-          },
-          // Content pages from the spreads
-          ...book.spreads.map((spread, index) => ({
-            id: `page-${index + 1}`,
-            type: 'content',
-            text: spread.text,
-            imagePrompt: spread.imagePrompt, // Store the image prompt for future generation
-            imageUrl: `https://via.placeholder.com/600x400?text=Page+${spread.pageNumbers}+Illustration`,
-            spreadNumber: spread.spreadNumber,
-            pageNumbers: spread.pageNumbers
-          })),
-          // Back cover
-          {
-            id: 'page-back',
-            type: 'back-cover',
-            text: `The End\n\nCreated with love for ${mainCharacter.name}`,
-            imageUrl: '',
-          }
-        ],
-        
-        // Store the outline and raw content for reference
-        outline: book.outline,
-        generatedContent: book.spreads,
-        
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       
-      // Add the book to the store
-      get().addBook(newBook);
+      // Add the new book to the store
+      set((state) => ({
+        books: [...state.books, newBook],
+        isLoading: false,
+      }));
       
-      // Set as current book
-      get().setCurrentBook(newBook);
+      // Return the newly created book object so SummaryStep can navigate
+      return { bookId: newBook.id };
       
-      return newBook;
     } catch (error) {
-      console.error('Error generating book:', error);
-      throw error;
-    } finally {
+      console.error('Error in generateBook store action:', error);
       set({ isLoading: false });
+      throw error; // Re-throw the error to be caught in the component
     }
   },
 }));

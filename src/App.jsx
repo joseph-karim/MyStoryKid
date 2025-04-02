@@ -16,7 +16,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/create" element={<CreateBookPage />} />
         <Route path="/edit/:bookId" element={<EditBookPage />} />
-        <Route path="/preview/:bookId" element={<PreviewPage />} />
+        <Route path="/book/:bookId" element={<PreviewPage />} />
         <Route path="/styles" element={<DzineStylesList />} />
       </Route>
 
