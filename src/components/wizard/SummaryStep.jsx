@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useBookStore } from '../../store';
 import { getFriendlyStyleName } from '../../services/dzineService';
+import { useNavigate } from 'react-router-dom';
 
 function SummaryStep() {
   const { wizardState, updateStoryData, setWizardStep, generateBook } = useBookStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
   
   const { storyData } = wizardState;
   
   const handleBack = () => {
     // Go back to Story Details step
-    setWizardStep(4);
+    setWizardStep(5);
   };
   
   const handleGenerate = async () => {
@@ -22,14 +24,19 @@ function SummaryStep() {
     
     try {
       // Call the generate function (this would be implemented in your bookStore)
-      await generateBook();
+      const result = await generateBook();
       
-      // Navigate to book viewer or success page
-      // (This would be implemented based on your app's navigation)
-      console.log("Book generation successful!");
-      
-      // For now, just show a mock success alert
-      alert("Your book has been generated successfully! You can view it in your library.");
+      // Check if generation was successful and we got a bookId
+      if (result && result.bookId) {
+        console.log(`Book generation successful! Navigating to /book/${result.bookId}`);
+        // Navigate to the new book's page
+        navigate(`/book/${result.bookId}`);
+      } else {
+        // Handle cases where generation might succeed but not return an ID as expected
+        console.warn("Book generation finished, but no bookId was returned. Showing generic success message.");
+        // Optionally show a less disruptive success message here if needed
+        setError('Book generated, but couldn\'t navigate. Find it in \"My Books\".');
+      }
       
     } catch (err) {
       console.error("Error generating book:", err);
@@ -154,6 +161,19 @@ function SummaryStep() {
   // Use the new function to get the friendly name for display
   const selectedStyleName = getFriendlyStyleName(storyData.artStyle);
   
+  // --- Loading State UI ---
+  if (isGenerating) {
+    return (
+      <div className="text-center py-16">
+        <h2 className="text-2xl font-bold mb-4">Generating Your Magical Story...</h2>
+        <p className="text-gray-600 mb-6">Please wait while we bring your creation to life!</p>
+        {/* Optional: Add a spinner animation here */}
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+      </div>
+    );
+  }
+  
+  // --- Default Summary UI ---
   return (
     <div className="space-y-6 pb-12">
       <div className="text-center mb-6">
