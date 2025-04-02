@@ -52,7 +52,7 @@ Interactions with the OpenAI API are handled through `src/services/openaiService
 
 ## State Management (Zustand)
 
-*   **Main Wizard State (`useBookStore`)**: Located in `src/store/useBookStore.js`. Manages the overall wizard progress and collected story data.
+*   **Main Wizard State (`useBookStore`)**: Located in `src/store/useBookStore.js`. Manages the overall wizard progress and collected story data. Exported as a default export.
     *   `wizardState`: Contains `currentStep`, `bookDetails`, and `characters`.
     *   `bookDetails`: Holds user inputs like `category`, `artStyleCode`, `targetAgeRange`, `coreTheme`, `mainChallengePlot`, etc.
     *   `characters`: Array of character objects with properties like `id`, `name`, `role`, `imageUrl`, etc.

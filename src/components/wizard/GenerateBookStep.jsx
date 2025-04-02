@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBookStore } from '../../store/useBookStore';
+import useBookStore from '../../store/useBookStore';
 import * as openaiService from '../../services/openaiService';
 import * as dzineService from '../../services/dzineService';
 
