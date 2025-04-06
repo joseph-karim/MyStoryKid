@@ -4,26 +4,38 @@ const API_KEY = import.meta.env.VITE_DZINE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5c
 
 // --- Start: Style Keyword Mapping for Segmind --- //
 
-// Example mapping (TODO: Add all relevant Dzine styles used in the app)
+// Map populated based on ArtStyleStep.jsx structure and descriptions
 const dzineToSegmindKeywordsMap = {
-  // Watercolor Styles
-  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': "watercolor art, children's book illustration, soft colors, whimsical", // PixiePop 3D (Assuming this maps to watercolor)
-  'Style-aquarelle_life': "aquarelle painting style, watercolor life, vibrant details", // Placeholder - get actual code
-  'Style-watercolor_whimsy': "watercolor whimsy style, pastel colors, lighthearted", // Placeholder
-  
-  // Cartoon/Storybook Styles
-  'Style-cheerful_storybook': "cheerful storybook style, bright colors, cartoonish, simple lines", // Placeholder
-  'Style-minimalist_cutesy': "minimalist cutesy style, simple shapes, flat colors, adorable", // Placeholder
-  'Style-storytime_whimsy': "storytime whimsy style, charming, playful characters, warm colors", // Placeholder
-  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "playful cartoon style, vibrant, expressive characters", // Added from logs
-  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': "adventure cartoon style, dynamic poses, bright scenery", // Added from logs
-  
-  // Other Potential Styles (Map based on visual similarity)
-  'Style-enchanted_elegance': "enchanted elegance style, fantasy illustration, detailed, soft lighting", // Placeholder
-  'Style-line_and_wash': "line and wash style, ink outlines, watercolor wash, sketch aesthetic", // Placeholder
-  'Style-golden_hour': "golden hour lighting, warm tones, soft shadows, realistic fantasy", // Placeholder
-  
-  // Add more style mappings here...
+  // Whimsical & Soft
+  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': "Watercolor Whimsy, rounded shapes, soft digital brushwork, gentle gradients, children's book illustration",
+  'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': "Whimsical Coloring, tender, soothing colors, gentle chalky texture, bedtime story style, children's book illustration",
+  'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': "Enchanted Character, magical characters, soft lighting, enchanting atmosphere, children's book illustration",
+  'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': "Minimalist Cutesy, simple cute design, minimal details, soft colors, children's book illustration",
+  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': "Soft Radiance, gentle glowing artwork, soft lighting, delicate details, children's book illustration",
+  // Classic & Timeless
+  'Style-a941aee9-7964-4445-b76a-7c3ff912f926': "Cheerful Storybook, bright cheerful illustrations, bold colors, playful details, children's book illustration",
+  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': "Pleasantly Warm, charming detailed watercolor, warm cozy feeling, children's book illustration", 
+  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': "Storytime Whimsy, whimsical storybook style, classic feel, children's book illustration",
+  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': "Line and Wash, delicate pencil drawing, light watercolor wash, timeless feel, children's book illustration",
+  'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': "Golden Hour, nostalgic illustrations, warm golden lighting, classic picture book style, children's book illustration", 
+  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': "Ancient China, traditional Chinese painting style, elegant brushwork, composition, children's book illustration",
+  // Modern & Colorful
+  'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f': "Cutie 3D, playful cute 3D characters, slightly exaggerated features, children's book illustration", 
+  'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': "Glossy Elegance, clean sleek modern illustration, glossy finish, children's book illustration",
+  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "Starlit Fantasy, dreamy ethereal style, magical starlit quality, children's book illustration",
+  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': "Fantasy Hero, bold heroic character illustration, fantasy adventure feel, children's book illustration", 
+  'Style-455da805-d716-4bc8-a960-4ac505aa7875': "Joyful Clay, cheerful characters, colorful clay look, children's book illustration",
+  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': "Ceramic Lifelike, 3D ceramic quality, smooth textures, children's book illustration",
+  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': "Yarn Realism, yarn texture, textile elements styling, children's book illustration",
+  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': "Mystical Sovereignty, majestic mystical scene, fantasy elegance, children's book illustration",
+  // Realistic & Artistic
+  'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': "Enchanted Elegance, detailed illustration, elegant enchanted quality, children's book illustration", 
+  'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': "Warm Portrait, realistic portrait, warm lighting, preserved facial features, children's book illustration",
+  'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': "Magic Portrait, semi-stylized portrait, magical fantasy quality, children's book illustration",
+  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': "Vivid Tableaux, rich textured scene, vibrant colors, detailed composition, children's book illustration",
+  'Style-ce7b4279-1398-4964-882c-19911e12aef3': "Luminous Narratives, rich digital illustration, painterly effects, detailed lighting, children's book illustration",
+  'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': "Dreamlike Portraiture, dreamy ethereal portrait, soft focus, children's book illustration",
+  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': "Aquarelle Life, vibrant watercolor style, flowing colors, rich textures, children's book illustration",
 };
 
 /**
@@ -33,7 +45,8 @@ const dzineToSegmindKeywordsMap = {
  */
 export const getKeywordsForDzineStyle = (dzineCode) => {
   if (!dzineCode) return "children's book illustration style"; // Default if no code provided
-  return dzineToSegmindKeywordsMap[dzineCode] || "children's book illustration style, colorful"; 
+  // Updated fallback to be more generic if code not found in map
+  return dzineToSegmindKeywordsMap[dzineCode] || "children's book illustration, colorful, illustrated style"; 
 };
 
 // --- End: Style Keyword Mapping --- //
