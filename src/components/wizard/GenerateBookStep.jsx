@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
-import * as dzineService from '../../services/dzineService';
+import * as segmindService from '../../services/segmindService';
+import { getKeywordsForDzineStyle } from '../../services/dzineService';
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -52,7 +53,7 @@ const createOutlinePrompt = (bookDetails, characters) => {
 * **Target Illustration Age Range:** ${targetAgeRange}
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
 * **Supporting Characters (Optional):** ${supportingCharacters.map(c => `${c.name}: ${c.traits?.join(', ')}`).join('; ') || 'None'}
-* **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style'} 
+* **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Defined by keywords'} 
 * **Core Theme:** ${coreTheme}
 * **Overall Length:** ${numSpreads} Spreads (${numSpreads * 2} pages)
 * **Story Spark:** ${mainChallengePlot}
@@ -87,13 +88,13 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
   // Extract fields with defaults for consistent access
   const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
   const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
-  const artStyle = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Colorful cartoon style';
+  const artStyleReference = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'N/A';
   
   // Debug what we're actually using
   console.log(`[createSpreadContentPrompt] Spread ${spreadIndex + 1} parameters:`, {
     targetAgeRange,
     coreTheme,
-    artStyle,
+    artStyleReference,
     mainCharacterName: mainCharacter.name || 'Main Character',
     mainCharacterTraits: mainCharacter.traits?.join(', ') || 'friendly and adventurous',
     spreadOutline
@@ -106,7 +107,7 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
 * **Target Reading Age Range:** ${targetAgeRange}
 * **Target Illustration Age Range:** ${targetAgeRange}
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
-* **Art Style:** ${artStyle}
+* **Art Style Reference (Dzine Code):** ${artStyleReference}
 * **Core Theme:** ${coreTheme}
 * **Full Story Outline:** 
 ${outline.map((item, i) => `${item}`).join('\n')}
@@ -123,14 +124,10 @@ ${outline.map((item, i) => `${item}`).join('\n')}
     * Reflect the characters' personalities.
     * Ensure the amount of text is appropriate for the book type.
 2.  **Generate Inferred Image Prompt:**
-    * Based on the **Page Text you just generated** for this spread, create a descriptive prompt for an image generation AI.
-    * The prompt must specify:
-        * **Subject(s) & Action:** Main character(s) visible and what they are actively doing/feeling.
-        * **Setting:** Key elements mentioned or implied.
-        * **Composition/Focus:** Any important details.
-        * **Art Style:** Reiterate the specified style.
-        * **Mood/Atmosphere:** The emotional tone of the scene.
-        * **DO NOT include the actual page text within the image prompt.**
+    * Create a descriptive prompt for an image generation AI (Segmind).
+    * Focus on Subject, Action, Setting, Composition, Mood.
+    * **DO NOT include specific style keywords** (like 'watercolor') in this image prompt itself, as those will be added separately.
+    * DO NOT include the page text.
 
 **Output Format:**
 Return a JSON object with two properties:
@@ -141,25 +138,25 @@ Return a JSON object with two properties:
 `;
 };
 
-// Add debugging and validation for image URLs
-const validateAndLogImageUrl = (imageUrl, spreadIndex) => {
-  if (!imageUrl) {
-    console.error(`[ImageDebug] No image URL provided for spread ${spreadIndex}`);
-    return false;
-  }
-  
-  console.log(`[ImageDebug] Processing image URL for spread ${spreadIndex}: ${imageUrl}`);
-  
-  // Check if URL is well-formed
+// Helper: Convert URL to Base64 (Add this if stylePreview might be a URL)
+async function urlToBase64(url) {
   try {
-    new URL(imageUrl);
-    console.log(`[ImageDebug] URL format is valid for spread ${spreadIndex}`);
-    return true;
-  } catch (e) {
-    console.error(`[ImageDebug] Invalid URL format for spread ${spreadIndex}: ${e.message}`);
-    return false;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image URL: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Error converting URL to Base64:", error);
+    throw error; // Re-throw to be caught by the caller
   }
-};
+}
 
 const GenerateBookStep = () => {
   const navigate = useNavigate();
@@ -171,53 +168,15 @@ const GenerateBookStep = () => {
   const characters = storyData.bookCharacters || [];
   
   // Generation state management
-  const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'pollingImages', 'displayingPreview', 'error'
+  const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'displayingPreview', 'error'
   const [progressInfo, setProgressInfo] = useState('');
   const [error, setError] = useState(null);
   
   // Content state
   const [outline, setOutline] = useState([]);
   const [spreadContents, setSpreadContents] = useState([]);
-  const [pollingStatus, setPollingStatus] = useState({});
-  const [imageUrls, setImageUrls] = useState({});
-  
-  // Add to make image URLs more robust
-  const getImageUrl = (index) => {
-    const url = imageUrls[index];
-    if (!url) return null;
-    
-    // Log the URL for debugging
-    console.log(`[ImageDebug] Processing image URL for spread ${index}: ${url}`);
-    
-    try {
-      // Clean up the URL if it has extra quotes or characters
-      let cleanUrl = url.trim();
-      
-      // Remove any quotes that might be in the URL
-      if ((cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) || 
-          (cleanUrl.startsWith("'") && cleanUrl.endsWith("'"))) {
-        cleanUrl = cleanUrl.substring(1, cleanUrl.length - 1);
-      }
-      
-      // If the URL doesn't have https protocol, add it
-      if (cleanUrl.startsWith('//')) {
-        cleanUrl = `https:${cleanUrl}`;
-      }
-      
-      // If the URL has no protocol at all, add https
-      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-        cleanUrl = `https://${cleanUrl}`;
-      }
-      
-      // Validate the URL format
-      new URL(cleanUrl);
-      console.log(`[ImageDebug] Valid URL for spread ${index}: ${cleanUrl}`);
-      return cleanUrl;
-    } catch (e) {
-      console.error(`[ImageDebug] Invalid URL format for spread ${index}: ${e.message}`);
-      return null;
-    }
-  };
+  const [imageUrls, setImageUrls] = useState({}); // Stores Base64 URLs from Segmind
+  const [imageStatus, setImageStatus] = useState({}); // Tracks status per image: 'pending', 'loading', 'success', 'error'
   
   // Add detailed logging of all available fields to help debug
   useEffect(() => {
@@ -236,9 +195,10 @@ const GenerateBookStep = () => {
   
   // Start the generation process
   useEffect(() => {
-    console.log("🚀 GenerateBookStep mounted! This new component is being used!");
+    console.log("🚀 GenerateBookStep mounted! Using Segmind for illustrations.");
     console.log("GenerateBookStep mounted. Book Details:", bookDetails);
     console.log("Characters:", characters);
+    console.log("Selected Style Keywords:", bookDetails.selectedStyleKeywords);
     
     // Additional debugging for the store structure
     console.log("Raw wizardState:", wizardState);
@@ -307,6 +267,7 @@ const GenerateBookStep = () => {
           text,
           imagePrompt
         });
+        setImageStatus(prev => ({ ...prev, [i]: 'pending' })); // Initialize image status
       }
       
       setSpreadContents(spreadResults);
@@ -315,234 +276,79 @@ const GenerateBookStep = () => {
       setGenerationState('generatingImages');
       setProgressInfo('Creating illustrations for your book...');
       
-      const taskIds = {};
-      const batchSize = 2; // Process images in smaller batches to avoid rate limiting
-      const batchDelay = 6000; // 6 seconds between batches
+      // --- Prepare Segmind Generation --- 
+      const mainCharacter = characters.find(c => c.role === 'main');
+      if (!mainCharacter) throw new Error("Main character not found in book details.");
       
-      // Staggered approach to image generation
-      for (let batchStart = 0; batchStart < spreadResults.length; batchStart += batchSize) {
-        const batchEnd = Math.min(batchStart + batchSize, spreadResults.length);
-        setProgressInfo(`Processing illustrations ${batchStart + 1}-${batchEnd} of ${spreadResults.length}...`);
-        
-        // Process this batch
-        for (let i = batchStart; i < batchEnd; i++) {
-          const spread = spreadResults[i];
-          setProgressInfo(`Generating image ${i + 1} of ${spreadResults.length}...`);
-          
+      let referenceBase64 = mainCharacter.stylePreview; // Get Dzine preview from character data
+      const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode); // Get keywords
+      
+      console.log("Using Segmind Style Keywords:", styleKeywords);
+      
+      // Validate and potentially convert reference image
+      if (!referenceBase64) {
+          throw new Error("Missing Dzine stylePreview for the main character. Cannot generate illustrations.");
+      }
+      // If stylePreview is a URL (less likely now, but good check)
+      if (referenceBase64.startsWith('http')) {
+          console.log("Converting stylePreview URL to Base64...");
+          setProgressInfo('Preparing reference image...');
           try {
-            // Use the art style code from bookDetails - make sure it's properly formatted
-            // The artStyleCode may include 'Style-' prefix or not, handle both cases
-            let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9'; // Default to a style if none selected
-            
-            // Ensure the style code begins with 'Style-' as expected by the API
-            if (styleCode && !styleCode.startsWith('Style-')) {
-              styleCode = `Style-${styleCode}`;
-            }
-            
-            console.log(`Creating image task for spread ${i+1} with style code: ${styleCode}`);
-            
-            // Create a text-to-image task with the updated function signature
-            const result = await dzineService.createTxt2ImgTask(
-              spread.imagePrompt,  // prompt text
-              styleCode,           // style code
-              {                    // options
-                target_h: 1024,
-                target_w: 1024,
-                quality_mode: 1,   // high quality
-                generate_slots: [1, 1, 0, 0] // Generate 2 images
-              }
-            );
-            
-            if (result && result.task_id) {
-              console.log(`Created image generation task for spread ${i + 1}, task ID: ${result.task_id}`);
-              taskIds[i] = result.task_id;
-            } else {
-              console.error(`Failed to create image generation task for spread ${i + 1}`);
-            }
-          } catch (err) {
-            if (err.message && err.message.includes('Too many requests')) {
-              console.warn(`Rate limit hit for spread ${i + 1}, will retry later`);
-              // Don't mark as failed, we'll retry these at the end
-            } else {
-              console.error(`Error creating image generation task for spread ${i + 1}:`, err);
-            }
+              referenceBase64 = await urlToBase64(referenceBase64);
+              console.log("Reference image converted successfully.");
+          } catch (convError) {
+              throw new Error(`Failed to convert reference image URL to Base64: ${convError.message}`);
           }
-          
-          // Add delay between individual requests within a batch
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        
-        // Add a longer delay between batches
-        if (batchEnd < spreadResults.length) {
-          console.log(`Waiting ${batchDelay/1000} seconds before processing next batch...`);
-          await new Promise(resolve => setTimeout(resolve, batchDelay));
-        }
+      } else if (!referenceBase64.startsWith('data:image')) {
+           throw new Error("Invalid stylePreview format. Expected Base64 Data URL.");
       }
       
-      // Retry any spreads that don't have task IDs due to rate limiting
-      const retryMissingTasks = async () => {
-        const missingSpreads = spreadResults.filter((_, i) => !taskIds[i]);
-        
-        if (missingSpreads.length > 0) {
-          console.log(`Retrying ${missingSpreads.length} spreads that failed due to rate limiting...`);
+      // --- Generate Images Serially (or with controlled concurrency) --- 
+      // Simple serial generation to avoid overwhelming API / simplify logic first
+      const generatedImageUrls = {};
+      for (let i = 0; i < spreadResults.length; i++) {
+          const spread = spreadResults[i];
+          setProgressInfo(`Generating illustration ${i + 1} of ${spreadResults.length}...`);
+          setImageStatus(prev => ({ ...prev, [i]: 'loading' }));
           
-          for (let i = 0; i < spreadResults.length; i++) {
-            if (taskIds[i]) continue; // Skip spreads that already have task IDs
-            
-            const spread = spreadResults[i];
-            setProgressInfo(`Retrying image ${i + 1}...`);
-            
-            try {
-              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retry
-              
-              let styleCode = bookDetails.artStyleCode || 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9';
-              if (styleCode && !styleCode.startsWith('Style-')) {
-                styleCode = `Style-${styleCode}`;
-              }
-              
-              console.log(`Retrying image task for spread ${i+1} with style code: ${styleCode}`);
-              
-              const result = await dzineService.createTxt2ImgTask(
-                spread.imagePrompt, 
-                styleCode,
-                {
-                  target_h: 1024,
-                  target_w: 1024,
-                  quality_mode: 1,
-                  generate_slots: [1, 1, 0, 0]
-                }
+          try {
+              console.log(`Calling Segmind for spread ${i}. Prompt: ${spread.imagePrompt}`);
+              const segmindImageBase64 = await segmindService.generateConsistentCharacter(
+                  referenceBase64, 
+                  spread.imagePrompt,
+                  styleKeywords
               );
               
-              if (result && result.task_id) {
-                console.log(`Successfully retried task for spread ${i + 1}, task ID: ${result.task_id}`);
-                taskIds[i] = result.task_id;
-              }
-            } catch (err) {
-              console.error(`Failed retry for spread ${i + 1}:`, err);
-            }
-            
-            // Longer delay between retries to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 8000));
-          }
-        }
-      };
-      
-      // Try to get any missing task IDs
-      await retryMissingTasks();
-      
-      // ---------- STEP 4: Poll for image results ----------
-      setGenerationState('pollingImages');
-      
-      const pollInterval = 5000; // Poll every 5 seconds
-      const maxAttempts = 60; // Max 5 minutes of polling (60 * 5 seconds)
-      
-      const pollForResults = async () => {
-        // Keep track of which spreads have completed
-        const pendingTaskIds = { ...taskIds };
-        const newImageUrls = { ...imageUrls };
-        let attempts = 0;
-        
-        // Debug what tasks we're polling for
-        console.log(`[PollingDebug] Starting to poll for ${Object.keys(pendingTaskIds).length} tasks:`, pendingTaskIds);
-        
-        while (Object.keys(pendingTaskIds).length > 0 && attempts < maxAttempts) {
-          attempts++;
-          setProgressInfo(`Waiting for illustrations to complete (${Object.keys(newImageUrls).length} of ${spreadResults.length} done)...`);
-          
-          for (const spreadIndex in pendingTaskIds) {
-            const taskId = pendingTaskIds[spreadIndex];
-            
-            try {
-              console.log(`[PollingDebug] Polling attempt ${attempts} for task ${taskId} (spread ${spreadIndex})`);
-              const result = await dzineService.getTaskProgress(taskId);
-              console.log(`[PollingDebug] Poll result for task ${taskId}:`, result);
-              
-              if (result && (result.status === 'SUCCESS' || result.status === 'succeed')) {
-                // Image ready - look in multiple possible locations for the image URL
-                console.log(`[PollingDebug] ✅ Success! Image for spread ${spreadIndex} ready`);
-                
-                let imageUrl = null;
-                
-                // Try to get the image URL from one of the known response patterns
-                if (result.image_list && result.image_list.length > 0) {
-                  imageUrl = result.image_list[0];
-                  console.log(`[PollingDebug] Found image at result.image_list[0]:`, imageUrl);
-                } 
-                else if (result.data?.image_list && result.data.image_list.length > 0) {
-                  imageUrl = result.data.image_list[0];
-                  console.log(`[PollingDebug] Found image at result.data.image_list[0]:`, imageUrl);
-                }
-                else if (result.data?.generate_result_slots && result.data.generate_result_slots.length > 0) {
-                  // Try each slot until we find a non-empty one
-                  for (let i = 0; i < result.data.generate_result_slots.length; i++) {
-                    const slotUrl = result.data.generate_result_slots[i];
-                    if (slotUrl && typeof slotUrl === 'string' && slotUrl.length > 0) {
-                      imageUrl = slotUrl;
-                      console.log(`[PollingDebug] Found image at result.data.generate_result_slots[${i}]:`, imageUrl);
-                      break;
-                    }
-                  }
-                }
-                
-                if (imageUrl) {
-                  newImageUrls[spreadIndex] = imageUrl;
-                  setImageUrls({ ...newImageUrls });
-                  delete pendingTaskIds[spreadIndex];
-                  console.log(`[PollingDebug] Successfully saved image URL for spread ${spreadIndex}:`, imageUrl);
-                } else {
-                  // Try a more direct approach - look for any string in the response that looks like a URL
-                  const responseStr = JSON.stringify(result);
-                  const urlMatch = responseStr.match(/(https?:\/\/[^"'\s]+\.(?:png|jpg|jpeg|webp))/i);
-                  if (urlMatch && urlMatch[1]) {
-                    imageUrl = urlMatch[1];
-                    console.log(`[PollingDebug] Found image URL using regex:`, imageUrl);
-                    newImageUrls[spreadIndex] = imageUrl;
-                    setImageUrls({ ...newImageUrls });
-                    delete pendingTaskIds[spreadIndex];
-                  } else {
-                    console.error(`[PollingDebug] ❌ Task status is success but no image URL found for spread ${spreadIndex}:`, result);
-                    delete pendingTaskIds[spreadIndex]; // Remove from pending to avoid infinite polling
-                  }
-                }
-              } else if (result && (result.status === 'FAILED' || result.status === 'ERROR' || result.status === 'error' || result.status === 'failed')) {
-                // Task failed
-                console.error(`[PollingDebug] ❌ Image generation for spread ${spreadIndex} failed:`, result);
-                delete pendingTaskIds[spreadIndex];
+              // Validate the result is a Base64 string
+              if (segmindImageBase64 && segmindImageBase64.startsWith('data:image')) {
+                  generatedImageUrls[i] = segmindImageBase64;
+                  setImageStatus(prev => ({ ...prev, [i]: 'success' }));
+                  console.log(`Successfully generated image for spread ${i}.`);
               } else {
-                // Still in progress
-                console.log(`[PollingDebug] ⏳ Task ${taskId} for spread ${spreadIndex} still in progress`);
+                  throw new Error('Segmind service did not return a valid Base64 image.');
               }
-              
-              // Update status for UI
-              setPollingStatus(prev => ({
-                ...prev,
-                [spreadIndex]: result?.status || 'UNKNOWN'
-              }));
-            } catch (err) {
-              console.error(`[PollingDebug] ❌ Error polling for spread ${spreadIndex}:`, err);
-              // Keep trying on error - don't delete from pendingTaskIds as we want to retry
-            }
+
+          } catch (error) {
+              console.error(`Segmind error for spread ${i}:`, error);
+              setImageStatus(prev => ({ ...prev, [i]: 'error' }));
+              // Store error state or null? For now, just log and status update
+              generatedImageUrls[i] = null; // Indicate failure 
+              // Optional: Decide whether to stop or continue on error
+              // if (!confirm(`Failed to generate image ${i+1}. Continue anyway?`)) {
+              //    throw error; // Stop generation
+              // }
           }
           
-          // Wait before next poll if there are still pending tasks
-          if (Object.keys(pendingTaskIds).length > 0) {
-            console.log(`[PollingDebug] Waiting ${pollInterval/1000}s before next poll. ${Object.keys(pendingTaskIds).length} tasks still pending.`);
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-          }
-        }
-        
-        // If we reached max attempts but still have pending tasks
-        if (Object.keys(pendingTaskIds).length > 0) {
-          console.warn(`[PollingDebug] ⚠️ Some images did not complete within the time limit: ${Object.keys(pendingTaskIds).join(', ')}`);
-        }
-        
-        // Proceed to displaying the preview even if some images failed
-        console.log(`[PollingDebug] 🎉 Polling complete. Moving to preview with ${Object.keys(newImageUrls).length} images`);
-        setGenerationState('displayingPreview');
-      };
+          // Optional delay between Segmind calls if needed
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+      }
       
-      // Start polling
-      await pollForResults();
+      setImageUrls(generatedImageUrls);
+      console.log("Segmind image generation complete.", generatedImageUrls);
+      
+      // ---------- STEP 4: Display Preview ----------
+      setGenerationState('displayingPreview');
+      setProgressInfo('Book ready for preview!');
       
     } catch (err) {
       console.error("Error generating book:", err);
@@ -568,6 +374,22 @@ const GenerateBookStep = () => {
     navigate('/dashboard');
   };
   
+  // Function to get image URL or status (No longer needs URL cleaning if storing Base64)
+  const getImageUrlOrStatus = (index) => {
+    const url = imageUrls[index];
+    const status = imageStatus[index];
+    
+    if (status === 'success' && url && url.startsWith('data:image')) {
+      return { type: 'url', value: url };
+    } else if (status === 'loading') {
+      return { type: 'status', value: 'loading' };
+    } else if (status === 'error') {
+      return { type: 'status', value: 'error' };
+    } else {
+      return { type: 'status', value: 'pending' }; // Or 'unavailable'
+    }
+  };
+  
   // Render Content with Loading State
   const renderContent = () => {
     switch (generationState) {
@@ -577,37 +399,10 @@ const GenerateBookStep = () => {
       case 'generatingOutline':
       case 'generatingSpreadContent':
       case 'generatingImages':
-      case 'pollingImages':
         return (
           <div className="flex flex-col items-center space-y-4">
             <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
             <p className="text-lg font-medium">{progressInfo}</p>
-            
-            {generationState === 'pollingImages' && (
-              <div className="w-full max-w-md">
-                <p className="text-sm text-gray-500 mb-2">Image generation progress:</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {spreadContents.map((spread, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="text-sm">Spread {index + 1}:</span>
-                      {imageUrls[index] ? (
-                        <span className="text-green-500">✅ Complete</span>
-                      ) : (
-                        <span className="text-gray-500">
-                          {pollingStatus[index] === 'PROCESSING' || pollingStatus[index] === 'processing' ? '⏳ Processing...' : 
-                           pollingStatus[index] === 'FAILED' || pollingStatus[index] === 'failed' || pollingStatus[index] === 'ERROR' || pollingStatus[index] === 'error' ? '❌ Failed' : 
-                           pollingStatus[index] === 'SUCCESS' || pollingStatus[index] === 'succeed' ? '✅ Complete' : 
-                           '⏳ Waiting...'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-4">
-                  Task ID Debug Info: {JSON.stringify(Object.keys(pollingStatus)).substring(0, 60) + "..."}
-                </p>
-              </div>
-            )}
           </div>
         );
         
@@ -628,32 +423,32 @@ const GenerateBookStep = () => {
                     {/* Image */}
                     <div className="md:w-1/2 p-4">
                       {(() => {
-                        const imgUrl = getImageUrl(index);
+                        const imageResult = getImageUrlOrStatus(index);
                         
-                        if (imgUrl) {
+                        if (imageResult.type === 'url') {
                           return (
                             <div className="relative">
                               <img 
-                                src={imgUrl} 
+                                src={imageResult.value} 
                                 alt={`Illustration for spread ${index + 1}`}
                                 className="rounded-md shadow-sm mx-auto max-h-64 object-contain"
                                 onError={(e) => {
-                                  console.error(`[ImageDebug] Error loading image for spread ${index + 1}: ${e}`);
-                                  e.target.onerror = null; // Prevent infinite error loop
-                                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage loading error%3C/text%3E%3C/svg%3E";
+                                  console.error(`[ImageDebug] Error rendering Base64 image for spread ${index + 1}`);
+                                  e.target.onerror = null;
+                                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage error%3C/text%3E%3C/svg%3E";
                                 }}
                               />
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
-                                <span className="bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">Click to enlarge</span>
+                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity duration-200 opacity-0 hover:opacity-100">
+                                <span className="text-white text-sm bg-black bg-opacity-60 px-2 py-1 rounded">Segmind Image</span>
                               </div>
                             </div>
                           );
-                        } else if (pollingStatus[index] === 'PROCESSING' || pollingStatus[index] === 'processing') {
+                        } else if (imageResult.value === 'loading') {
                           return (
                             <div className="bg-gray-100 rounded-md h-48 flex items-center justify-center">
                               <div className="text-center">
                                 <div className="w-10 h-10 border-t-2 border-blue-500 border-solid rounded-full animate-spin mx-auto mb-2"></div>
-                                <p className="text-gray-500">Image processing...</p>
+                                <p className="text-gray-500">Generating image...</p>
                               </div>
                             </div>
                           );
@@ -661,7 +456,7 @@ const GenerateBookStep = () => {
                           return (
                             <div className="bg-gray-200 rounded-md h-48 flex items-center justify-center">
                               <p className="text-gray-500">
-                                {pollingStatus[index] === 'FAILED' || pollingStatus[index] === 'failed' || pollingStatus[index] === 'ERROR' || pollingStatus[index] === 'error'
+                                {imageResult.value === 'error'
                                   ? 'Image generation failed'
                                   : 'Image unavailable'}
                               </p>

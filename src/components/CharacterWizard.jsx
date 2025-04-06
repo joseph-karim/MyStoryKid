@@ -189,9 +189,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       gender: '',
       traits: [],
       interests: [],
-      photoUrl: null,
+      photoUrl: null, // Reset photoUrl
       artStyle: forcedArtStyle || null,
-      stylePreview: null,
+      stylePreview: null, // Reset stylePreview
       description: '',
       customRole: '',
       generationPrompt: '',
@@ -212,35 +212,60 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       console.log('Style preview before completion:', characterData.stylePreview);
       console.log('Art style before completion:', characterData.artStyle);
       
-      // Create the final character object, ensuring we have the style preview
+      // Create the final character object
       const finalCharacter = {
       ...characterData,
         id: characterData.id || uuidv4(), // Ensure we have an ID
-        // Set a default type if none is specified
-        type: characterData.type || 'child',
-        // Ensure stylePreview is set
-        stylePreview: characterData.stylePreview || characterData.photoUrl,
-        // Ensure artStyle is set (can be forcedArtStyle or selected style)
+        type: characterData.type || 'child', // Set a default type
+        
+        // CRITICAL: Store the Dzine stylePreview, discard original photoUrl
+        stylePreview: characterData.stylePreview, // This should contain the Base64/URL from Dzine
+        photoUrl: null, // Nullify the original photo reference
+        
+        // Ensure artStyle (Dzine code) is stored
         artStyle: characterData.artStyle || forcedArtStyle || null,
       };
       
-      console.log('Completing character creation with data:', finalCharacter);
-      
-      // If this is a new character, add it
-      if (!currentCharacter) {
-        console.log('Adding new character with stylePreview:', finalCharacter.stylePreview);
-        addCharacter(finalCharacter);
-      } else {
-        // Otherwise update the existing character
-        console.log('Updating existing character:', currentCharacter.id, 'with stylePreview:', finalCharacter.stylePreview);
-        updateCharacter(currentCharacter.id, finalCharacter);
+      // Validation: Check if stylePreview exists
+      if (!finalCharacter.stylePreview) {
+          // If no style preview, AND we didn't use text-to-image, use photo as fallback?
+          // OR, more safely, show an error if generation didn't happen or failed.
+          if (generationAttempted && !finalCharacter.stylePreview) {
+              setError("Style preview generation failed or wasn't completed. Cannot save character without a style preview.");
+              return;
+          } else if (!generationAttempted && finalCharacter.photoUrl) {
+               // This case should ideally not happen if logic is correct
+               console.warn("Saving character using original photo as preview - generation wasn't attempted or logic error.");
+               // For safety, we might still prevent saving here unless explicitly allowed
+               // setError("Please generate a style preview before saving.");
+               // return;
+               // OR use photoUrl as fallback (less ideal for Segmind)
+               finalCharacter.stylePreview = finalCharacter.photoUrl;
+          }
+          // If no photo and no preview, definitely error out
+          else if (!finalCharacter.photoUrl && !finalCharacter.stylePreview) {
+               setError("Missing character image or style preview. Please upload a photo or describe the character for generation.");
+               return;
+          }
       }
       
-      // If we have a callback, invoke it
+      console.log('Completing character creation with data:', {
+          ...finalCharacter,
+          stylePreview: finalCharacter.stylePreview ? `[Base64 Preview Present: ${finalCharacter.stylePreview.substring(0,50)}...]` : null,
+      });
+      
+      // If this is a new character, add it (this logic might be simplified if CharacterWizard always calls onComplete)
+      // The parent component (CreateBookPage) likely handles the actual adding/updating in the main store.
+      // So, just call onComplete.
+      
+      // Invoke the callback with the final data
       if (onComplete) {
-        console.log('Invoking completion callback with stylePreview:', finalCharacter.stylePreview);
+        console.log('Invoking completion callback...');
         onComplete(finalCharacter);
+      } else {
+          console.warn('CharacterWizard: onComplete callback is missing!');
       }
+      
     } catch (err) {
       console.error('Error completing character:', err);
       setError('Failed to save character. Please try again.');

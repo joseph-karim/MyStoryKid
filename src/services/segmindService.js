@@ -3,6 +3,7 @@ import axios from 'axios';
 const SEGMIND_API_KEY = import.meta.env.VITE_SEGMIND_API_KEY;
 // Assuming the specific endpoint for Flux PuLID. Verify from Segmind docs.
 const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid'; 
+const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
 
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
@@ -98,5 +99,116 @@ export const generateFluxIllustration = async (prompt, referenceImageBase64, opt
     }
     console.error('Error calling Segmind API:', errorMessage);
     throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Generates an image using Segmind Consistent Character API.
+ * @param {string} referenceImageBase64 - Base64 data URL ('data:image/...') of the reference image (Dzine preview).
+ * @param {string} pagePrompt - The prompt describing the desired scene/action for the page.
+ * @param {string} styleKeywords - Descriptive keywords for the art style.
+ * @returns {Promise<string>} - Base64 data URL of the generated image.
+ */
+export const generateConsistentCharacter = async (referenceImageBase64, pagePrompt, styleKeywords) => {
+  if (!SEGMIND_API_KEY) throw new Error('Segmind API key is missing.');
+  
+  // Input Validation
+  if (!referenceImageBase64 || !referenceImageBase64.startsWith('data:image')) {
+       throw new Error('Valid reference image (Base64 Data URL) is required for Segmind.');
+  }
+  if (!pagePrompt) throw new Error('A page prompt is required.');
+
+  // Combine prompt and style keywords
+  const fullPrompt = `${pagePrompt}, ${styleKeywords || "children's book illustration"}`; // Add default keywords if none provided
+
+  const payload = {
+    prompt: fullPrompt.substring(0, 1000), // Respect potential length limits
+    negative_prompt: "low quality, blurry, deformed, text, signature, watermark, multiple people, bad anatomy, fused fingers, extra limbs", // Enhanced negative prompt
+    subject: referenceImageBase64, // Send Base64 Data URL directly
+    // output_format: "webp", // Keep default
+    // output_quality: 80, // Keep default
+    randomise_poses: false, // Set to false to better match prompt pose if possible
+    // number_of_outputs: 1, // Keep default
+  };
+
+  console.log("Sending payload to Segmind Consistent Character API:", { ...payload, subject: `[Base64 Data: ${referenceImageBase64.substring(0,50)}...]` });
+
+  try {
+    const response = await axios.post(CONSISTENT_CHARACTER_URL, payload, {
+      headers: {
+        'x-api-key': SEGMIND_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      responseType: 'blob', // Expecting image data back directly
+      timeout: 90000, // 90 seconds timeout (adjust if needed)
+    });
+
+    // Log remaining credits if header exists
+    if (response.headers['x-remaining-credits']) {
+         console.log(`Segmind Credits Remaining: ${response.headers['x-remaining-credits']}`);
+    }
+
+    // Check if response is an image blob
+    if (response.data instanceof Blob && response.data.type.startsWith('image/')) {
+      console.log(`Segmind API returned a ${response.data.type} blob.`);
+      // Convert Blob to Base64 Data URL
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = (error) => {
+           console.error("Error converting Segmind response blob to Base64:", error);
+           reject(new Error("Failed to read Segmind image response."));
+        };
+        reader.readAsDataURL(response.data);
+      });
+    } else {
+      // If the response wasn't the expected image blob
+      console.error("Unexpected response type from Segmind:", response.data);
+      let errorDetails = 'Unexpected response format.';
+      try {
+        // Try to decode if possible (assuming ArrayBuffer or text)
+        if (response.data instanceof ArrayBuffer) {
+          errorDetails = new TextDecoder().decode(response.data);
+        } else if (typeof response.data === 'object'){
+          errorDetails = JSON.stringify(response.data)
+        } else {
+          errorDetails = String(response.data);
+        }
+        // Attempt to parse if it looks like JSON
+        if (errorDetails.startsWith('{')) {
+           errorDetails = JSON.stringify(JSON.parse(errorDetails));
+        }
+      } catch (e) { /* Ignore parsing/decoding error */ }
+      throw new Error(`Segmind API did not return a valid image. Response: ${errorDetails}`);
+    }
+  } catch (error) {
+     let errorMessage = error.message;
+     if (axios.isAxiosError(error)) {
+       const statusCode = error.response?.status;
+       let errorData = 'No additional data.';
+       try {
+         // Try to decode response data if it exists
+         if (error.response?.data) {
+            if (error.response.data instanceof Blob) {
+               errorData = await error.response.data.text();
+            } else if (error.response.data instanceof ArrayBuffer) {
+              errorData = new TextDecoder().decode(error.response.data); 
+            } else if (typeof error.response.data === 'object'){
+               errorData = JSON.stringify(error.response.data);
+            } else {
+               errorData = String(error.response.data);
+            }
+         }
+       } catch (e) { /* Ignore decoding error */ }
+
+       errorMessage = `Segmind API Error ${statusCode || '(Network Error)'}: ${errorData}`; 
+       if (error.code === 'ECONNABORTED') errorMessage = 'Segmind API request timed out (90 seconds).';
+       if (statusCode === 406) errorMessage = 'Segmind API Error: Not enough credits or invalid input.'; // 406 can be credits or bad input
+       if (statusCode === 401) errorMessage = 'Segmind API Error: Invalid API Key.';
+       if (statusCode === 400) errorMessage = `Segmind API Error: Bad Request - ${errorData}`; // Provide more details for 400
+       if (statusCode === 500) errorMessage = `Segmind API Error: Internal Server Error - ${errorData}`;
+     }
+     console.error('Error calling Segmind API:', errorMessage);
+     throw new Error(errorMessage); // Re-throw the specific error
   }
 };

@@ -2,6 +2,42 @@ const API_BASE_URL = 'https://papi.dzine.ai/openapi/v1';
 // Use environment variable first, fall back to the provided token if environment variable is not available
 const API_KEY = import.meta.env.VITE_DZINE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJPcGVuQUlEIjo3MSwiT3BlblVJRCI6MTE0MDk5NDMxNzM1NSwiTUlEIjo5OTg0MzMxLCJDcmVhdGVUaW1lIjoxNzQzNDQwMzk3LCJpc3MiOiJkemluZSIsInN1YiI6Im9wZW4ifQ.NfiLkQNPIhTlc7aaT0l_2Fs7AHwFQBgI3U3RlN5fzV4';
 
+// --- Start: Style Keyword Mapping for Segmind --- //
+
+// Example mapping (TODO: Add all relevant Dzine styles used in the app)
+const dzineToSegmindKeywordsMap = {
+  // Watercolor Styles
+  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': "watercolor art, children's book illustration, soft colors, whimsical", // PixiePop 3D (Assuming this maps to watercolor)
+  'Style-aquarelle_life': "aquarelle painting style, watercolor life, vibrant details", // Placeholder - get actual code
+  'Style-watercolor_whimsy': "watercolor whimsy style, pastel colors, lighthearted", // Placeholder
+  
+  // Cartoon/Storybook Styles
+  'Style-cheerful_storybook': "cheerful storybook style, bright colors, cartoonish, simple lines", // Placeholder
+  'Style-minimalist_cutesy': "minimalist cutesy style, simple shapes, flat colors, adorable", // Placeholder
+  'Style-storytime_whimsy': "storytime whimsy style, charming, playful characters, warm colors", // Placeholder
+  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "playful cartoon style, vibrant, expressive characters", // Added from logs
+  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': "adventure cartoon style, dynamic poses, bright scenery", // Added from logs
+  
+  // Other Potential Styles (Map based on visual similarity)
+  'Style-enchanted_elegance': "enchanted elegance style, fantasy illustration, detailed, soft lighting", // Placeholder
+  'Style-line_and_wash': "line and wash style, ink outlines, watercolor wash, sketch aesthetic", // Placeholder
+  'Style-golden_hour': "golden hour lighting, warm tones, soft shadows, realistic fantasy", // Placeholder
+  
+  // Add more style mappings here...
+};
+
+/**
+ * Gets descriptive keywords for Segmind based on a Dzine style code.
+ * @param {string} dzineCode - The Dzine style code (e.g., 'Style-7a23...').
+ * @returns {string} - A string of descriptive keywords for Segmind prompt, or a default.
+ */
+export const getKeywordsForDzineStyle = (dzineCode) => {
+  if (!dzineCode) return "children's book illustration style"; // Default if no code provided
+  return dzineToSegmindKeywordsMap[dzineCode] || "children's book illustration style, colorful"; 
+};
+
+// --- End: Style Keyword Mapping --- //
+
 // Generic fetch handler for Dzine API calls
 export const fetchDzine = async (endpoint, options = {}) => {
   try {

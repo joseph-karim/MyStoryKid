@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getDzineStyles, getAvailableStyles, getFriendlyStyleName } from '../../services/dzineService';
+import { getDzineStyles, getAvailableStyles, getKeywordsForDzineStyle } from '../../services/dzineService';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
@@ -402,348 +402,192 @@ const styleDescriptions = {
 };
 
 function ArtStyleStep() {
-  const { wizardState, updateStoryData, setWizardStep } = useBookStore();
+  const {
+    wizardState,
+    updateStoryData,
+    setWizardStep,
+  } = useBookStore();
   
-  const [artStyleCode, setArtStyleCode] = useState(wizardState.storyData.artStyleCode || '');
-  const [customStyleDescription, setCustomStyleDescription] = useState(wizardState.storyData.customStyleDescription || '');
+  const [styles, setStyles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStyle, setSelectedStyle] = useState(wizardState.storyData.artStyleCode || '');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [customDescription, setCustomDescription] = useState(wizardState.storyData.customStyleDescription || '');
   
-  // State for fetched styles and mapping
-  const [dzineStyles, setDzineStyles] = useState([]);
-  const [noStyleCode, setNoStyleCode] = useState(null); // For custom style
-  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
-  const [styleFetchError, setStyleFetchError] = useState(null);
-  const [error, setError] = useState('');
-  
-  // UPDATED: Create a hard-coded style map for internal testing
-  // This guarantees styles will display even if API is unavailable
-  const FALLBACK_STYLE_MAP = { ...styleDescriptions };
-
-  // Find best matching API style for a given internal style ID
-  const findBestMatchingStyle = (styleItem, apiStyles) => {
-    if (!apiStyles || apiStyles.length === 0) return null;
-    
-    // Try to find a match based on keywords
-    const matches = apiStyles.map(apiStyle => {
-      const apiStyleName = apiStyle.name.toLowerCase();
-      const matchScore = styleItem.keywords.reduce((score, keyword) => {
-        return apiStyleName.includes(keyword.toLowerCase()) ? score + 1 : score;
-      }, 0);
-      return { apiStyle, matchScore };
-    }).filter(match => match.matchScore > 0)
-      .sort((a, b) => b.matchScore - a.matchScore);
-    
-    // Return the best match or null if no matches
-    return matches.length > 0 ? matches[0].apiStyle : null;
-  };
-
-  // Fetch styles from Dzine API on mount
   useEffect(() => {
     const fetchStyles = async () => {
-      setIsLoadingStyles(true);
-      setStyleFetchError(null);
       try {
-        const data = await getDzineStyles();
-        if (data.list && data.list.length > 0) {
-          setDzineStyles(data.list);
-          
-          // Find "No Style" option for custom styles
-          const noStyleOption = data.list.find(style => 
-            style.name.toLowerCase().includes('no style')
-          );
-          setNoStyleCode(noStyleOption?.style_code || 'Style-7feccf2b-f2ad-43a6-89cb-354fb5d928d2');
-          
-          // Set initial artStyleCode if not already set
-          if (!artStyleCode) {
-            // Auto-suggest style based on category (can be refined)
-            const category = wizardState.storyData.category || 'adventure';
-            
-            // Map categories to style IDs
-            const categoryToStyleMap = {
-              adventure: 'cartoon',
-              fantasy: 'watercolor',
-              bedtime: 'pastel',
-              learning: 'flat_vector',
-              birthday: 'storybook_pop'
-            };
-            
-            // Get the suggested style ID
-            const suggestedInternalStyleId = categoryToStyleMap[category] || 'cartoon';
-            
-            // Find the matching style in our structured categories
-            let matchingStyleItem = null;
-            for (const category of ART_STYLE_CATEGORIES_STRUCTURE) {
-              const match = category.styleIds.find(s => s.id === suggestedInternalStyleId);
-              if (match) {
-                matchingStyleItem = match;
-                break;
-              }
-            }
-            
-            // Find the API style that best matches this internal style
-            if (matchingStyleItem) {
-              const bestMatch = findBestMatchingStyle(matchingStyleItem, data.list);
-              if (bestMatch) {
-                setArtStyleCode(bestMatch.style_code);
-              } else {
-                // Default to first style if no match
-                setArtStyleCode(data.list[0].style_code);
-              }
-            } else {
-              // Default to first style if no matching style item
-              setArtStyleCode(data.list[0].style_code);
-            }
-          }
-        } else {
-          console.warn('No styles returned from Dzine API');
-          setStyleFetchError('No styles available from API');
-        }
-      } catch (err) {
-        console.error("Failed to fetch Dzine styles:", err);
-        setStyleFetchError(err.message || 'Could not load art styles.');
-      } finally {
-        setIsLoadingStyles(false);
+        setLoading(true);
+        const availableStyles = await getAvailableStyles();
+        // Add a 'Custom Style' option
+        const stylesWithOptions = [
+          { name: 'Custom Style', style_code: 'custom', cover_image: 'path/to/custom-placeholder.png' }, // Provide a placeholder image path
+          ...availableStyles
+        ];
+        setStyles(stylesWithOptions);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch styles:", error);
+        setLoading(false);
+        // Handle error (e.g., show a message to the user)
       }
     };
-    
     fetchStyles();
   }, []);
   
-  // Load wizard state when it changes (e.g., navigating back)
-  useEffect(() => {
-    setArtStyleCode(wizardState.storyData.artStyleCode || '');
-    setCustomStyleDescription(wizardState.storyData.customStyleDescription || '');
-  }, [wizardState.storyData]);
-  
-  // Special handling for Warm Fables style
-  useEffect(() => {
-    try {
-      // Make sure Pleasantly Warm style is always available by ID in localStorage
-      const existingNames = localStorage.getItem('styleCodeNames') || '{}';
-      const namesMap = JSON.parse(existingNames);
-      
-      // Hard-code the Pleasantly Warm style
-      const pleasantlyWarmStyleCode = 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1';
-      namesMap[pleasantlyWarmStyleCode] = 'Pleasantly Warm';
-      
-      localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
-    } catch (e) {
-      console.error("Failed to ensure Pleasantly Warm style is in localStorage:", e);
+  // Handle style selection
+  const handleSelectStyle = (styleCode) => {
+    setSelectedStyle(styleCode);
+    if (styleCode !== 'custom') {
+      // Get keywords for the selected Dzine style
+      const keywords = getKeywordsForDzineStyle(styleCode);
+      // Update store with both code and keywords
+      updateStoryData({ artStyleCode: styleCode, selectedStyleKeywords: keywords, customStyleDescription: '' });
+    } else {
+      // If custom, clear keywords and potentially use description later
+      updateStoryData({ artStyleCode: 'custom', selectedStyleKeywords: '', customStyleDescription: customDescription });
     }
-  }, []);
+  };
   
+  // Handle custom description change
+  const handleCustomDescriptionChange = (e) => {
+    const description = e.target.value;
+    setCustomDescription(description);
+    if (selectedStyle === 'custom') {
+      // Update store only if custom is selected
+      updateStoryData({ customStyleDescription: description, selectedStyleKeywords: '' }); 
+    }
+  };
+
+  // Filter styles based on search term
+  const filteredStyles = styles.filter(style => 
+    style.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Navigation handlers
+  const handleNext = () => {
+    // Validate if a style (or custom description) is selected
+    if (selectedStyle === 'custom' && !customDescription.trim()) {
+      alert('Please describe your custom style.'); // Simple validation
+      return;
+    }
+    if (!selectedStyle) {
+        alert('Please select an art style.');
+        return;
+    }
+    setWizardStep(3); // Move to Main Character step
+  };
+
   const handleBack = () => {
-    // Go back to the Category & Scene step
-    setWizardStep(1);
-  };
-  
-  const handleContinue = () => {
-    // Validation
-    if (!artStyleCode) {
-      setError('Please select an art style for your storybook.');
-      return;
-    }
-    
-    // For custom style, make sure there's a description
-    if (artStyleCode === 'custom' && !customStyleDescription.trim()) {
-      setError('Please provide a description for your custom art style.');
-      return;
-    }
-
-    // Update the store with style data
-    updateStoryData({ 
-      artStyleCode,
-      customStyleDescription: artStyleCode === 'custom' ? customStyleDescription : ''
-    });
-    
-    // Continue to Characters step
-    setWizardStep(3);
+    setWizardStep(1); // Go back to Category & Scene
   };
 
-  // Helper to get style details from fetched list based on ID
-  const getStyleDetails = (id) => {
-    return dzineStyles.find(s => s.style_code === id);
-  };
-
-  // Instead of actually checking the availability from the API (which might fail),
-  // we'll now determine availability based on if the style exists in our predefined list
-  const isStyleAvailable = (styleId) => {
-    // Just return true since we've curated these, they should be available
-    return true;
-  };
-
-  // Make sure the style selection handler is properly defined
-  const handleStyleSelect = (styleCode) => {
-    console.log("Style selected:", styleCode);
-    setArtStyleCode(styleCode);
-    setError(''); // Clear any errors when a style is selected
-    
-    // Store the selected style name for easier reference later
-    let styleName = null;
-    
-    // Check if it's a direct style code from ART_STYLE_CATEGORIES_STRUCTURE
-    for (const category of ART_STYLE_CATEGORIES_STRUCTURE) {
-      const style = category.styleIds.find(s => s.apiCode === styleCode);
-      if (style) {
-        styleName = style.title;
-        
-        // Store this style name in localStorage
-        try {
-          // First for this specific style
-          localStorage.setItem('lastSelectedStyleName', styleName);
-          
-          // Then store all style names for lookup by other components
-          const existingNames = localStorage.getItem('styleCodeNames') || '{}';
-          const namesMap = JSON.parse(existingNames);
-          namesMap[styleCode] = styleName;
-          localStorage.setItem('styleCodeNames', JSON.stringify(namesMap));
-        } catch (e) {
-          console.error("Failed to save style name to localStorage:", e);
-        }
-        
-        break;
-      }
-    }
-    
-    // If it's the custom style, make sure the textarea is enabled
-    if (styleCode === 'custom') {
-      // Focus on the custom style textarea after a brief delay
-      setTimeout(() => {
-        const textarea = document.querySelector('textarea[placeholder*="Vibrant watercolor"]');
-        if (textarea) textarea.focus();
-      }, 100);
+  // Motion variants for animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
     }
   };
 
-  // Render the art styles in a grid layout by category
-  const renderArtStyles = () => {
-    return (
-      <div className="space-y-4 mt-2 mb-4">
-        {ART_STYLE_CATEGORIES_STRUCTURE.map((category, idx) => (
-          <div key={idx} className="space-y-1">
-            <h3 className="text-lg font-medium mb-1">{category.category}</h3>
-            <p className="text-sm text-gray-600 mb-1">{category.description}</p>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-              {category.styleIds.map((style) => {
-                // We'll use the direct API code from our curated list
-                const styleCode = style.apiCode;
-                const isAvailable = true; // Since we've curated these, they should be available
-                
-                return (
-                  <div 
-                    key={style.id}
-                    onClick={() => handleStyleSelect(styleCode)}
-                    className={`border rounded-md overflow-hidden transition-all shadow-sm hover:shadow-md ${
-                      artStyleCode === styleCode 
-                        ? 'ring-2 ring-blue-500 border-blue-500' 
-                        : 'border-gray-200 hover:border-blue-300'
-                    } cursor-pointer`}
-                  >
-                    <div className={`aspect-[4/3] bg-gray-100 relative card-image-container`}>
-                      <img 
-                        src={styleImageMap[style.id] || '/placeholder-style.jpg'} 
-                        alt={style.title}
-                        className="w-full h-full object-contain sm:object-cover max-h-48 art-style-image high-quality"
-                        onError={(e) => {
-                          // Fallback if image isn't available
-                          e.target.src = 'https://placehold.co/400x300/e5e7eb/a3a3a3?text=Style+Image';
-                        }}
-                      />
-                      {artStyleCode === styleCode && (
-                        <div className="absolute top-2 right-2 bg-blue-500 text-white p-1 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2">
-                      <h4 className="font-medium mb-1 text-sm style-card-title">{style.title}</h4>
-                      <p className="text-xs text-gray-600 style-card-description">{style.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        
-        {/* Custom style option */}
-        <div className="mt-4">
-          <div 
-            onClick={() => handleStyleSelect(noStyleCode)}
-            className={`border rounded-md overflow-hidden transition-all p-3 ${
-              artStyleCode === noStyleCode 
-                ? 'ring-2 ring-blue-500 border-blue-500' 
-                : 'border-gray-200 hover:border-blue-300'
-            } cursor-pointer`}
-          >
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-5 h-5 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full"></div>
-              <h4 className="font-medium text-sm">Custom Style Description</h4>
-            </div>
-            
-            <p className="text-xs text-gray-600 mb-2">
-              Describe a specific art style not listed above, or combine elements from multiple styles.
-            </p>
-            
-            <textarea
-              value={customStyleDescription}
-              onChange={(e) => setCustomStyleDescription(e.target.value)}
-              placeholder="Example: Vibrant watercolor with fine ink details, dreamy pastel colors, and a slight glow effect around characters."
-              className={`w-full border rounded-md p-2 text-xs ${
-                artStyleCode === noStyleCode ? 'border-blue-400' : 'border-gray-300'
-              }`}
-              rows={2}
-              disabled={artStyleCode !== noStyleCode}
-            />
-          </div>
-        </div>
-      </div>
-    );
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
   };
-  
+
   return (
-    <div className="space-y-6 pb-12">
-      <div className="text-center mb-6">
+    <div className="space-y-6">
+      <div className="text-center">
         <h2 className="text-2xl font-bold">Choose Your Art Style</h2>
-        <p className="text-gray-600">Select the visual style for all illustrations in your story.</p>
+        <p className="text-gray-600">Select the visual style for your book's illustrations.</p>
       </div>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {styleFetchError && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4" role="alert">
-          <p>Error loading art styles from the server. You can continue with a custom style description.</p>
-          <p className="text-xs">{styleFetchError}</p>
-            </div>
-      )}
-      
-      {isLoadingStyles ? (
-        <div className="flex justify-center my-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-        </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <input 
+          type="text"
+          placeholder="Search styles..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center text-gray-500">Loading styles...</div>
       ) : (
-        <>{renderArtStyles()}</>
+        <motion.div 
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {filteredStyles.map((style) => (
+            <motion.div 
+              key={style.style_code}
+              variants={itemVariants}
+              onClick={() => handleSelectStyle(style.style_code)}
+              className={`border rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 {
+                selectedStyle === style.style_code 
+                ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2' 
+                : 'border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              <img 
+                src={style.cover_image || 'https://via.placeholder.com/150?text=Style'} // Use placeholder if no image
+                alt={style.name}
+                className="w-full h-32 object-cover"
+                onError={(e) => {
+                   // Handle image loading errors gracefully
+                   e.target.onerror = null; // prevent infinite loop
+                   e.target.src = 'https://via.placeholder.com/150?text=Error';
+                }}
+              />
+              <div className="p-3 text-center">
+                <p className="text-sm font-medium truncate">{style.name}</p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Custom Style Description Input */}
+      {selectedStyle === 'custom' && (
+        <div className="mt-6">
+          <label htmlFor="customStyleDescription" className="block text-sm font-medium text-gray-700 mb-1">
+            Describe Your Custom Style
+          </label>
+          <textarea 
+            id="customStyleDescription"
+            rows="3"
+            value={customDescription}
+            onChange={handleCustomDescriptionChange}
+            placeholder="e.g., 'Pencil sketch style with minimal color, like a classic storybook'"
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">This description will guide the illustration generation.</p>
+        </div>
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-4 mt-6 border-t border-gray-200">
+      <div className="flex justify-between pt-6">
         <button
           onClick={handleBack}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-100"
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Back
         </button>
         <button
-          onClick={handleContinue}
-          className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700"
+          onClick={handleNext}
+          disabled={!selectedStyle || (selectedStyle === 'custom' && !customDescription.trim())}
+          className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+            (!selectedStyle || (selectedStyle === 'custom' && !customDescription.trim()))
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
         >
-          Continue to Characters
+          Next: Main Character
         </button>
       </div>
     </div>
