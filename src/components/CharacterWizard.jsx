@@ -25,6 +25,44 @@ const defaultCharacterData = {
   isHuman: true
 };
 
+// --- ADD HELPER FUNCTION --- 
+async function fetchAndConvertToBase64(imageUrl) {
+  console.log(`[Base64 Convert] Attempting to fetch: ${imageUrl}`);
+  try {
+    // Important: Add no-cors mode temporarily if direct fetch fails, 
+    // but be aware this might lead to an opaque response.
+    // A backend proxy is the robust solution for CORS.
+    const response = await fetch(imageUrl); // Try direct fetch first
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image URL (${response.status} ${response.statusText})`);
+    }
+    
+    const blob = await response.blob();
+    console.log(`[Base64 Convert] Fetched blob type: ${blob.type}, size: ${blob.size}`);
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        console.log("[Base64 Convert] Conversion successful.");
+        resolve(reader.result); // result is the Base64 Data URL
+      };
+      reader.onerror = (error) => {
+        console.error("[Base64 Convert] FileReader error:", error);
+        reject(new Error("Failed to read image blob."));
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error(`[Base64 Convert] Error fetching or converting image URL: ${error.message}`);
+    // Decide on fallback behavior: throw, return null, or return placeholder?
+    // Returning null for now to indicate failure.
+    // throw error; // Re-throw if the caller should handle it more explicitly
+    return null; 
+  }
+}
+// --- END HELPER FUNCTION ---
+
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
@@ -49,7 +87,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // --- ADDED STATE: Track generation attempt ---
   const [generationAttempted, setGenerationAttempted] = useState(false);
-  // ------------------------------------------
   
   // --- MOVED EFFECT: Update isHuman based on type --- 
   useEffect(() => {
@@ -938,25 +975,39 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            const imageUrl = resultUrls[0] || null; // Take the first non-empty URL
            
            if (imageUrl) {
-             console.log('Using image URL:', imageUrl);
-             setCharacterData(prev => ({ ...prev, stylePreview: imageUrl }));
-             // --- STOP POLLING --- 
-             clearInterval(pollingSessionRef.current[pollingId]);
-             setIsGenerating(false);
-             delete pollingSessionRef.current[pollingId];
-             console.log(`Success: Cleared polling interval ${pollingId}`);
-             return; // Exit interval callback
+             console.log('[Polling Success] Found image URL:', imageUrl);
+             setProgressMessage('Finalizing image...'); // Update message
+             
+             // Attempt to fetch and convert the URL to Base64
+             const base64Preview = await fetchAndConvertToBase64(imageUrl);
+             
+             if (base64Preview) {
+               console.log('[Polling Success] Successfully converted URL to Base64. Saving preview.');
+               setCharacterData(prev => ({ ...prev, stylePreview: base64Preview }));
+               setProgressMessage('Image generated successfully!');
+             } else {
+               // Conversion failed (likely CORS or network issue)
+               console.error('[Polling Success] Failed to convert final image URL to Base64. Using fallback.');
+               setError('Could not fetch the final image. Using placeholder.'); // Inform user
+               setProgressMessage('Error fetching final image.');
+               useFallbackImage(fallbackImage); // Use the provided fallback
+             }
+
            } else {
+             // Task succeeded but no valid image URLs found
              console.warn('Task succeeded but no valid image URLs found in generate_result_slots.');
              setProgressMessage('Task finished but no image found - using placeholder.');
-             // --- STOP POLLING --- 
-             clearInterval(pollingSessionRef.current[pollingId]);
-             setIsGenerating(false);
-             delete pollingSessionRef.current[pollingId];
              useFallbackImage(fallbackImage); // Use fallback if success but no image
-             console.log(`Success (no image): Cleared polling interval ${pollingId}`);
-             return; // Exit interval callback
            }
+
+           // --- STOP POLLING (common for success/failure branches) --- 
+           clearInterval(pollingSessionRef.current[pollingId]);
+           setIsGenerating(false);
+           delete pollingSessionRef.current[pollingId];
+           console.log(`Polling stopped for task ${taskId}.`);
+           return; // Exit interval callback
+           // --- END MODIFIED LOGIC ---
+
          }
          // -- Failure Path --
          else if (normalizedStatus === 'failed') {
@@ -967,8 +1018,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            clearInterval(pollingSessionRef.current[pollingId]);
            setIsGenerating(false);
            delete pollingSessionRef.current[pollingId];
-           // No automatic fallback on failure, let user retry
-           // useFallbackImage(fallbackImage);
            console.log(`Failed: Cleared polling interval ${pollingId}`);
            return; // Exit interval callback
          }
