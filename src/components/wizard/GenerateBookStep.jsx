@@ -284,7 +284,14 @@ const GenerateBookStep = () => {
       const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode); // Get keywords
       
       console.log("Using Segmind Style Keywords:", styleKeywords);
-      
+      // -------- START DEBUG LOG --------
+      console.log("[Segmind Prep] Raw stylePreview from character:", referenceBase64); 
+      console.log("[Segmind Prep] Type of stylePreview:", typeof referenceBase64);
+      if (referenceBase64) {
+          console.log("[Segmind Prep] stylePreview startsWith 'data:image':", referenceBase64.startsWith('data:image'));
+      }
+      // -------- END DEBUG LOG --------
+
       // Validate and potentially convert reference image
       if (!referenceBase64) {
           throw new Error("Missing Dzine stylePreview for the main character. Cannot generate illustrations.");
@@ -299,9 +306,11 @@ const GenerateBookStep = () => {
           } catch (convError) {
               throw new Error(`Failed to convert reference image URL to Base64: ${convError.message}`);
           }
-      } else if (!referenceBase64.startsWith('data:image')) {
-           throw new Error("Invalid stylePreview format. Expected Base64 Data URL.");
-      }
+      } 
+      // --- Temporarily removing this check to let segmindService handle it ---
+      // else if (!referenceBase64.startsWith('data:image')) {
+      //      throw new Error("Invalid stylePreview format. Expected Base64 Data URL.");
+      // }
       
       // --- Generate Images Serially (or with controlled concurrency) --- 
       // Simple serial generation to avoid overwhelming API / simplify logic first

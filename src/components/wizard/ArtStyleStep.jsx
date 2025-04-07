@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getDzineStyles, getAvailableStyles, getKeywordsForDzineStyle } from '../../services/dzineService';
-import { useQueryClient } from '@tanstack/react-query';
+import { getKeywordsForDzineStyle } from '../../services/dzineService';
 import { motion } from 'framer-motion';
 
 // Import art style images from the Dzine Styles folder
@@ -31,41 +30,6 @@ import vividTableauxImg from '../../assets/dzine-styles/Vivid-Tableaux.png';
 import luminousNarrativesImg from '../../assets/dzine-styles/Luminous-Narratives.png';
 import dreamlikePortraitureImg from '../../assets/dzine-styles/Dreamlike-Portraiture.png';
 import aquarelleLifeImg from '../../assets/dzine-styles/Aquarelle-Life.png';
-
-// Map style IDs to the imported images - used for legacy code compatibility
-const styleImageMap = {
-  watercolor_whimsy: watercolorWhimsyImg,
-  whimsical_coloring: whimsicalColoringImg,
-  enchanted_character: enchantedCharacterImg,
-  minimalist_cutesy: minimalistCuteImg,
-  
-  cheerful_storybook: cheerfulStorybookImg,
-  pleasantly_warm: pleasantlyWarmImg,
-  storytime_whimsy: storytimeWhimsyImg,
-  line_and_wash: lineAndWashImg,
-  golden_hour: goldenHourImg,
-  
-  cute_exaggeration: cuteExaggerationImg,
-  glossy_elegance: glossyEleganceImg,
-  starlit_fantasy: starlitFantasyImg,
-  fantasy_hero: fantasyHeroImg,
-  joyful_clay: joyfulClayImg,
-  
-  enchanted_elegance: enchantedEleganceImg,
-  warm_portrait: warmPortraitImg,
-  magic_portrait: magicPortraitImg,
-  vivid_tableaux: vividTableauxImg,
-  luminous_narratives: luminousNarrativesImg,
-  
-  // Additional styles
-  dreamlike_portraiture: dreamlikePortraitureImg,
-  aquarelle_life: aquarelleLifeImg,
-  ancient_china: ancientChinaImg,
-  ceramic_lifelike: ceramicLifelikeImg,
-  yarn_realism: yarnRealismImg,
-  mystical_sovereignty: mysticalSovereigntyImg,
-  soft_radiance: softRadianceImg
-};
 
 // Direct mapping from API style codes to images for more reliable lookups
 const dzineStyleImageMap = {
@@ -148,7 +112,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
     styleIds: [
       { 
         id: 'cheerful_storybook',
-        apiCode: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926',
+        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
         title: 'Cheerful Storybook',
         description: 'Bright, cheerful illustrations with bold colors and playful details'
       },
@@ -190,7 +154,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
     styleIds: [
       { 
         id: 'cute_exaggeration',
-        apiCode: 'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f',
+        apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
         title: 'Cutie 3D',
         description: 'Playful and cute 3D characters with slightly exaggerated features.'
       },
@@ -288,119 +252,6 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
   }
 ];
 
-// Detailed descriptions for each art style - for legacy compatibility only
-const styleDescriptions = {
-  watercolor_whimsy: { 
-    title: 'Watercolor Whimsy',
-    description: 'Soft, rounded shapes with gentle digital brushwork and gradients'
-  },
-  whimsical_coloring: { 
-    title: 'Whimsical Coloring',
-    description: 'Tender, soothing colors with a gentle, chalky texture'
-  },
-  enchanted_character: { 
-    title: 'Enchanted Character',
-    description: 'Magical characters with soft lighting and enchanting atmosphere'
-  },
-  minimalist_cutesy: { 
-    title: 'Minimalist Cutesy',
-    description: 'Simple, cute designs with minimal details and soft colors'
-  },
-  cheerful_storybook: { 
-    title: 'Cheerful Storybook',
-    description: 'Bright, cheerful illustrations with bold colors and playful details'
-  },
-  pleasantly_warm: { 
-    title: 'Pleasantly Warm',
-    description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
-  },
-  storytime_whimsy: { 
-    title: 'Storytime Whimsy',
-    description: 'Whimsical, storybook-style illustrations with a classic feel'
-  },
-  line_and_wash: { 
-    title: 'Line and Wash',
-    description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
-  },
-  golden_hour: { 
-    title: 'Golden Hour',
-    description: 'Nostalgic illustrations with warm, golden lighting'
-  },
-  cute_exaggeration: { 
-    title: 'Cute Exaggeration',
-    description: 'Playful, exaggerated features with bright colors and clean lines'
-  },
-  glossy_elegance: { 
-    title: 'Glossy Elegance',
-    description: 'Clean, sleek, modern illustrations with a glossy finish'
-  },
-  starlit_fantasy: { 
-    title: 'Starlit Fantasy',
-    description: 'A dreamy and ethereal style with a magical starlit quality.'
-  },
-  fantasy_hero: { 
-    title: 'Fantasy Hero',
-    description: 'Bold, heroic character illustrations with a fantasy adventure feel'
-  },
-  joyful_clay: { 
-    title: 'Joyful Clay',
-    description: 'Cheerful characters that look like they are made of colorful clay'
-  },
-  enchanted_elegance: { 
-    title: 'Enchanted Elegance',
-    description: 'Detailed illustrations with an elegant, enchanted quality'
-  },
-  warm_portrait: { 
-    title: 'Warm Portrait',
-    description: 'Realistic portraits with warm lighting and preserved facial features'
-  },
-  magic_portrait: { 
-    title: 'Magic Portrait',
-    description: 'Semi-stylized portraits with a magical, fantasy quality'
-  },
-  vivid_tableaux: { 
-    title: 'Vivid Tableaux',
-    description: 'Rich, textured scenes with vibrant colors and detailed compositions'
-  },
-  luminous_narratives: { 
-    title: 'Luminous Narratives',
-    description: 'Rich digital illustrations with painterly effects and detailed lighting'
-  },
-  // Additional styles
-  ancient_china: {
-    title: 'Ancient China',
-    description: 'Traditional Chinese painting style with elegant brushwork and composition'
-  },
-  dreamlike_portraiture: {
-    title: 'Dreamlike Portraiture',
-    description: 'Portraits with a dreamy, ethereal quality and soft focus'
-  },
-  aquarelle_life: {
-    title: 'Aquarelle Life',
-    description: 'Vibrant watercolor style with flowing colors and rich textures'
-  },
-  ceramic_lifelike: {
-    title: 'Ceramic Lifelike',
-    description: 'Illustrations that have a 3D ceramic quality with smooth textures'
-  },
-  yarn_realism: {
-    title: 'Yarn Realism',
-    description: 'Textures and styling that mimic yarn and textile elements'
-  },
-  mystical_sovereignty: {
-    title: 'Mystical Sovereignty',
-    description: 'Majestic, mystical scenes with an air of fantasy and elegance'
-  },
-  soft_radiance: {
-    title: 'Soft Radiance',
-    description: 'Gentle, glowing artwork with soft lighting and delicate details'
-  },
-  custom: {
-    title: 'Custom Style',
-    description: 'Describe your own unique art style for your story'
-  }
-};
-
 function ArtStyleStep() {
   const {
     wizardState,
@@ -408,69 +259,15 @@ function ArtStyleStep() {
     setWizardStep,
   } = useBookStore();
   
-  const [styles, setStyles] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedStyle, setSelectedStyle] = useState(wizardState.storyData.artStyleCode || '');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [customDescription, setCustomDescription] = useState(wizardState.storyData.customStyleDescription || '');
   
-  useEffect(() => {
-    const fetchStyles = async () => {
-      try {
-        setLoading(true);
-        const availableStyles = await getAvailableStyles();
-        // Add a 'Custom Style' option
-        const stylesWithOptions = [
-          { name: 'Custom Style', style_code: 'custom', cover_image: 'path/to/custom-placeholder.png' }, // Provide a placeholder image path
-          ...availableStyles
-        ];
-        setStyles(stylesWithOptions);
-        setLoading(false);
-      } catch (error) {
-        console.error("Failed to fetch styles:", error);
-        setLoading(false);
-        // Handle error (e.g., show a message to the user)
-      }
-    };
-    fetchStyles();
-  }, []);
-  
-  // Handle style selection
   const handleSelectStyle = (styleCode) => {
     setSelectedStyle(styleCode);
-    if (styleCode !== 'custom') {
-      // Get keywords for the selected Dzine style
-      const keywords = getKeywordsForDzineStyle(styleCode);
-      // Update store with both code and keywords
-      updateStoryData({ artStyleCode: styleCode, selectedStyleKeywords: keywords, customStyleDescription: '' });
-    } else {
-      // If custom, clear keywords and potentially use description later
-      updateStoryData({ artStyleCode: 'custom', selectedStyleKeywords: '', customStyleDescription: customDescription });
-    }
+    const keywords = getKeywordsForDzineStyle(styleCode);
+    updateStoryData({ artStyleCode: styleCode, selectedStyleKeywords: keywords }); 
   };
   
-  // Handle custom description change
-  const handleCustomDescriptionChange = (e) => {
-    const description = e.target.value;
-    setCustomDescription(description);
-    if (selectedStyle === 'custom') {
-      // Update store only if custom is selected
-      updateStoryData({ customStyleDescription: description, selectedStyleKeywords: '' }); 
-    }
-  };
-
-  // Filter styles based on search term
-  const filteredStyles = styles.filter(style => 
-    style.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Navigation handlers
   const handleNext = () => {
-    // Validate if a style (or custom description) is selected
-    if (selectedStyle === 'custom' && !customDescription.trim()) {
-      alert('Please describe your custom style.'); // Simple validation
-      return;
-    }
     if (!selectedStyle) {
         alert('Please select an art style.');
         return;
@@ -503,74 +300,50 @@ function ArtStyleStep() {
         <p className="text-gray-600">Select the visual style for your book's illustrations.</p>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-4">
-        <input 
-          type="text"
-          placeholder="Search styles..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-
-      {loading ? (
-        <div className="text-center text-gray-500">Loading styles...</div>
-      ) : (
-        <motion.div 
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {filteredStyles.map((style) => (
+      <motion.div 
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {ART_STYLE_CATEGORIES_STRUCTURE.map((category) => (
+          <div key={category.category}>
+            <h3 className="text-lg font-semibold mb-2">{category.category}</h3>
+            <p className="text-sm text-gray-500 mb-4">{category.description}</p>
             <motion.div 
-              key={style.style_code}
-              variants={itemVariants}
-              onClick={() => handleSelectStyle(style.style_code)}
-              className={`border rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 {
-                selectedStyle === style.style_code 
-                ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2' 
-                : 'border-gray-200 hover:border-gray-400'
-              }`}
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              variants={containerVariants}
             >
-              <img 
-                src={style.cover_image || 'https://via.placeholder.com/150?text=Style'} // Use placeholder if no image
-                alt={style.name}
-                className="w-full h-32 object-cover"
-                onError={(e) => {
-                   // Handle image loading errors gracefully
-                   e.target.onerror = null; // prevent infinite loop
-                   e.target.src = 'https://via.placeholder.com/150?text=Error';
-                }}
-              />
-              <div className="p-3 text-center">
-                <p className="text-sm font-medium truncate">{style.name}</p>
-              </div>
+              {category.styleIds.map((style) => (
+                <motion.div 
+                  key={style.apiCode}
+                  variants={itemVariants}
+                  onClick={() => handleSelectStyle(style.apiCode)}
+                  className={`border rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 ${
+                    selectedStyle === style.apiCode 
+                    ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2' 
+                    : 'border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  <img 
+                    src={dzineStyleImageMap[style.apiCode] || 'https://via.placeholder.com/150?text=No+Preview'}
+                    alt={style.title}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => {
+                       e.target.onerror = null; 
+                       e.target.src = 'https://via.placeholder.com/150?text=Error';
+                    }}
+                  />
+                  <div className="p-3 text-center">
+                    <p className="text-sm font-medium truncate">{style.title}</p> 
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
-          ))}
-        </motion.div>
-      )}
+          </div>
+        ))}
+      </motion.div>
 
-      {/* Custom Style Description Input */}
-      {selectedStyle === 'custom' && (
-        <div className="mt-6">
-          <label htmlFor="customStyleDescription" className="block text-sm font-medium text-gray-700 mb-1">
-            Describe Your Custom Style
-          </label>
-          <textarea 
-            id="customStyleDescription"
-            rows="3"
-            value={customDescription}
-            onChange={handleCustomDescriptionChange}
-            placeholder="e.g., 'Pencil sketch style with minimal color, like a classic storybook'"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">This description will guide the illustration generation.</p>
-        </div>
-      )}
-
-      {/* Navigation Buttons */}
       <div className="flex justify-between pt-6">
         <button
           onClick={handleBack}
@@ -580,9 +353,9 @@ function ArtStyleStep() {
         </button>
         <button
           onClick={handleNext}
-          disabled={!selectedStyle || (selectedStyle === 'custom' && !customDescription.trim())}
+          disabled={!selectedStyle}
           className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-            (!selectedStyle || (selectedStyle === 'custom' && !customDescription.trim()))
+            !selectedStyle 
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
