@@ -215,6 +215,12 @@ const GenerateBookStep = () => {
   const [imageUrls, setImageUrls] = useState({}); // Stores Base64 URLs from Segmind
   const [imageStatus, setImageStatus] = useState({}); // Tracks status per image: 'pending', 'loading', 'success', 'error'
   
+  // Add new state for text editing
+  const [editingSpreadIndex, setEditingSpreadIndex] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [editingPrompt, setEditingPrompt] = useState('');
+  const [regeneratingImage, setRegeneratingImage] = useState(false);
+  
   // Add detailed logging of all available fields to help debug
   useEffect(() => {
     console.log("[GenerateBookStep] ⭐️ FULL STORE STATE DEBUG:", useBookStore.getState());
@@ -445,6 +451,98 @@ const GenerateBookStep = () => {
     }
   };
   
+  // Add new handler for starting edit mode for a specific spread
+  const handleEditSpread = (spreadIndex) => {
+    const spread = spreadContents[spreadIndex];
+    setEditingSpreadIndex(spreadIndex);
+    setEditingText(spread.text);
+    setEditingPrompt(spread.imagePrompt);
+  };
+  
+  // Add handler for canceling edit mode
+  const handleCancelEdit = () => {
+    setEditingSpreadIndex(null);
+    setEditingText('');
+    setEditingPrompt('');
+  };
+  
+  // Add handler for saving text edits
+  const handleSaveTextEdit = () => {
+    if (editingSpreadIndex === null) return;
+    
+    // Create a copy of the spread contents array
+    const updatedContents = [...spreadContents];
+    
+    // Update the text for the specific spread
+    updatedContents[editingSpreadIndex] = {
+      ...updatedContents[editingSpreadIndex],
+      text: editingText,
+      imagePrompt: editingPrompt
+    };
+    
+    // Update state
+    setSpreadContents(updatedContents);
+    
+    // Exit edit mode
+    setEditingSpreadIndex(null);
+    setEditingText('');
+    setEditingPrompt('');
+  };
+  
+  // Add handler for regenerating a specific image
+  const handleRegenerateImage = async (spreadIndex) => {
+    if (regeneratingImage) return; // Prevent multiple regeneration requests
+    
+    try {
+      setRegeneratingImage(true);
+      setImageStatus(prev => ({ ...prev, [spreadIndex]: 'loading' }));
+      
+      const spread = spreadContents[spreadIndex];
+      setProgressInfo(`Regenerating illustration ${spreadIndex + 1}...`);
+      
+      // Get the required data
+      const mainCharacter = characters.find(c => c.role === 'main');
+      if (!mainCharacter) throw new Error("Main character not found");
+      
+      let referenceBase64 = mainCharacter.stylePreview;
+      const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode);
+      
+      // Apply the same Base64 format correction as in the main generation flow
+      if (!referenceBase64) {
+        throw new Error("Missing stylePreview for the main character");
+      }
+      
+      // Try to correct the Base64 format if needed
+      const correctedBase64 = ensureImageBase64Format(referenceBase64);
+      if (correctedBase64) {
+        referenceBase64 = correctedBase64;
+      }
+      
+      console.log(`Regenerating image for spread ${spreadIndex}. Prompt: ${spread.imagePrompt}`);
+      
+      const segmindImageBase64 = await segmindService.generateConsistentCharacter(
+        referenceBase64,
+        spread.imagePrompt,
+        styleKeywords
+      );
+      
+      // Update the image URLs state
+      if (segmindImageBase64 && segmindImageBase64.startsWith('data:image')) {
+        setImageUrls(prev => ({ ...prev, [spreadIndex]: segmindImageBase64 }));
+        setImageStatus(prev => ({ ...prev, [spreadIndex]: 'success' }));
+        console.log(`Successfully regenerated image for spread ${spreadIndex}.`);
+      } else {
+        throw new Error('Segmind service did not return a valid Base64 image.');
+      }
+    } catch (error) {
+      console.error(`Error regenerating image for spread ${spreadIndex}:`, error);
+      setImageStatus(prev => ({ ...prev, [spreadIndex]: 'error' }));
+      setError(`Failed to regenerate image ${spreadIndex + 1}: ${error.message}`);
+    } finally {
+      setRegeneratingImage(false);
+    }
+  };
+  
   // Render Content with Loading State
   const renderContent = () => {
     switch (generationState) {
@@ -466,17 +564,25 @@ const GenerateBookStep = () => {
           <div className="space-y-8">
             <h2 className="text-2xl font-bold text-center">Your Generated Book</h2>
             
-            {/* Book spreads */}
+            {/* Book spreads - with Edit functionality */}
             <div className="space-y-12">
               {spreadContents.map((spread, index) => (
                 <div key={index} className="border rounded-lg overflow-hidden shadow-md">
-                  <div className="bg-gray-50 p-3 border-b">
+                  <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
                     <h3 className="font-medium">Spread {index + 1} (Pages {(index + 1) * 2}-{(index + 1) * 2 + 1})</h3>
+                    {editingSpreadIndex !== index && (
+                      <button 
+                        onClick={() => handleEditSpread(index)}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                    )}
                   </div>
                   
                   <div className="p-4 md:flex">
-                    {/* Image */}
-                    <div className="md:w-1/2 p-4">
+                    {/* Image with regenerate button */}
+                    <div className="md:w-1/2 p-4 relative">
                       {(() => {
                         const imageResult = getImageUrlOrStatus(index);
                         
@@ -493,9 +599,23 @@ const GenerateBookStep = () => {
                                   e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage error%3C/text%3E%3C/svg%3E";
                                 }}
                               />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity duration-200 opacity-0 hover:opacity-100">
-                                <span className="text-white text-sm bg-black bg-opacity-60 px-2 py-1 rounded">Segmind Image</span>
-                              </div>
+                              
+                              {/* Regenerate button */}
+                              {editingSpreadIndex !== index && (
+                                <div className="mt-2 flex justify-center">
+                                  <button 
+                                    onClick={() => handleRegenerateImage(index)}
+                                    disabled={regeneratingImage}
+                                    className={`text-xs px-2 py-1 rounded ${
+                                      regeneratingImage 
+                                        ? 'bg-gray-300 text-gray-700 cursor-not-allowed' 
+                                        : 'bg-green-600 text-white hover:bg-green-700'
+                                    }`}
+                                  >
+                                    Regenerate Image
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         } else if (imageResult.value === 'loading') {
@@ -515,15 +635,61 @@ const GenerateBookStep = () => {
                                   ? 'Image generation failed'
                                   : 'Image unavailable'}
                               </p>
+                              
+                              {/* Retry button for failed images */}
+                              {imageResult.value === 'error' && (
+                                <button 
+                                  onClick={() => handleRegenerateImage(index)}
+                                  disabled={regeneratingImage}
+                                  className="ml-2 text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                  Retry
+                                </button>
+                              )}
                             </div>
                           );
                         }
                       })()}
                     </div>
                     
-                    {/* Text */}
+                    {/* Text - Editable or Static */}
                     <div className="md:w-1/2 p-4">
-                      <p className="text-lg">{spread.text}</p>
+                      {editingSpreadIndex === index ? (
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-gray-700">Story Text:</h4>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full p-2 border border-gray-300 rounded-md h-32 text-sm"
+                            placeholder="Enter story text for this spread..."
+                          />
+                          
+                          <h4 className="text-sm font-medium text-gray-700">Image Prompt:</h4>
+                          <textarea
+                            value={editingPrompt}
+                            onChange={(e) => setEditingPrompt(e.target.value)}
+                            className="w-full p-2 border border-gray-300 rounded-md h-32 text-sm"
+                            placeholder="Enter image generation prompt for this spread..."
+                          />
+                          
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={handleSaveTextEdit}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-lg">{spread.text}</p>
+                      )}
                     </div>
                   </div>
                 </div>
