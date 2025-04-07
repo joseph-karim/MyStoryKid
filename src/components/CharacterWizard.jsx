@@ -41,11 +41,34 @@ async function fetchAndConvertToBase64(imageUrl) {
     const blob = await response.blob();
     console.log(`[Base64 Convert] Fetched blob type: ${blob.type}, size: ${blob.size}`);
     
+    // CRITICAL FIX: Ensure we have a proper image MIME type
+    // If the blob type is generic or missing, infer it from URL or set a default
+    let mimeType = blob.type;
+    if (!mimeType || mimeType === 'application/octet-stream') {
+      // Try to infer MIME type from URL
+      if (imageUrl.toLowerCase().endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (imageUrl.toLowerCase().endsWith('.jpg') || imageUrl.toLowerCase().endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (imageUrl.toLowerCase().endsWith('.webp')) {
+        mimeType = 'image/webp';
+      } else {
+        // Default to image/jpeg if unknown
+        mimeType = 'image/jpeg';
+      }
+      console.log(`[Base64 Convert] Corrected MIME type from ${blob.type} to ${mimeType}`);
+    }
+    
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        console.log("[Base64 Convert] Conversion successful.");
-        resolve(reader.result); // result is the Base64 Data URL
+        // Create a data URL with the correct MIME type
+        const base64Data = reader.result.split(',')[1]; // Extract the Base64 part without prefix
+        const dataUrl = `data:${mimeType};base64,${base64Data}`;
+        console.log(`[Base64 Convert] Successfully created dataUrl with MIME type: ${mimeType}`);
+        console.log(`[Base64 Convert] Data URL prefix: ${dataUrl.substring(0, 40)}...`);
+        
+        resolve(dataUrl); // Return the properly formatted data URL
       };
       reader.onerror = (error) => {
         console.error("[Base64 Convert] FileReader error:", error);

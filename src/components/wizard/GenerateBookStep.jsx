@@ -158,6 +158,43 @@ async function urlToBase64(url) {
   }
 }
 
+// --- Add new helper function for ensuring proper Base64 format --- 
+const ensureImageBase64Format = (dataUrl) => {
+  if (!dataUrl) return null;
+  
+  console.log(`[Base64 Format] Checking format of data URL: ${dataUrl.substring(0, 40)}...`);
+  
+  // If it's already in the right format, return as is
+  if (dataUrl.startsWith('data:image/')) {
+    console.log('[Base64 Format] URL already has a valid image MIME type');
+    return dataUrl;
+  }
+  
+  // If it's a Base64 URL but with wrong MIME type, correct it
+  if (dataUrl.startsWith('data:') && dataUrl.includes(';base64,')) {
+    try {
+      // Extract Base64 data without the MIME prefix
+      const base64Data = dataUrl.split(';base64,')[1];
+      // Create a new data URL with image/jpeg MIME type (common fallback)
+      const correctedUrl = `data:image/jpeg;base64,${base64Data}`;
+      console.log('[Base64 Format] Corrected MIME type to image/jpeg');
+      return correctedUrl;
+    } catch (error) {
+      console.error('[Base64 Format] Error correcting data URL format:', error);
+    }
+  }
+  
+  // For URLs, return null (will be handled by the URL-to-Base64 conversion elsewhere)
+  if (dataUrl.startsWith('http')) {
+    console.log('[Base64 Format] URL is an HTTP address, not a Base64 string');
+    return null;
+  }
+  
+  // For completely unrecognized formats, log and return null
+  console.error('[Base64 Format] Unrecognized data URL format');
+  return null;
+};
+
 const GenerateBookStep = () => {
   const navigate = useNavigate();
   const wizardState = useBookStore(state => state.wizardState);
@@ -284,18 +321,27 @@ const GenerateBookStep = () => {
       const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode); // Get keywords
       
       console.log("Using Segmind Style Keywords:", styleKeywords);
-      // -------- START DEBUG LOG --------
+      // -------- DEBUG LOG --------
       console.log("[Segmind Prep] Raw stylePreview from character:", referenceBase64); 
       console.log("[Segmind Prep] Type of stylePreview:", typeof referenceBase64);
       if (referenceBase64) {
           console.log("[Segmind Prep] stylePreview startsWith 'data:image':", referenceBase64.startsWith('data:image'));
       }
-      // -------- END DEBUG LOG --------
-
+      
       // Validate and potentially convert reference image
       if (!referenceBase64) {
           throw new Error("Missing Dzine stylePreview for the main character. Cannot generate illustrations.");
       }
+      
+      // --- ADDED CORRECTION STEP ---
+      // Try to correct the Base64 format if needed
+      const correctedBase64 = ensureImageBase64Format(referenceBase64);
+      if (correctedBase64) {
+          console.log("[Segmind Prep] Using corrected Base64 format with proper MIME type");
+          referenceBase64 = correctedBase64;
+      }
+      // --- END ADDED CORRECTION STEP ---
+      
       // If stylePreview is a URL (less likely now, but good check)
       if (referenceBase64.startsWith('http')) {
           console.log("Converting stylePreview URL to Base64...");
