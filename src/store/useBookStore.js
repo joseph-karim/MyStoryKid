@@ -128,10 +128,9 @@ const initialWizardState = {
     // Step 2: Art Style
     artStyleCode: '', // Dzine style code (e.g., 'Style-xyz...')
     customStyleDescription: '', // If style is 'custom'
-    selectedStyleKeywords: '', // Keywords derived from Dzine style for Segmind
     
     // Step 3 & 4: Characters
-    bookCharacters: [], // Array of character objects
+    bookCharacters: [], // Array of character objects (ensure stylePreview is URL)
     
     // Step 5: Story Details
     title: '',
@@ -195,12 +194,20 @@ const useBookStore = create((set, get) => ({
   
   resetWizard: () => set({ wizardState: initialWizardState }),
   
-  updateStoryData: (newData) => set(state => ({
-    wizardState: {
-      ...state.wizardState,
-      storyData: { ...state.wizardState.storyData, ...newData }
+  updateStoryData: (newData) => {
+    // If selectedStyleKeywords is part of newData, filter it out
+    const { selectedStyleKeywords, ...restData } = newData;
+    if (selectedStyleKeywords !== undefined) {
+      console.warn("'selectedStyleKeywords' is deprecated and being removed from updateStoryData.");
     }
-  })),
+    
+    set(state => ({
+      wizardState: {
+        ...state.wizardState,
+        storyData: { ...state.wizardState.storyData, ...restData } // Use restData without keywords
+      }
+    }));
+  },
   
   // --- Character Specific Actions ---
   addCharacter: (characterData) => set(state => {
@@ -238,8 +245,13 @@ const useBookStore = create((set, get) => ({
     }
   })),
   
-  // Example: Update a specific character's field (like stylePreview)
+  // Ensure stylePreview is stored as URL
   updateCharacterPreview: (characterId, previewUrl) => {
+    // Add validation/check if needed to ensure it's a URL
+    if (typeof previewUrl !== 'string' || !previewUrl.startsWith('http')) {
+        console.warn(`Attempting to set non-URL stylePreview for ${characterId}:`, previewUrl);
+        // Decide how to handle this - throw error, use placeholder, etc.
+    }
     get().updateCharacter(characterId, { stylePreview: previewUrl });
   },
   

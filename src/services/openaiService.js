@@ -27,10 +27,11 @@ const constructPrompts = (storyData, numPages) => {
       rhymeScheme = 'AABB',
       coreConcept = '',
       keyObjectsActions = '',
-      interactiveElement = ''
+      interactiveElement = '',
+      mainCharacter,
+      setting
   } = storyData;
 
-  const mainCharacter = bookCharacters.find(c => c.role === 'main') || bookCharacters[0] || { name: 'the child', id: null };
   const otherCharacters = bookCharacters.filter(c => c.id !== mainCharacter?.id);
 
   // Common Character Descriptions
@@ -46,7 +47,14 @@ const constructPrompts = (storyData, numPages) => {
 
   // Common JSON Output Instructions
   const jsonOutputInstructions = `
-6.  Output the result STRICTLY as a JSON array of objects. Each object represents a page and MUST have these exact keys: "text" (string, the story text for the page), "visualPrompt" (string, a concise visual description for the illustrator, max 15 words, mentioning characters and the style: ${styleDesc}), and "mainCharacterId" (string or null, the ID of the single most prominent character from this list: ${characterIdList}, or null if none). Do NOT include page numbers or any other wrapping structure in the JSON output. The output must be valid JSON. Example page object: { "text": "Lily saw a star.", "visualPrompt": "Lily looking up at one bright star, ${styleDesc}.", "mainCharacterId": "${mainCharacter.id || 'null'}" }`;
+Output the result STRICTLY as a JSON array of objects. Each object represents a page/spread and MUST have these exact keys:
+
+"text": (string) The story text for the page/spread.
+"characterPrompt": (string) A description focusing on the **main character (${mainCharacter.name || 'the character'}) only**, detailing their specific ACTION, POSE, EXPRESSION, and any specific CLOTHING details relevant to this scene.
+"scenePrompt": (string) A description of the **background, setting elements (${setting.description}), lighting, mood, and overall composition** for this scene. Do NOT describe the main character's appearance or specific action here, but you can mention their placement (e.g., "with space on the left for the character"). Include desired art style keywords (e.g., "watercolor storybook style").
+"mainCharacterId": (string or null) The ID of the main character ("${mainCharacter.id || 'null'}").
+
+Ensure the entire output is a single valid JSON array. Example page object: { "text": "${mainCharacter.name || 'The character'} skipped through the forest.", "characterPrompt": "${mainCharacter.name || 'The character'} skipping happily, looking amazed, wearing a red jacket.", "scenePrompt": "Wide angle shot of an enchanted forest path at dusk, large softly glowing blue mushrooms line the path. Magical twilight lighting, wondrous mood. Watercolor storybook style.", "mainCharacterId": "${mainCharacter.id || 'null'}" }`;
 
   // Common Story Flow Instructions
   const storyFlowInstructions = `

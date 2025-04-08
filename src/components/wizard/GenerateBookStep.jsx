@@ -4,6 +4,8 @@ import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
 import { getKeywordsForDzineStyle, getStyleNameFromCode } from '../../services/dzineService';
+import { generateIllustrationWithWorkflow } from '../../services/segmindService';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -211,231 +213,182 @@ const validateOutlineResponse = (response) => {
 };
 
 const GenerateBookStep = () => {
-  const navigate = useNavigate();
-  const wizardState = useBookStore(state => state.wizardState);
+  const {
+    wizardState,
+    setWizardStep,
+    addBook,
+    resetWizard,
+    setLatestGeneratedBookId,
+  } = useBookStore();
   
-  // Get data from the correct location in the store
-  const { storyData = {} } = wizardState || {};
-  const bookDetails = storyData;
-  const characters = storyData.bookCharacters || [];
-  
-  // Generation state management
-  const [generationState, setGenerationState] = useState('idle'); // 'idle', 'generatingOutline', 'generatingSpreadContent', 'generatingImages', 'displayingPreview', 'error'
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState('');
+  const [imageUrls, setImageUrls] = useState({}); // Store generated image URLs by page index
+  const [generatedBook, setGeneratedBook] = useState(null);
   const [error, setError] = useState(null);
-  
-  // Content state
-  const [outline, setOutline] = useState([]);
-  const [spreadContents, setSpreadContents] = useState([]);
-  const [imageUrls, setImageUrls] = useState({}); // Stores Base64 URLs from Segmind
-  const [imageStatus, setImageStatus] = useState({}); // Tracks status per image: 'pending', 'loading', 'success', 'error'
-  
-  // Add new state for text editing
-  const [editingSpreadIndex, setEditingSpreadIndex] = useState(null);
-  const [editingText, setEditingText] = useState('');
-  const [editingPrompt, setEditingPrompt] = useState('');
-  const [regeneratingImage, setRegeneratingImage] = useState(false);
-  
-  // Add detailed logging of all available fields to help debug
-  useEffect(() => {
-    console.log("[GenerateBookStep] ⭐️ FULL STORE STATE DEBUG:", useBookStore.getState());
-    console.log("[GenerateBookStep] ⭐️ Full story data keys:", Object.keys(storyData));
-    console.log("[GenerateBookStep] ⭐️ All bookDetails fields:", storyData);
-    console.log("[GenerateBookStep] ⭐️ Characters:", characters);
-    
-    // Add more fine-grained debugging for specific fields
-    console.log("[GenerateBookStep] Story type:", bookDetails.storyType);
-    console.log("[GenerateBookStep] Target age range:", bookDetails.ageRange || bookDetails.targetAgeRange);
-    console.log("[GenerateBookStep] Core theme:", bookDetails.coreTheme || bookDetails.category);
-    console.log("[GenerateBookStep] Main challenge plot:", bookDetails.mainChallengePlot || bookDetails.storyStart);
-    console.log("[GenerateBookStep] Art style code:", bookDetails.artStyleCode);
-  }, []);
-  
-  // Start the generation process
-  useEffect(() => {
-    console.log("🚀 GenerateBookStep mounted! Using Segmind for illustrations.");
-    console.log("GenerateBookStep mounted. Book Details:", bookDetails);
-    console.log("Characters:", characters);
-    console.log("Selected Style Keywords:", bookDetails.selectedStyleKeywords);
-    
-    // Additional debugging for the store structure
-    console.log("Raw wizardState:", wizardState);
-    console.log("Story Data:", storyData);
-    
-    // Validate required data
-    if (!bookDetails || !characters || characters.length === 0) {
-      setError("Missing required book details or characters. Please go back and complete all required steps.");
-      setGenerationState('error');
-      return;
-    }
-    
-    // Start the book generation process
-    generateBook();
-  }, []);
-  
-  const generateBook = async () => {
-    try {
-      // Add extra debugging for art style information
-      console.log("[GenerateBook] Art style information check:");
-      console.log("  - Art Style Code:", bookDetails.artStyleCode);
-      console.log("  - Selected Style Keywords:", bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode));
-      
-      // ---------- STEP 1: Generate story outline ----------
-      setGenerationState('generatingOutline');
-      setProgressInfo('Creating your book outline...');
-      
-      const outlinePrompt = createOutlinePrompt(bookDetails, characters);
-      console.log("Outline Prompt:", outlinePrompt);
-      
-      const outlineResponse = await openaiService.generateOutline(bookDetails, characters);
-      const outline = validateOutlineResponse(outlineResponse);
-      
-      console.log("Valid outline received:", outline);
-      setOutline(outline);
-      
-      // ---------- STEP 2: Generate spread content (text + image prompts) ----------
-      setGenerationState('generatingSpreadContent');
-      
-      const spreadResults = [];
-      
-      for (let i = 0; i < outline.length; i++) {
-        setProgressInfo(`Generating page ${i + 1} of ${outline.length}...`);
-        
-        const spreadPrompt = createSpreadContentPrompt(
-          bookDetails,
-          characters,
-          outline,
-          i,
-          outline[i]
-        );
-        
-        console.log(`Spread ${i + 1} Prompt:`, spreadPrompt);
-        
-        const spreadResponse = await openaiService.generateSpreadContentFromPrompt(spreadPrompt);
-        
-        if (!spreadResponse.success) {
-          throw new Error(`Failed to generate spread content ${i + 1}: ${spreadResponse.error || 'Unknown error'}`);
-        }
-        
-        // Extract the text and image prompt
-        const { text, imagePrompt } = spreadResponse.content;
-        console.log(`Spread ${i + 1} Content:`, { text, imagePrompt });
-        
-        spreadResults.push({
-          spreadIndex: i,
-          text,
-          imagePrompt
-        });
-        setImageStatus(prev => ({ ...prev, [i]: 'pending' })); // Initialize image status
-      }
-      
-      setSpreadContents(spreadResults);
-      
-      // ---------- STEP 3: Generate images ----------
-      setGenerationState('generatingImages');
-      setProgressInfo('Creating illustrations for your book...');
-      
-      // --- Prepare Segmind Generation --- 
-      const mainCharacter = characters.find(c => c.role === 'main');
-      if (!mainCharacter) throw new Error("Main character not found in book details.");
-      
-      let referenceBase64 = mainCharacter.stylePreview; // Get Dzine preview from character data
-      const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode); // Get keywords
-      
-      console.log("[GenerateBook] Using for Segmind generation:");
-      console.log("  - Art Style Code:", bookDetails.artStyleCode);
-      console.log("  - Style Keywords:", styleKeywords);
-      // -------- DEBUG LOG --------
-      console.log("[Segmind Prep] Raw stylePreview from character:", referenceBase64); 
-      console.log("[Segmind Prep] Type of stylePreview:", typeof referenceBase64);
-      if (referenceBase64) {
-          console.log("[Segmind Prep] stylePreview startsWith 'data:image':", referenceBase64.startsWith('data:image'));
-      }
-      
-      // Validate and potentially convert reference image
-      if (!referenceBase64) {
-          throw new Error("Missing Dzine stylePreview for the main character. Cannot generate illustrations.");
-      }
-      
-      // --- ADDED CORRECTION STEP ---
-      // Try to correct the Base64 format if needed
-      const correctedBase64 = ensureImageBase64Format(referenceBase64);
-      if (correctedBase64) {
-          console.log("[Segmind Prep] Using corrected Base64 format with proper MIME type");
-          referenceBase64 = correctedBase64;
-      }
-      // --- END ADDED CORRECTION STEP ---
-      
-      // If stylePreview is a URL (less likely now, but good check)
-      if (referenceBase64.startsWith('http')) {
-          console.log("Converting stylePreview URL to Base64...");
-          setProgressInfo('Preparing reference image...');
-          try {
-              referenceBase64 = await urlToBase64(referenceBase64);
-              console.log("Reference image converted successfully.");
-          } catch (convError) {
-              throw new Error(`Failed to convert reference image URL to Base64: ${convError.message}`);
-          }
-      } 
-      // --- Temporarily removing this check to let segmindService handle it ---
-      // else if (!referenceBase64.startsWith('data:image')) {
-      //      throw new Error("Invalid stylePreview format. Expected Base64 Data URL.");
-      // }
-      
-      // --- Generate Images Serially (or with controlled concurrency) --- 
-      // Simple serial generation to avoid overwhelming API / simplify logic first
-      const generatedImageUrls = {};
-      for (let i = 0; i < spreadResults.length; i++) {
-          const spread = spreadResults[i];
-          setProgressInfo(`Generating illustration ${i + 1} of ${spreadResults.length}...`);
-          setImageStatus(prev => ({ ...prev, [i]: 'loading' }));
-          
-          try {
-              console.log(`Calling Segmind for spread ${i}. Prompt: ${spread.imagePrompt}`);
-              const segmindImageBase64 = await segmindService.generateConsistentCharacter(
-                  referenceBase64, 
-                  spread.imagePrompt,
-                  styleKeywords
-              );
-              
-              // Validate the result is a Base64 string
-              if (segmindImageBase64 && segmindImageBase64.startsWith('data:image')) {
-                  generatedImageUrls[i] = segmindImageBase64;
-                  setImageStatus(prev => ({ ...prev, [i]: 'success' }));
-                  console.log(`Successfully generated image for spread ${i}.`);
-              } else {
-                  throw new Error('Segmind service did not return a valid Base64 image.');
-              }
+  const navigate = useNavigate();
 
-          } catch (error) {
-              console.error(`Segmind error for spread ${i}:`, error);
-              setImageStatus(prev => ({ ...prev, [i]: 'error' }));
-              // Store error state or null? For now, just log and status update
-              generatedImageUrls[i] = null; // Indicate failure 
-              // Optional: Decide whether to stop or continue on error
-              // if (!confirm(`Failed to generate image ${i+1}. Continue anyway?`)) {
-              //    throw error; // Stop generation
-              // }
+  const updateProgressInfo = (info) => {
+    console.log('[Progress]', info);
+    setProgressInfo(info);
+  };
+
+  const generateBook = async () => {
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    updateProgressInfo('Starting book generation...');
+    setError(null);
+    setImageUrls({});
+    setGeneratedBook(null);
+    
+    const { storyData } = wizardState;
+    
+    // Basic validation
+    if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) {
+        setError("Main character information is missing.");
+        setIsGenerating(false);
+        return;
+    }
+    const mainCharacter = storyData.bookCharacters.find(c => c.role === 'main') || storyData.bookCharacters[0];
+    if (!mainCharacter) {
+        setError("Could not determine the main character.");
+        setIsGenerating(false);
+        return;
+    }
+    // **** CRITICAL VALIDATION: Ensure stylePreview is a URL ****
+    if (!mainCharacter.stylePreview || typeof mainCharacter.stylePreview !== 'string' || !mainCharacter.stylePreview.startsWith('http')) {
+        console.error("Main character's stylePreview is not a valid URL:", mainCharacter.stylePreview);
+        setError("Character style preview is missing or not a valid URL, which is required for image generation. Please go back and ensure the character style was generated.");
+        setIsGenerating(false);
+        return;
+    }
+    const dzinePreviewUrl = mainCharacter.stylePreview;
+
+    try {
+      // ---------- STEP 1: Generate story outline ----------
+      updateProgressInfo('Generating story text and prompts...');
+      const storyPages = await generateStoryPages(storyData);
+      setGenerationProgress(30);
+      updateProgressInfo('Story text and prompts generated.');
+
+      // ---------- STEP 2: Generate Illustrations via PixelFlow ----------
+      updateProgressInfo(`Preparing to generate ${storyPages.length} illustrations...`);
+      const illustrationPromises = storyPages.map(async (spread, index) => {
+        updateProgressInfo(`Requesting illustration ${index + 1}/${storyPages.length}...`);
+        
+        // Extract prompts from the generated story pages
+        const characterPrompt = spread.characterPrompt;
+        const scenePrompt = spread.scenePrompt;
+        
+        if (!characterPrompt || !scenePrompt) {
+            console.error(`Missing prompts for spread ${index}:`, spread);
+            setImageUrls(prev => ({ ...prev, [index]: 'ERROR_MISSING_PROMPTS' }));
+            return; // Skip this illustration
+        }
+
+        try {
+            // Call the new workflow function (handles polling internally)
+            const finalImageUrl = await generateIllustrationWithWorkflow(
+                dzinePreviewUrl, 
+                characterPrompt, 
+                scenePrompt
+            );
+            setImageUrls(prev => ({ ...prev, [index]: finalImageUrl }));
+            updateProgressInfo(`Illustration ${index + 1}/${storyPages.length} completed.`);
+        } catch (segmindError) {
+            console.error(`Segmind PixelFlow error for spread ${index}:`, segmindError);
+            setImageUrls(prev => ({ ...prev, [index]: 'ERROR_PIXELFLOW' }));
+            updateProgressInfo(`Error generating illustration ${index + 1}: ${segmindError.message}`);
+            // Optionally re-throw or handle specific errors if needed
+        }
+        // Update progress incrementally
+        setGenerationProgress(prev => prev + (60 / storyPages.length)); 
+      });
+      
+      // Wait for all illustration requests (including polling) to complete
+      await Promise.all(illustrationPromises);
+      updateProgressInfo('All illustration generation processes finished.');
+      setGenerationProgress(90); // Progress after illustration generation attempts
+
+      // ---------- STEP 3: Generate Cover ----------
+      updateProgressInfo('Generating cover image...');
+      let coverImageUrl = 'PLACEHOLDER_COVER_URL'; // Default placeholder
+      try {
+          const { characterPrompt: coverCharPrompt, scenePrompt: coverScenePrompt } = await generateCoverPrompt(storyData);
+          if (coverCharPrompt && coverScenePrompt) {
+             coverImageUrl = await generateIllustrationWithWorkflow(
+                dzinePreviewUrl, 
+                coverCharPrompt, 
+                coverScenePrompt
+             );
+          } else {
+             console.warn("Could not generate specific cover prompts, using placeholder.");
           }
-          
-          // Optional delay between Segmind calls if needed
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-      }
-      
-      setImageUrls(generatedImageUrls);
-      console.log("Segmind image generation complete.", generatedImageUrls);
-      
-      // ---------- STEP 4: Display Preview ----------
-      setGenerationState('displayingPreview');
-      setProgressInfo('Book ready for preview!');
-      
+       } catch(coverError) {
+          console.error("Error generating cover illustration:", coverError);
+          updateProgressInfo(`Error generating cover: ${coverError.message}`);
+          // Keep placeholder URL on error
+       }
+       updateProgressInfo('Cover image generated.');
+
+      // ---------- STEP 4: Assemble Book Object ----------
+      updateProgressInfo('Assembling final book...');
+      const finalBook = {
+        id: uuidv4(),
+        title: storyData.title || 'My Custom Story',
+        status: 'draft',
+        childName: mainCharacter.name,
+        category: storyData.category,
+        artStyleCode: storyData.artStyleCode, // Keep the original Dzine code for reference
+        characters: storyData.bookCharacters,
+        pages: [
+          {
+            id: 'page-cover',
+            type: 'cover',
+            text: storyData.title,
+            imageUrl: coverImageUrl, // Use generated or placeholder cover URL
+          },
+          {
+            id: 'page-title',
+            type: 'title',
+            text: `${storyData.title}\n\nA story about ${mainCharacter.name}`,
+            imageUrl: '', // Usually no image on title page
+          },
+          ...storyPages.map((page, index) => ({
+            ...page,
+            imageUrl: imageUrls[index] || 'ERROR_MISSING' // Use generated URL or error marker
+          })),
+          {
+            id: 'page-back',
+            type: 'back-cover',
+            text: 'The End\n\nCreated with love for ${mainCharacter.name}',
+            imageUrl: '', // Usually no image on back cover
+          }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // Add other relevant details from storyData if needed
+        setting: storyData.setting,
+        ageRange: storyData.ageRange,
+        // ... etc
+      };
+
+      setGeneratedBook(finalBook);
+      addBook(finalBook); // Add to the global store
+      setLatestGeneratedBookId(finalBook.id); // Track the ID
+      updateProgressInfo('Book generation complete!');
+      setGenerationProgress(100);
+
     } catch (error) {
-      console.error("Error generating book:", error);
-      setError(error.message || 'An unknown error occurred during generation.');
-      setGenerationState('error');
+      console.error('Book generation failed:', error);
+      setError(`Generation failed: ${error.message}`);
+      updateProgressInfo(`Error: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
   };
-  
+
   const handleBack = () => {
     // Navigate to the wizard's summary step instead of a specific route
     // The URL should be the CreateBookPage URL with the summary step

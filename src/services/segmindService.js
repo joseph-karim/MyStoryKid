@@ -4,6 +4,8 @@ const SEGMIND_API_KEY = import.meta.env.VITE_SEGMIND_API_KEY;
 // Assuming the specific endpoint for Flux PuLID. Verify from Segmind docs.
 const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid'; 
 const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
+// Define the specific workflow URL
+const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1"; 
 
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
@@ -212,3 +214,126 @@ export const generateConsistentCharacter = async (referenceImageBase64, pageProm
      throw new Error(errorMessage); // Re-throw the specific error
   }
 };
+
+// Helper function for polling
+const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        try {
+            console.log(`Polling Segmind: ${pollUrl}`);
+            const response = await axios.get(pollUrl, { headers: { 'x-api-key': apiKey } });
+
+            if (response.data) {
+                 // Log remaining credits
+                 if (response.headers && response.headers['x-remaining-credits']) {
+                     console.log(`Segmind Credits Remaining: ${response.headers['x-remaining-credits']}`);
+                 }
+
+                if (response.data.status === "SUCCEEDED") {
+                    // Extract image URL from the specific output field name ('image_c2wja')
+                    const imageUrl = response.data.output?.image_c2wja || response.data.image_c2wja;
+                    if (!imageUrl) {
+                        console.error("Polling Succeeded but output image URL ('image_c2wja') not found:", response.data);
+                        throw new Error("Workflow succeeded but image URL is missing in response.");
+                    }
+                    console.log("Segmind Polling Succeeded:", imageUrl);
+                    return imageUrl;
+                } else if (response.data.status === "FAILED") {
+                    console.error("Segmind Workflow execution failed:", response.data);
+                    throw new Error(`Workflow failed: ${response.data.error || 'Unknown error'}`);
+                } else {
+                    // Still QUEUED or PROCESSING
+                    console.log(`Segmind Status: ${response.data.status}`);
+                }
+            }
+        } catch (error) {
+            console.error("Segmind Polling error:", error.message);
+            // Don't throw immediately, allow retries within timeout
+            // If the error is critical (e.g., 404 on pollUrl), might want to throw
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                 throw new Error("Polling URL not found (404). Workflow may have expired or request ID is invalid.");
+            }
+        }
+        await new Promise(resolve => setTimeout(resolve, interval)); // Wait before next poll
+    }
+    throw new Error("Segmind Workflow polling timed out.");
+};
+
+/**
+ * Generates an illustration using a deployed Segmind PixelFlow workflow.
+ * Handles asynchronous polling. Returns BASE RESOLUTION image URL.
+ */
+export const generateIllustrationWithWorkflow = async (referenceImageUrl, characterPrompt, scenePrompt) => {
+    if (!SEGMIND_API_KEY) throw new Error('Segmind API key is missing.');
+    
+    // API expects URL for 'image_rqcw4', ensure reference is a URL
+    if (!referenceImageUrl || typeof referenceImageUrl !== 'string' || !referenceImageUrl.startsWith('http')) {
+       console.error("PixelFlow workflow expects a URL for reference image ('image_rqcw4'), received:", typeof referenceImageUrl);
+       throw new Error('Invalid reference image format for this PixelFlow workflow (URL expected).');
+    }
+    if (!characterPrompt) throw new Error('Character prompt is required.');
+    if (!scenePrompt) throw new Error('Scene prompt is required.');
+
+    const payload = {
+        // Match exact input names from the API documentation
+        character_prompt: characterPrompt,
+        image_rqcw4: referenceImageUrl, // Use the Dzine preview URL
+        scene_prompt: scenePrompt,
+        // Add other inputs if your specific workflow requires them (e.g., seed, negative_prompt)
+        // "seed": 42, 
+        // "negative_prompt": "low quality, blurry..." 
+    };
+
+    console.log("Sending payload to Segmind PixelFlow Workflow:", payload);
+
+    try {
+        // Initial POST request to start the workflow
+        const initialResponse = await axios.post(PIXELFLOW_WORKFLOW_URL, payload, {
+            headers: {
+                'x-api-key': SEGMIND_API_KEY,
+                'Content-Type': 'application/json',
+            },
+            timeout: 30000 // Timeout for initial request (30 seconds)
+        });
+
+        if (initialResponse.data && initialResponse.data.poll_url) {
+            console.log(`Segmind Workflow started. Request ID: ${initialResponse.data.request_id}. Polling URL: ${initialResponse.data.poll_url}`);
+            // Start polling for the result using the dedicated helper
+            return await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
+        } else {
+            console.error("Unexpected initial response from Segmind PixelFlow:", initialResponse.data);
+            throw new Error('Failed to start Segmind PixelFlow workflow. Response missing poll_url.');
+        }
+
+    } catch (error) {
+         let errorMessage = error.message;
+         if (axios.isAxiosError(error)) {
+             console.error('Axios error details:', {
+                 message: error.message,
+                 code: error.code,
+                 status: error.response?.status,
+                 data: error.response?.data,
+                 config: error.config
+            });
+            if (error.response) {
+                // Extract more specific error message if available
+                 const apiError = error.response.data?.detail || error.response.data?.error || error.response.data;
+                 errorMessage = `Segmind API Error (${error.response.status}): ${apiError || error.message}`;
+             } else if (error.request) {
+                 errorMessage = 'Segmind API Error: No response received from server.';
+             } else {
+                 errorMessage = `Segmind API Error: ${error.message}`;
+             }
+             if (error.code === 'ECONNABORTED') {
+                 errorMessage = 'Segmind API request timed out.';
+             }
+         }
+         console.error('Error calling Segmind PixelFlow API:', errorMessage);
+         // Re-throw a cleaner error message
+         throw new Error(errorMessage);
+    }
+};
+
+// --- Keep upscaleImage function defined but unused in main flow ---
+// /** * Upscales an image using Segmind ESRGAN API (FOR LATER PRINT USE). */
+// export const upscaleImage = async (imageBase64, scale = 4) => { ... };
