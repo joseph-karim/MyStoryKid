@@ -56,8 +56,11 @@ function SummaryStep() {
     
     setError('');
     
-    // Navigate directly using window.location to ensure a clean transition
-    window.location.href = '/generate-book';
+    // Navigate directly using window.location with absolute URL
+    const baseUrl = window.location.origin; // e.g. https://mystorykid.com
+    const fullPath = `${baseUrl}/generate-book`;
+    console.log(`[SummaryStep] Navigating to full URL: ${fullPath}`);
+    window.location.href = fullPath;
     
     console.log("[SummaryStep] Navigation to /generate-book triggered with window.location");
   };

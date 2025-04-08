@@ -411,9 +411,9 @@ const GenerateBookStep = () => {
       setGenerationState('displayingPreview');
       setProgressInfo('Book ready for preview!');
       
-    } catch (err) {
-      console.error("Error generating book:", err);
-      setError(err.message || 'An unknown error occurred during generation.');
+    } catch (error) {
+      console.error("Error generating book:", error);
+      setError(error.message || 'An unknown error occurred during generation.');
       setGenerationState('error');
     }
   };
