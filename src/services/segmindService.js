@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { uploadImageToSupabase } from './supabaseClient';
 
 const SEGMIND_API_KEY = import.meta.env.VITE_SEGMIND_API_KEY;
 // Assuming the specific endpoint for Flux PuLID. Verify from Segmind docs.
@@ -270,60 +271,76 @@ const uploadBase64ToGetUrl = async (base64Image) => {
         return base64Image;
     }
     
-    // Extract the base64 data without the prefix
-    const base64Data = base64Image.split(',')[1];
-    if (!base64Data) {
+    // Validate the base64 image format
+    if (!base64Image || !base64Image.startsWith('data:image')) {
         throw new Error('Invalid Base64 image format');
     }
     
-    // Try multiple services in case one fails
-    const services = [
-        // ImgBB - primary service
-        async () => {
-            const apiKey = import.meta.env.VITE_IMGBB_API_KEY || 'f9cae7aa8c1df07a54e5c8cf11febe35'; // Free key with limited usage
-            const formData = new FormData();
-            formData.append('image', base64Data);
-            
-            const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData);
-            
-            if (response.data && response.data.data && response.data.data.url) {
-                console.log('Base64 image uploaded to ImgBB, temporary URL:', response.data.data.url);
-                return response.data.data.url;
-            }
-            throw new Error('ImgBB did not return a valid URL');
-        },
-        // Free Image Host - fallback service
-        async () => {
-            const formData = new FormData();
-            formData.append('source', base64Data);
-            
-            const response = await axios.post('https://freeimage.host/api/1/upload', formData, {
-                params: {
-                    key: '6d207e02198a847aa98d0a2a901485a5' // Free API key
+    // Try Supabase upload first, then fall back to other services if needed
+    try {
+        // Use our Supabase client to upload the image
+        console.log('Uploading image to Supabase Storage...');
+        const publicUrl = await uploadImageToSupabase(base64Image);
+        console.log('Image successfully uploaded to Supabase, public URL:', publicUrl);
+        return publicUrl;
+    } catch (supabaseError) {
+        console.warn('Supabase upload failed, trying fallback services:', supabaseError.message);
+        
+        // Extract the base64 data without the prefix for fallback services
+        const base64Data = base64Image.split(',')[1];
+        if (!base64Data) {
+            throw new Error('Invalid Base64 image format');
+        }
+        
+        // Fallback services
+        const fallbackServices = [
+            // ImgBB - fallback service 1
+            async () => {
+                const apiKey = import.meta.env.VITE_IMGBB_API_KEY || 'f9cae7aa8c1df07a54e5c8cf11febe35';
+                const formData = new FormData();
+                formData.append('image', base64Data);
+                
+                const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData);
+                
+                if (response.data && response.data.data && response.data.data.url) {
+                    console.log('Base64 image uploaded to ImgBB, temporary URL:', response.data.data.url);
+                    return response.data.data.url;
                 }
-            });
-            
-            if (response.data && response.data.image && response.data.image.url) {
-                console.log('Base64 image uploaded to FreeImageHost, temporary URL:', response.data.image.url);
-                return response.data.image.url;
+                throw new Error('ImgBB did not return a valid URL');
+            },
+            // Free Image Host - fallback service 2
+            async () => {
+                const formData = new FormData();
+                formData.append('source', base64Data);
+                
+                const response = await axios.post('https://freeimage.host/api/1/upload', formData, {
+                    params: {
+                        key: '6d207e02198a847aa98d0a2a901485a5'
+                    }
+                });
+                
+                if (response.data && response.data.image && response.data.image.url) {
+                    console.log('Base64 image uploaded to FreeImageHost, temporary URL:', response.data.image.url);
+                    return response.data.image.url;
+                }
+                throw new Error('FreeImageHost did not return a valid URL');
             }
-            throw new Error('FreeImageHost did not return a valid URL');
+        ];
+        
+        // Try each fallback service in sequence
+        let lastError = supabaseError;
+        for (const service of fallbackServices) {
+            try {
+                return await service();
+            } catch (error) {
+                console.warn('Fallback service failed:', error.message);
+                lastError = error;
+            }
         }
-    ];
-    
-    // Try each service in sequence until one succeeds
-    let lastError = null;
-    for (const service of services) {
-        try {
-            return await service();
-        } catch (error) {
-            console.warn('Image upload service failed, trying next service:', error.message);
-            lastError = error;
-        }
+        
+        // If all services fail, throw the last error
+        throw lastError || new Error('All image upload services failed');
     }
-    
-    // If all services fail, throw the last error
-    throw lastError || new Error('All image upload services failed');
 };
 // Helper function for fallback when Base64 upload fails
 const directBase64Illustration = () => {
