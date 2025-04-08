@@ -195,6 +195,21 @@ const ensureImageBase64Format = (dataUrl) => {
   return null;
 };
 
+// Function to handle AI response validation
+const validateOutlineResponse = (response) => {
+  try {
+    const parsedResponse = JSON.parse(response);
+    if (Array.isArray(parsedResponse.bookOutline)) {
+      return parsedResponse.bookOutline;
+    } else {
+      throw new Error('Response is not in the expected array format');
+    }
+  } catch (error) {
+    console.error('Error parsing AI response:', error);
+    throw new Error('Invalid AI response format');
+  }
+};
+
 const GenerateBookStep = () => {
   const navigate = useNavigate();
   const wizardState = useBookStore(state => state.wizardState);
@@ -272,30 +287,26 @@ const GenerateBookStep = () => {
       const outlinePrompt = createOutlinePrompt(bookDetails, characters);
       console.log("Outline Prompt:", outlinePrompt);
       
-      const outlineResponse = await openaiService.generateOutlineFromPrompt(outlinePrompt);
+      const outlineResponse = await openaiService.generateOutline(bookDetails, characters);
+      const outline = validateOutlineResponse(outlineResponse);
       
-      if (!outlineResponse.success) {
-        throw new Error(`Failed to generate outline: ${outlineResponse.error || 'Unknown error'}`);
-      }
-      
-      const generatedOutline = outlineResponse.outline;
-      console.log("Generated Outline:", generatedOutline);
-      setOutline(generatedOutline);
+      console.log("Valid outline received:", outline);
+      setOutline(outline);
       
       // ---------- STEP 2: Generate spread content (text + image prompts) ----------
       setGenerationState('generatingSpreadContent');
       
       const spreadResults = [];
       
-      for (let i = 0; i < generatedOutline.length; i++) {
-        setProgressInfo(`Generating page ${i + 1} of ${generatedOutline.length}...`);
+      for (let i = 0; i < outline.length; i++) {
+        setProgressInfo(`Generating page ${i + 1} of ${outline.length}...`);
         
         const spreadPrompt = createSpreadContentPrompt(
           bookDetails,
           characters,
-          generatedOutline,
+          outline,
           i,
-          generatedOutline[i]
+          outline[i]
         );
         
         console.log(`Spread ${i + 1} Prompt:`, spreadPrompt);

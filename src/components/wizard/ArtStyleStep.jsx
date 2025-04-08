@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getKeywordsForDzineStyle, STYLE_CODE_MAP } from '../../services/dzineService';
+import { getKeywordsForDzineStyle, fetchDzineStyles } from '../../services/dzineService';
 import { motion } from 'framer-motion';
 
 // Style categories for UI organization
@@ -279,6 +279,32 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
   }
 ];
 
+// Add thumbnail URLs to the STYLE_CODE_MAP
+const STYLE_CODE_MAP = {
+  'Storytime Whimsy': {
+    code: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
+    thumbnail: 'https://example.com/thumbnails/storytime_whimsy.jpg'
+  },
+  'Fantasy Hero': {
+    code: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
+    thumbnail: 'https://example.com/thumbnails/fantasy_hero.jpg'
+  },
+  'Soft Radiance': {
+    code: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
+    thumbnail: 'https://example.com/thumbnails/soft_radiance.jpg'
+  },
+  // Add more styles with thumbnails
+};
+
+// Update the component to display thumbnails
+const ArtStyleCard = ({ styleName, styleData }) => (
+  <div className="art-style-card">
+    <img src={styleData.thumbnail} alt={`${styleName} thumbnail`} className="art-style-thumbnail" />
+    <h3>{styleName}</h3>
+    <p>{styleData.description}</p>
+  </div>
+);
+
 function ArtStyleStep() {
   const {
     wizardState,
@@ -291,23 +317,19 @@ function ArtStyleStep() {
   
   // Load preview URLs for each style
   useEffect(() => {
-    // In a real implementation, we would fetch preview URLs from the API
-    // But for now, we'll use placeholder images
-    const loadPreviews = async () => {
-      // This would be an API call in a real implementation
-      const placeholderUrl = 'https://via.placeholder.com/300x200?text=';
-      const previews = {};
-      
-      ART_STYLE_CATEGORIES_STRUCTURE.forEach(category => {
-        category.styleIds.forEach(style => {
-          previews[style.apiCode] = `${placeholderUrl}${encodeURIComponent(style.title)}`;
+    const loadStyles = async () => {
+      try {
+        const styles = await fetchDzineStyles();
+        const previews = {};
+        styles.forEach(style => {
+          previews[style.style_code] = style.cover_url;
         });
-      });
-      
-      setStylePreviewUrls(previews);
+        setStylePreviewUrls(previews);
+      } catch (error) {
+        console.error('Error fetching styles:', error);
+      }
     };
-    
-    loadPreviews();
+    loadStyles();
   }, []);
   
   const handleSelectStyle = (styleCode) => {
@@ -377,8 +399,9 @@ function ArtStyleStep() {
                   <div 
                     className="w-full h-32 bg-gray-100 flex items-center justify-center"
                     style={{
-                      backgroundColor: `hsl(${Math.floor(Math.random() * 360)}, 80%, 90%)`,
-                      backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`,
+                      backgroundImage: `url(${stylePreviewUrls[style.apiCode]})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
                     }}
                   >
                     <span className="text-gray-600 font-medium">{style.title}</span>
