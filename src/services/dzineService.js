@@ -57,36 +57,61 @@ const resetBackoff = () => {
 
 // Map populated based on ArtStyleStep.jsx structure and descriptions
 const dzineToSegmindKeywordsMap = {
-  // Whimsical & Soft
-  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': "Watercolor Whimsy, rounded shapes, soft digital brushwork, gentle gradients, children's book illustration",
-  'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': "Whimsical Coloring, tender, soothing colors, gentle chalky texture, bedtime story style, children's book illustration",
-  'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': "Enchanted Character, magical characters, soft lighting, enchanting atmosphere, children's book illustration",
-  'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': "Minimalist Cutesy, simple cute design, minimal details, soft colors, children's book illustration",
-  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': "Soft Radiance, gentle glowing artwork, soft lighting, delicate details, children's book illustration",
-  // Classic & Timeless
-  'Style-a941aee9-7964-4445-b76a-7c3ff912f926': "Cheerful Storybook, bright cheerful illustrations, bold colors, playful details, children's book illustration",
-  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': "Pleasantly Warm, charming detailed watercolor, warm cozy feeling, children's book illustration", 
-  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': "Storytime Whimsy, whimsical storybook style, classic feel, children's book illustration",
-  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': "Line and Wash, delicate pencil drawing, light watercolor wash, timeless feel, children's book illustration",
-  'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': "Golden Hour, nostalgic illustrations, warm golden lighting, classic picture book style, children's book illustration", 
-  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': "Ancient China, traditional Chinese painting style, elegant brushwork, composition, children's book illustration",
-  // Modern & Colorful
-  'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f': "Cutie 3D, playful cute 3D characters, slightly exaggerated features, children's book illustration", 
-  'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': "Glossy Elegance, clean sleek modern illustration, glossy finish, children's book illustration",
-  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "Starlit Fantasy, dreamy ethereal style, magical starlit quality, children's book illustration",
-  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': "Fantasy Hero, bold heroic character illustration, fantasy adventure feel, children's book illustration", 
-  'Style-455da805-d716-4bc8-a960-4ac505aa7875': "Joyful Clay, cheerful characters, colorful clay look, children's book illustration",
-  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': "Ceramic Lifelike, 3D ceramic quality, smooth textures, children's book illustration",
-  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': "Yarn Realism, yarn texture, textile elements styling, children's book illustration",
-  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': "Mystical Sovereignty, majestic mystical scene, fantasy elegance, children's book illustration",
-  // Realistic & Artistic
-  'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': "Enchanted Elegance, detailed illustration, elegant enchanted quality, children's book illustration", 
-  'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': "Warm Portrait, realistic portrait, warm lighting, preserved facial features, children's book illustration",
-  'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': "Magic Portrait, semi-stylized portrait, magical fantasy quality, children's book illustration",
-  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': "Vivid Tableaux, rich textured scene, vibrant colors, detailed composition, children's book illustration",
-  'Style-ce7b4279-1398-4964-882c-19911e12aef3': "Luminous Narratives, rich digital illustration, painterly effects, detailed lighting, children's book illustration",
-  'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': "Dreamlike Portraiture, dreamy ethereal portrait, soft focus, children's book illustration",
-  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': "Aquarelle Life, vibrant watercolor style, flowing colors, rich textures, children's book illustration",
+  // Whimsical & Fun
+  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': "Storytime Whimsy, whimsical storybook-style illustrations, classic feel, children's book illustration",
+  'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf': "Fantasy Hero, bold heroic character illustrations, fantasy adventure feel, children's book illustration",
+  'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41': "Soft Radiance, gentle glowing artwork, soft lighting, delicate details, children's book illustration",
+  'Style-541a2afd-904a-4968-bc60-8ad0ede22a86': "Paper Cutout, layered paper cutouts, clean edges, children's book illustration",
+  'Style-7729f1f6-578b-4035-8514-edaa0637dd6d': "Joyful Clay, cheerful characters, colorful clay look, children's book illustration",
+  'Style-0cd971cb-1e19-4909-a389-9b0c4fc79fd8': "Playful Enamel, bright, glossy illustrations with an enamel-like finish, children's book illustration",
+  'Style-455da805-d716-4bc8-a960-4ac505aa7875': "Everything Kawaii, ultra-cute Japanese-inspired style, adorable characters, children's book illustration",
+  
+  // Illustrated & Artistic
+  'Style-3f616e35-6423-4c53-aa27-be28860a4a7d': "Ceramic Lifelike, 3D ceramic quality, smooth textures, children's book illustration",
+  'Style-48f44663-b5cc-4f8d-ace8-d0a12bf0f4df': "Colorful Felt, textured felt craft look, children's book illustration",
+  'Style-e9021405-1b37-4773-abb9-bd80485527b0': "Sketch Elegance, beautiful detailed pencil sketches, subtle shading, children's book illustration",
+  'Style-5ad47638-c430-4cda-8bae-681c7af4e59e': "Skyborne Realm, majestic airy illustrations, sense of height and wonder, children's book illustration",
+  'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333': "Aquarelle Life, vibrant watercolor style, flowing colors, rich textures, children's book illustration",
+  'Style-589373f8-1283-4570-baf9-61d02eb13391': "Vivid Tableaux, rich textured scenes, vibrant colors, detailed compositions, children's book illustration",
+  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': "Line & Wash, delicate line drawings, light watercolor washes, children's book illustration",
+  
+  // Stylized & Modern
+  'Style-ae3dc56b-33b6-4f29-bd76-7f6aa1a87e8d': "Dreamy 3D, soft 3D rendered illustrations, dreamy quality, children's book illustration",
+  'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f': "Cutie 3D, adorable 3D characters, expressive features, children's book illustration",
+  'Style-16dd4ac7-63e1-40ae-bb87-472e820c93f8': "Shimmering Glow, magical luminous quality, children's book illustration",
+  'Style-43226b0-4b66-412c-a240-0a214019b895': "Surreal Iridescence, dreamlike scenes, shimmering rainbow-like colors, children's book illustration",
+  'Style-90a8d36d-9a67-4619-a995-4036fda8474d': "Golden Hour, warm sunset-toned illustrations, nostalgic feel, children's book illustration",
+  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': "Vibrant Impasto, bold paintings, thick textured brush strokes, children's book illustration",
+  'Style-4a3b38cd-a49d-4b69-81e8-69134ca9cdc0': "Sketchbook Sticker, fun casual illustrations, sticker-like appearance, children's book illustration",
+  
+  // Portraits & Characters
+  'Style-11ead7fd-0a37-4f3d-a1a2-66558f036f74': "Inked Realism, detailed ink-drawn portraits, children's book illustration",
+  'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4': "Magic Portrait, semi-stylized portrait, magical fantasy quality, children's book illustration",
+  'Style-4ab783c7-2955-4092-878e-965162241bf7': "Warm Portrait, realistic portrait, warm lighting, preserved facial features, children's book illustration",
+  'Style-e54a8400-fb2c-47a5-9418-8895c01382ce': "Retro Noir Chromatics, stylish noir-inspired portraits, bold colors, children's book illustration",
+  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "Starlit Fantasy, dreamy ethereal style, magical starlit quality, characters with dreamy quality, children's book illustration",
+  'Style-a941aee9-7964-4445-b76a-7c3ff912f926': "Cheerful Storybook, bright cheerful character illustrations, classic storybook style, children's book illustration",
+  
+  // Special Styles
+  'Style-a8311e8a-ba8b-4cdf-84f9-4001f82cee83': "Vintage Engraving, old-fashioned engraved look, fine lines and details, children's book illustration",
+  'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c': "Ancient China, traditional Chinese painting style, elegant brushwork, children's book illustration",
+  'Style-f9ba459d-addd-4e80-9a2e-67439fb50446': "Graffiti Splash, urban street art style, bold colors, spray paint effects, children's book illustration",
+  'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c': "Pleasantly Warm, cozy warm-toned illustrations, comfortable feeling, children's book illustration",
+  'Style-f22b0501-07a8-4f93-ac65-182c1cd5b4ca': "8-Bit Arcade, retro pixel art style, classic video games, children's book illustration",
+  'Style-01b37b76-4f5b-421d-a6cc-759e8d7aba3f': "Impressionist, artistic style, visible brushstrokes, light effects, children's book illustration",
+  'Style-24b334a4-52eb-4f77-94fa-f37d7367d956': "Zen Spirit, tranquil mindful illustrations, Eastern artistic influences, children's book illustration",
+  'Style-89c94c8f-9c94-4ef2-8fbd-e058648c92c7': "Vibrant Whimsy, bright colorful whimsical style, children's book illustration",
+  'Style-e2f14b9b-819d-4389-980f-71b83f55271d': "Whimsical Brushwork, playful brush style, flowing artistic strokes, children's book illustration",
+  'Style-8ee4b050-ef89-4058-8521-66223259bb30': "Bedtime Story, cozy nighttime illustrations, dreamlike quality, children's book illustration",
+  'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70': "Nouveau Classic, art nouveau inspired style, elegant flowing lines, children's book illustration",
+  'Style-c7e442ba-261c-450a-899b-5ae85c918b4b': "Innocent Cutie, sweet innocent style, adorable character design, children's book illustration",
+  'Style-04d8cbcf-6496-4d68-997e-516303502507': "Glossy Elegance, clean sleek modern illustration, glossy finish, children's book illustration",
+  'Style-30dd5a41-c881-4281-a093-ab79f71e6479': "Memphis Illustration, colorful geometric patterns, 80s-90s inspired, children's book illustration", 
+  'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7': "Minimalist Cutesy, simple cute design, minimal details, soft colors, children's book illustration",
+  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': "Watercolor Whimsy, gentle watercolor style, soft colors, children's book illustration",
+  'Style-e72b9767-6244-4d6f-b295-7a015de0e031': "Dreamy Spectrum, colorful dreamlike illustrations, fantasy atmosphere, children's book illustration",
+  'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c': "Enhanced Elegance, refined detailed illustrations, sophisticated look, children's book illustration",
+  'Style-31bbb0d0-20e2-460b-9280-6835200a4b73': "Delicate Aquarelle, gentle watercolor style, delicate appearance, children's book illustration"
 };
 
 /**
@@ -734,42 +759,61 @@ export const getFormattedApiKey = () => {
 
 // Map our human-readable style names to their API style codes
 const styleCodeMap = {
-  // Whimsical & Soft
-  'watercolor_whimsy': { name: 'Watercolor Whimsy', code: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de' },
-  'enchanted_character': { name: 'Enchanted Character', code: 'Style-d7081cbc-bdb3-4d75-8eed-88d42813b31e' },
-  'minimalist_cutesy': { name: 'Minimalist Cutesy', code: 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7' },
-  'soft_radiance': { name: 'Soft Radiance', code: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41' },
-  'cheerful_storybook': { name: 'Cheerful Storybook', code: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926' },
-  'pleasantly_warm': { name: 'Pleasantly Warm', code: 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c' },
+  // Whimsical & Fun
   'storytime_whimsy': { name: 'Storytime Whimsy', code: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5' },
-
-  // Classic & Timeless
-  'line_and_wash': { name: 'Line & Wash', code: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9' },
-  'golden_hour': { name: 'Golden Hour', code: 'Style-90a8d36d-9a67-4619-a995-4036fda8474d' },
-  'ancient_china': { name: 'Ancient China', code: 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c' },
-  'storybook_charm': { name: 'Storybook Charm', code: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf' },
-  'luminous_narratives': { name: 'Luminous Narratives', code: 'Style-ce7b4279-1398-4964-882c-19911e12aef3' },
-  'sketch_elegance': { name: 'Sketch Elegance', code: 'Style-e9021405-1b37-4773-abb9-bd80485527b0' },
-
-  // Modern & Colorful
-  'cute_exaggeration': { name: 'Cute Exaggeration', code: 'Style-11393e3a-ec40-402f-82cf-57c19bea8d12' },
-  'glossy_elegance': { name: 'Glossy Elegance', code: 'Style-04d8cbcf-6496-4d68-997e-516303502507' },
   'fantasy_hero': { name: 'Fantasy Hero', code: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf' },
-  'joyful_clay': { name: 'Joyful Clay', code: 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d' },
-  'starlit_fantasy': { name: 'Starlit Fantasy', code: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0' },
+  'soft_radiance': { name: 'Soft Radiance', code: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41' },
   'paper_cutout': { name: 'Paper Cutout', code: 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86' },
-
-  // Realistic & Artistic
+  'joyful_clay': { name: 'Joyful Clay', code: 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d' },
+  'playful_enamel': { name: 'Playful Enamel', code: 'Style-0cd971cb-1e19-4909-a389-9b0c4fc79fd8' },
+  'everything_kawaii': { name: 'Everything Kawaii', code: 'Style-455da805-d716-4bc8-a960-4ac505aa7875' },
+  
+  // Illustrated & Artistic 
   'ceramic_lifelike': { name: 'Ceramic Lifelike', code: 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d' },
-  'yarn_realism': { name: 'Yarn Realism', code: 'Style-d77e6917-f36e-42f4-a0f5-427dda9e3deb' },
-  'mystical_sovereignty': { name: 'Mystical Sovereignty', code: 'Style-04329eae-1af6-4f06-a97c-f4b2b48516de' },
-  'enchanted_elegance': { name: 'Enchanted Elegance', code: 'Style-27caad74-d49c-4b4f-b3c3-88ae56f24a25' },
-  'warm_portrait': { name: 'Warm Portrait', code: 'Style-4ab783c7-2955-4092-878e-965162241bf7' },
-  'magic_portrait': { name: 'Magic Portrait', code: 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4' },
-  'vivid_tableaux': { name: 'Vivid Tableaux', code: 'Style-589373f8-1283-4570-baf9-61d02eb13391' },
-  'dreamlike_portraiture': { name: 'Dreamlike Portraiture', code: 'Style-c0bde410-94f1-42d1-a1f6-d968aabbf689' },
+  'colorful_felt': { name: 'Colorful Felt', code: 'Style-48f44663-b5cc-4f8d-ace8-d0a12bf0f4df' },
+  'sketch_elegance': { name: 'Sketch Elegance', code: 'Style-e9021405-1b37-4773-abb9-bd80485527b0' },
+  'skyborne_realm': { name: 'Skyborne Realm', code: 'Style-5ad47638-c430-4cda-8bae-681c7af4e59e' },
   'aquarelle_life': { name: 'Aquarelle Life', code: 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333' },
-  // ... add more styles as needed from the API list if they fit categories
+  'vivid_tableaux': { name: 'Vivid Tableaux', code: 'Style-589373f8-1283-4570-baf9-61d02eb13391' },
+  'line_and_wash': { name: 'Line & Wash', code: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9' },
+  
+  // Stylized & Modern
+  'dreamy_3d': { name: 'Dreamy 3D', code: 'Style-ae3dc56b-33b6-4f29-bd76-7f6aa1a87e8d' },
+  'cutie_3d': { name: 'Cutie 3D', code: 'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f' },
+  'shimmering_glow': { name: 'Shimmering Glow', code: 'Style-16dd4ac7-63e1-40ae-bb87-472e820c93f8' },
+  'surreal_iridescence': { name: 'Surreal Iridescence', code: 'Style-43226b0-4b66-412c-a240-0a214019b895' },
+  'golden_hour': { name: 'Golden Hour', code: 'Style-90a8d36d-9a67-4619-a995-4036fda8474d' },
+  'vibrant_impasto': { name: 'Vibrant Impasto', code: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a' },
+  'sketchbook_sticker': { name: 'Sketchbook Sticker', code: 'Style-4a3b38cd-a49d-4b69-81e8-69134ca9cdc0' },
+  
+  // Portraits & Characters
+  'inked_realism': { name: 'Inked Realism', code: 'Style-11ead7fd-0a37-4f3d-a1a2-66558f036f74' },
+  'magic_portrait': { name: 'Magic Portrait', code: 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4' },
+  'warm_portrait': { name: 'Warm Portrait', code: 'Style-4ab783c7-2955-4092-878e-965162241bf7' },
+  'retro_noir_chromatics': { name: 'Retro Noir Chromatics', code: 'Style-e54a8400-fb2c-47a5-9418-8895c01382ce' },
+  'starlit_fantasy': { name: 'Starlit Fantasy', code: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0' },
+  'cheerful_storybook': { name: 'Cheerful Storybook', code: 'Style-a941aee9-7964-4445-b76a-7c3ff912f926' },
+  
+  // Special Styles
+  'vintage_engraving': { name: 'Vintage Engraving', code: 'Style-a8311e8a-ba8b-4cdf-84f9-4001f82cee83' },
+  'ancient_china': { name: 'Ancient China', code: 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c' },
+  'graffiti_splash': { name: 'Graffiti Splash', code: 'Style-f9ba459d-addd-4e80-9a2e-67439fb50446' },
+  'pleasantly_warm': { name: 'Pleasantly Warm', code: 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c' },
+  '8bit_arcade': { name: '8-Bit Arcade', code: 'Style-f22b0501-07a8-4f93-ac65-182c1cd5b4ca' },
+  'impressionist': { name: 'Impressionist', code: 'Style-01b37b76-4f5b-421d-a6cc-759e8d7aba3f' },
+  'zen_spirit': { name: 'Zen Spirit', code: 'Style-24b334a4-52eb-4f77-94fa-f37d7367d956' },
+  'vibrant_whimsy': { name: 'Vibrant Whimsy', code: 'Style-89c94c8f-9c94-4ef2-8fbd-e058648c92c7' },
+  'whimsical_brushwork': { name: 'Whimsical Brushwork', code: 'Style-e2f14b9b-819d-4389-980f-71b83f55271d' },
+  'bedtime_story': { name: 'Bedtime Story', code: 'Style-8ee4b050-ef89-4058-8521-66223259bb30' },
+  'nouveau_classic': { name: 'Nouveau Classic', code: 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70' },
+  'innocent_cutie': { name: 'Innocent Cutie', code: 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b' },
+  'glossy_elegance': { name: 'Glossy Elegance', code: 'Style-04d8cbcf-6496-4d68-997e-516303502507' },
+  'memphis_illustration': { name: 'Memphis Illustration', code: 'Style-30dd5a41-c881-4281-a093-ab79f71e6479' },
+  'minimalist_cutesy': { name: 'Minimalist Cutesy', code: 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7' },
+  'watercolor_whimsy': { name: 'Watercolor Whimsy', code: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de' },
+  'dreamy_spectrum': { name: 'Dreamy Spectrum', code: 'Style-e72b9767-6244-4d6f-b295-7a015de0e031' },
+  'enhanced_elegance': { name: 'Enhanced Elegance', code: 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c' },
+  'delicate_aquarelle': { name: 'Delicate Aquarelle', code: 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73' }
 };
 
 // Function to get the style code based on the friendly name

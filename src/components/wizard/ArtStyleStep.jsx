@@ -3,250 +3,301 @@ import { useBookStore } from '../../store';
 import { getKeywordsForDzineStyle } from '../../services/dzineService';
 import { motion } from 'framer-motion';
 
-// Import art style images from the Dzine Styles folder
-import watercolorWhimsyImg from '../../assets/dzine-styles/Watercolor-Whimsy.png';
-import whimsicalColoringImg from '../../assets/dzine-styles/Whimsical-Coloring.png';
-import enchantedCharacterImg from '../../assets/dzine-styles/Enchanted-Character.png';
-import minimalistCuteImg from '../../assets/dzine-styles/Minimalist-Cutesy.png';
-import softRadianceImg from '../../assets/dzine-styles/Soft-Radiance.png';
-import cheerfulStorybookImg from '../../assets/dzine-styles/Cheerful-Storybook.png';
-import pleasantlyWarmImg from '../../assets/dzine-styles/Pleasantly-Warm.png';
-import storytimeWhimsyImg from '../../assets/dzine-styles/Storytime-Whimsy.png';
-import lineAndWashImg from '../../assets/dzine-styles/Line-&-Wash.png';
-import goldenHourImg from '../../assets/dzine-styles/Golden-Hour.png';
-import ancientChinaImg from '../../assets/dzine-styles/Ancient-China.png';
-import cuteExaggerationImg from '../../assets/dzine-styles/Cute-Exaggeration.png';
-import glossyEleganceImg from '../../assets/dzine-styles/Glossy-Elegance.png';
-import starlitFantasyImg from '../../assets/dzine-styles/Starlit-Fantasy.png';
-import fantasyHeroImg from '../../assets/dzine-styles/Fantasy-Hero.png';
-import joyfulClayImg from '../../assets/dzine-styles/Joyful-Clay.png';
-import ceramicLifelikeImg from '../../assets/dzine-styles/Ceramic-Lifelike.png';
-import yarnRealismImg from '../../assets/dzine-styles/Yarn-Realism.png';
-import mysticalSovereigntyImg from '../../assets/dzine-styles/Mystical-Sovereignty.png';
-import enchantedEleganceImg from '../../assets/dzine-styles/Enchanted-Elegance.png';
-import warmPortraitImg from '../../assets/dzine-styles/Warm-Portrait.png';
-import magicPortraitImg from '../../assets/dzine-styles/Magic-Portrait.png';
-import vividTableauxImg from '../../assets/dzine-styles/Vivid-Tableaux.png';
-import luminousNarrativesImg from '../../assets/dzine-styles/Luminous-Narratives.png';
-import dreamlikePortraitureImg from '../../assets/dzine-styles/Dreamlike-Portraiture.png';
-import aquarelleLifeImg from '../../assets/dzine-styles/Aquarelle-Life.png';
+// We won't load individual images here, instead we'll use generic placeholders
+// and let the actual API preview images load when we call the API
 
-// Direct mapping from API style codes to images for more reliable lookups
-const dzineStyleImageMap = {
-  // Whimsical & Soft styles
-  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': watercolorWhimsyImg,
-  'Style-206baa8c-5bbe-4299-b984-9243d05dce9b': whimsicalColoringImg,
-  'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7': enchantedCharacterImg,
-  'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895': minimalistCuteImg,
-  'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2': softRadianceImg,
+// Direct mapping of style names to API codes from the Dzine API
+const STYLE_CODE_MAP = {
+  // Whimsical & Fun
+  'Storytime Whimsy': 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
+  'Fantasy Hero': 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
+  'Soft Radiance': 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
+  'Paper Cutout': 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
+  'Joyful Clay': 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d',
+  'Playful Enamel': 'Style-0cd971cb-1e19-4909-a389-9b0c4fc79fd8',
+  'Everything Kawaii': 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
   
-  // Classic & Timeless styles
-  'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf': cheerfulStorybookImg,
-  'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1': pleasantlyWarmImg,
-  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': storytimeWhimsyImg,
-  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': lineAndWashImg,
-  'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512': goldenHourImg,
-  'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1': ancientChinaImg,
+  // Illustrated & Artistic 
+  'Ceramic Lifelike': 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d',
+  'Colorful Felt': 'Style-48f44663-b5cc-4f8d-ace8-d0a12bf0f4df',
+  'Sketch Elegance': 'Style-e9021405-1b37-4773-abb9-bd80485527b0',
+  'Skyborne Realm': 'Style-5ad47638-c430-4cda-8bae-681c7af4e59e',
+  'Aquarelle Life': 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333',
+  'Vivid Tableaux': 'Style-589373f8-1283-4570-baf9-61d02eb13391',
+  'Line & Wash': 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',
   
-  // Modern & Colorful styles
-  'Style-b484beb8-143e-4776-9a87-355e0456cfa3': cuteExaggerationImg,
-  'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280': glossyEleganceImg,
-  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': starlitFantasyImg,
-  'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f': fantasyHeroImg,
-  'Style-455da805-d716-4bc8-a960-4ac505aa7875': joyfulClayImg,
-  'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833': ceramicLifelikeImg,
-  'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a': yarnRealismImg,
-  'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6': mysticalSovereigntyImg,
+  // Stylized & Modern
+  'Dreamy 3D': 'Style-ae3dc56b-33b6-4f29-bd76-7f6aa1a87e8d',
+  'Cutie 3D': 'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f',
+  'Shimmering Glow': 'Style-16dd4ac7-63e1-40ae-bb87-472e820c93f8',
+  'Surreal Iridescence': 'Style-43226b0-4b66-412c-a240-0a214019b895',
+  'Golden Hour': 'Style-90a8d36d-9a67-4619-a995-4036fda8474d',
+  'Vibrant Impasto': 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',
+  'Sketchbook Sticker': 'Style-4a3b38cd-a49d-4b69-81e8-69134ca9cdc0',
   
-  // Realistic & Artistic styles
-  'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347': enchantedEleganceImg,
-  'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703': warmPortraitImg,
-  'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c': magicPortraitImg,
-  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': vividTableauxImg,
-  'Style-ce7b4279-1398-4964-882c-19911e12aef3': luminousNarrativesImg,
-  'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d': dreamlikePortraitureImg,
-  'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b': aquarelleLifeImg
+  // Portraits & Characters
+  'Inked Realism': 'Style-11ead7fd-0a37-4f3d-a1a2-66558f036f74',
+  'Magic Portrait': 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4',
+  'Warm Portrait': 'Style-4ab783c7-2955-4092-878e-965162241bf7',
+  'Retro Noir Chromatics': 'Style-e54a8400-fb2c-47a5-9418-8895c01382ce',
+  
+  // Special Styles
+  'Vintage Engraving': 'Style-a8311e8a-ba8b-4cdf-84f9-4001f82cee83',
+  'Ancient China': 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c',
+  'Graffiti Splash': 'Style-f9ba459d-addd-4e80-9a2e-67439fb50446',
+  'Pleasantly Warm': 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c',
+  '8-Bit Arcade': 'Style-f22b0501-07a8-4f93-ac65-182c1cd5b4ca',
+  'Impressionist': 'Style-01b37b76-4f5b-421d-a6cc-759e8d7aba3f',
+  'Zen Spirit': 'Style-24b334a4-52eb-4f77-94fa-f37d7367d956',
+  'Vibrant Whimsy': 'Style-89c94c8f-9c94-4ef2-8fbd-e058648c92c7',
+  'Whimsical Brushwork': 'Style-e2f14b9b-819d-4389-980f-71b83f55271d',
+  'Bedtime Story': 'Style-8ee4b050-ef89-4058-8521-66223259bb30',
+  'Nouveau Classic': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Innocent Cutie': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Glossy Elegance': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Memphis Illustration': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  'Minimalist Cutesy': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Watercolor Whimsy': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+  'Dreamy Spectrum': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
+  'Enhanced Elegance': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
+  'Cheerful Storybook': 'Style-a941aee9-7964-4445-b76a-7c3ff912f926',
+  'Starlit Fantasy': 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0',
+  'Delicate Aquarelle': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
 };
 
-// Updated Art Style Categories with direct API styles and CORRECT names
+// Updated Art Style Categories with verified API style codes
 export const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
-    category: 'Whimsical & Soft (Ages 0–5)',
-    description: 'Gentle, dreamy art styles perfect for the youngest readers with soft colors and comforting visuals.',
+    category: 'Whimsical & Fun',
+    description: 'Playful and whimsical styles with colorful, fun designs perfect for young readers.',
     styleIds: [
-      { 
-        id: 'watercolor_whimsy',
-        apiCode: 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
-        title: 'Watercolor Whimsy',
-        description: 'Rounded shapes and soft digital brushwork with gentle gradients'
-      },
-      { 
-        id: 'whimsical_coloring',
-        apiCode: 'Style-206baa8c-5bbe-4299-b984-9243d05dce9b',
-        title: 'Whimsical Coloring', 
-        description: 'Tender, soothing colors with a gentle, chalky texture perfect for bedtime stories'
-      },
-      { 
-        id: 'enchanted_character',
-        apiCode: 'Style-d37c13c6-4c5b-43a8-b86c-ab75a109bce7',
-        title: 'Enchanted Character',
-        description: 'Magical characters with soft lighting and enchanting atmosphere'
-      },
-      { 
-        id: 'minimalist_cutesy',
-        apiCode: 'Style-9f0b81f0-c773-4788-a83e-9ea2a25c6895',
-        title: 'Minimalist Cutesy',
-        description: 'Simple, cute designs with minimal details and soft colors'
-      },
-      { 
-        id: 'soft_radiance',
-        apiCode: 'Style-2a7de14d-6712-4115-a6a9-d3c7be55eaf2',
-        title: 'Soft Radiance',
-        description: 'Gentle, glowing artwork with soft lighting and delicate details'
-      }
-    ]
-  },
-  {
-    category: 'Classic & Timeless (Ages 3–8)',
-    description: 'Traditional illustration styles reminiscent of beloved children\'s books that stand the test of time.',
-    styleIds: [
-      { 
-        id: 'cheerful_storybook',
-        apiCode: 'Style-85480a6c-4aa6-4260-8ad1-a0b7423910cf',
-        title: 'Cheerful Storybook',
-        description: 'Bright, cheerful illustrations with bold colors and playful details'
-      },
-      { 
-        id: 'pleasantly_warm',
-        apiCode: 'Style-21a75e9c-3ff8-4728-99c4-94d448a489a1',
-        title: 'Pleasantly Warm',
-        description: 'Charming, detailed watercolor illustrations with a warm, cozy feeling'
-      },
       { 
         id: 'storytime_whimsy',
-        apiCode: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
+        apiCode: STYLE_CODE_MAP['Storytime Whimsy'],
         title: 'Storytime Whimsy',
         description: 'Whimsical, storybook-style illustrations with a classic feel'
       },
       { 
-        id: 'line_and_wash',
-        apiCode: 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',
-        title: 'Line and Wash',
-        description: 'Delicate pencil drawings with light watercolor washes for a timeless feel'
-      },
-      { 
-        id: 'golden_hour',
-        apiCode: 'Style-a37d7b69-1f9a-42c4-a8e4-f429c29f4512',
-        title: 'Golden Hour',
-        description: 'Nostalgic illustrations with warm, golden lighting inspired by classic picture books'
-      },
-      { 
-        id: 'ancient_china',
-        apiCode: 'Style-5aebfb83-ff06-48ae-a8df-1560a32eded1',
-        title: 'Ancient China',
-        description: 'Traditional Chinese painting style with elegant brushwork and composition'
-      }
-    ]
-  },
-  {
-    category: 'Modern & Colorful (Ages 4–9)',
-    description: 'Bold, vibrant styles with clean lines and contemporary design sensibilities.',
-    styleIds: [
-      { 
-        id: 'cute_exaggeration',
-        apiCode: 'Style-b484beb8-143e-4776-9a87-355e0456cfa3',
-        title: 'Cutie 3D',
-        description: 'Playful and cute 3D characters with slightly exaggerated features.'
-      },
-      { 
-        id: 'glossy_elegance',
-        apiCode: 'Style-2ee57e3c-108a-41dd-8b28-b16d0ceb6280',
-        title: 'Glossy Elegance',
-        description: 'Clean, sleek, modern illustrations with a glossy finish'
-      },
-      { 
-        id: 'starlit_fantasy',
-        apiCode: 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0',
-        title: 'Starlit Fantasy',
-        description: 'A dreamy and ethereal style with a magical starlit quality.'
-      },
-      { 
         id: 'fantasy_hero',
-        apiCode: 'Style-7a23990c-65f7-4300-b2a1-f5a97263e66f',
+        apiCode: STYLE_CODE_MAP['Fantasy Hero'],
         title: 'Fantasy Hero',
         description: 'Bold, heroic character illustrations with a fantasy adventure feel'
       },
       { 
+        id: 'soft_radiance',
+        apiCode: STYLE_CODE_MAP['Soft Radiance'],
+        title: 'Soft Radiance',
+        description: 'Gentle, glowing artwork with soft lighting and delicate details'
+      },
+      { 
+        id: 'paper_cutout',
+        apiCode: STYLE_CODE_MAP['Paper Cutout'],
+        title: 'Paper Cutout',
+        description: 'Illustrations that look like layered paper cutouts with clean edges'
+      },
+      { 
         id: 'joyful_clay',
-        apiCode: 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
+        apiCode: STYLE_CODE_MAP['Joyful Clay'],
         title: 'Joyful Clay',
         description: 'Cheerful characters that look like they are made of colorful clay'
       },
       { 
-        id: 'ceramic_lifelike',
-        apiCode: 'Style-d0fbfa6f-59bb-4578-a567-bde0c82bd833',
-        title: 'Ceramic Lifelike',
-        description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+        id: 'playful_enamel',
+        apiCode: STYLE_CODE_MAP['Playful Enamel'],
+        title: 'Playful Enamel',
+        description: 'Bright, glossy illustrations with an enamel-like finish'
       },
       { 
-        id: 'yarn_realism',
-        apiCode: 'Style-b3a85eaa-5c3a-4c96-af0f-db5c984a955a',
-        title: 'Yarn Realism',
-        description: 'Textures and styling that mimic yarn and textile elements'
-      },
-      { 
-        id: 'mystical_sovereignty',
-        apiCode: 'Style-1e39bdee-4d33-4f5b-9bbc-12f8f1505fc6',
-        title: 'Mystical Sovereignty',
-        description: 'Majestic, mystical scenes with an air of fantasy and elegance'
+        id: 'everything_kawaii',
+        apiCode: STYLE_CODE_MAP['Everything Kawaii'],
+        title: 'Everything Kawaii',
+        description: 'Ultra-cute Japanese-inspired style with adorable characters'
       }
     ]
   },
   {
-    category: 'Realistic & Artistic (Ages 6–12)',
-    description: 'Sophisticated art styles with richer detail, ideal for preserving the likeness of your child.',
+    category: 'Illustrated & Artistic',
+    description: 'Beautiful, artistic styles with rich textures and detail for a classic storybook feel.',
     styleIds: [
       { 
-        id: 'enchanted_elegance',
-        apiCode: 'Style-bfb2db5f-ecfc-4fe9-b864-1a5770d59347',
-        title: 'Enchanted Elegance',
-        description: 'Detailed illustrations with an elegant, enchanted quality'
+        id: 'ceramic_lifelike',
+        apiCode: STYLE_CODE_MAP['Ceramic Lifelike'],
+        title: 'Ceramic Lifelike',
+        description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+      },
+      {
+        id: 'colorful_felt',
+        apiCode: STYLE_CODE_MAP['Colorful Felt'],
+        title: 'Colorful Felt',
+        description: 'Textured illustrations that mimic the look of felt crafts'
       },
       { 
-        id: 'warm_portrait',
-        apiCode: 'Style-12325d6b-f0c2-4570-a8a3-1c15124ea703',
-        title: 'Warm Portrait',
-        description: 'Realistic portraits with warm lighting and preserved facial features'
+        id: 'sketch_elegance',
+        apiCode: STYLE_CODE_MAP['Sketch Elegance'],
+        title: 'Sketch Elegance',
+        description: 'Beautiful detailed pencil sketches with subtle shading'
       },
       { 
-        id: 'magic_portrait',
-        apiCode: 'Style-552954ec-d5bc-4148-a5f9-4c7a42e41b2c',
-        title: 'Magic Portrait',
-        description: 'Semi-stylized portraits with a magical, fantasy quality'
+        id: 'skyborne_realm',
+        apiCode: STYLE_CODE_MAP['Skyborne Realm'],
+        title: 'Skyborne Realm',
+        description: 'Majestic, airy illustrations with a sense of height and wonder'
+      },
+      { 
+        id: 'aquarelle_life',
+        apiCode: STYLE_CODE_MAP['Aquarelle Life'],
+        title: 'Aquarelle Life',
+        description: 'Vibrant watercolor style with flowing colors and rich textures'
       },
       { 
         id: 'vivid_tableaux',
-        apiCode: 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',
+        apiCode: STYLE_CODE_MAP['Vivid Tableaux'],
         title: 'Vivid Tableaux',
         description: 'Rich, textured scenes with vibrant colors and detailed compositions'
       },
       { 
-        id: 'luminous_narratives',
-        apiCode: 'Style-ce7b4279-1398-4964-882c-19911e12aef3',
-        title: 'Luminous Narratives',
-        description: 'Rich digital illustrations with painterly effects and detailed lighting'
+        id: 'line_and_wash',
+        apiCode: STYLE_CODE_MAP['Line & Wash'],
+        title: 'Line & Wash',
+        description: 'Delicate line drawings with light watercolor washes'
+      }
+    ]
+  },
+  {
+    category: 'Stylized & Modern',
+    description: 'Contemporary designs with bold colors and unique creative approaches.',
+    styleIds: [
+      { 
+        id: 'dreamy_3d',
+        apiCode: STYLE_CODE_MAP['Dreamy 3D'],
+        title: 'Dreamy 3D',
+        description: 'Soft 3D rendered illustrations with a dreamy quality'
       },
       { 
-        id: 'dreamlike_portraiture',
-        apiCode: 'Style-5e5c3d6f-8a05-49bc-89bd-281c11a7b96d',
-        title: 'Dreamlike Portraiture',
-        description: 'Portraits with a dreamy, ethereal quality and soft focus'
+        id: 'cutie_3d',
+        apiCode: STYLE_CODE_MAP['Cutie 3D'],
+        title: 'Cutie 3D',
+        description: 'Adorable 3D characters with expressive features'
       },
       { 
-        id: 'aquarelle_life',
-        apiCode: 'Style-4cc27c59-8418-41c3-acc1-6fef4518b14b',
-        title: 'Aquarelle Life',
-        description: 'Vibrant watercolor style with flowing colors and rich textures'
+        id: 'shimmering_glow',
+        apiCode: STYLE_CODE_MAP['Shimmering Glow'],
+        title: 'Shimmering Glow',
+        description: 'Illustrations with a magical luminous quality'
+      },
+      { 
+        id: 'surreal_iridescence',
+        apiCode: STYLE_CODE_MAP['Surreal Iridescence'],
+        title: 'Surreal Iridescence',
+        description: 'Dreamlike scenes with shimmering, rainbow-like colors'
+      },
+      { 
+        id: 'golden_hour',
+        apiCode: STYLE_CODE_MAP['Golden Hour'],
+        title: 'Golden Hour',
+        description: 'Warm, sunset-toned illustrations with a nostalgic feel'
+      },
+      { 
+        id: 'vibrant_impasto',
+        apiCode: STYLE_CODE_MAP['Vibrant Impasto'],
+        title: 'Vibrant Impasto',
+        description: 'Bold paintings with thick, textured brush strokes'
+      },
+      { 
+        id: 'sketchbook_sticker',
+        apiCode: STYLE_CODE_MAP['Sketchbook Sticker'],
+        title: 'Sketchbook Sticker',
+        description: 'Fun, casual illustrations that look like stickers in a sketchbook'
+      }
+    ]
+  },
+  {
+    category: 'Portraits & Characters',
+    description: 'Styles that focus on character details and expressions, ideal for preserving likeness.',
+    styleIds: [
+      { 
+        id: 'inked_realism',
+        apiCode: STYLE_CODE_MAP['Inked Realism'],
+        title: 'Inked Realism',
+        description: 'Detailed portraits with an ink-drawn quality'
+      },
+      { 
+        id: 'magic_portrait',
+        apiCode: STYLE_CODE_MAP['Magic Portrait'],
+        title: 'Magic Portrait',
+        description: 'Semi-stylized portraits with a magical, fantasy quality'
+      },
+      { 
+        id: 'warm_portrait',
+        apiCode: STYLE_CODE_MAP['Warm Portrait'],
+        title: 'Warm Portrait',
+        description: 'Realistic portraits with warm lighting and preserved facial features'
+      },
+      { 
+        id: 'retro_noir_chromatics',
+        apiCode: STYLE_CODE_MAP['Retro Noir Chromatics'],
+        title: 'Retro Noir Chromatics',
+        description: 'Stylish noir-inspired portraits with bold colors'
+      },
+      { 
+        id: 'starlit_fantasy',
+        apiCode: STYLE_CODE_MAP['Starlit Fantasy'],
+        title: 'Starlit Fantasy',
+        description: 'Characters with a dreamy, ethereal quality surrounded by stars'
+      },
+      { 
+        id: 'cheerful_storybook', 
+        apiCode: STYLE_CODE_MAP['Cheerful Storybook'],
+        title: 'Cheerful Storybook',
+        description: 'Bright, cheerful character illustrations in a classic storybook style'
+      }
+    ]
+  },
+  {
+    category: 'Special Styles',
+    description: 'Unique art styles with distinctive visual techniques for specialized stories.',
+    styleIds: [
+      { 
+        id: 'vintage_engraving',
+        apiCode: STYLE_CODE_MAP['Vintage Engraving'],
+        title: 'Vintage Engraving',
+        description: 'Old-fashioned engraved look with fine lines and details'
+      },
+      { 
+        id: 'ancient_china',
+        apiCode: STYLE_CODE_MAP['Ancient China'],
+        title: 'Ancient China',
+        description: 'Traditional Chinese painting style with elegant brushwork'
+      },
+      { 
+        id: 'graffiti_splash',
+        apiCode: STYLE_CODE_MAP['Graffiti Splash'],
+        title: 'Graffiti Splash',
+        description: 'Urban street art style with bold colors and spray paint effects'
+      },
+      { 
+        id: 'pleasantly_warm',
+        apiCode: STYLE_CODE_MAP['Pleasantly Warm'],
+        title: 'Pleasantly Warm',
+        description: 'Cozy, warm-toned illustrations with a comfortable feeling'
+      },
+      { 
+        id: '8bit_arcade',
+        apiCode: STYLE_CODE_MAP['8-Bit Arcade'],
+        title: '8-Bit Arcade',
+        description: 'Retro pixel art style reminiscent of classic video games'
+      },
+      { 
+        id: 'impressionist',
+        apiCode: STYLE_CODE_MAP['Impressionist'],
+        title: 'Impressionist',
+        description: 'Artistic style with visible brushstrokes and light effects'
+      },
+      { 
+        id: 'zen_spirit',
+        apiCode: STYLE_CODE_MAP['Zen Spirit'],
+        title: 'Zen Spirit',
+        description: 'Tranquil, mindful illustrations with Eastern artistic influences'
       }
     ]
   }
@@ -260,6 +311,28 @@ function ArtStyleStep() {
   } = useBookStore();
   
   const [selectedStyle, setSelectedStyle] = useState(wizardState.storyData.artStyleCode || '');
+  const [stylePreviewUrls, setStylePreviewUrls] = useState({});
+  
+  // Load preview URLs for each style
+  useEffect(() => {
+    // In a real implementation, we would fetch preview URLs from the API
+    // But for now, we'll use placeholder images
+    const loadPreviews = async () => {
+      // This would be an API call in a real implementation
+      const placeholderUrl = 'https://via.placeholder.com/300x200?text=';
+      const previews = {};
+      
+      ART_STYLE_CATEGORIES_STRUCTURE.forEach(category => {
+        category.styleIds.forEach(style => {
+          previews[style.apiCode] = `${placeholderUrl}${encodeURIComponent(style.title)}`;
+        });
+      });
+      
+      setStylePreviewUrls(previews);
+    };
+    
+    loadPreviews();
+  }, []);
   
   const handleSelectStyle = (styleCode) => {
     setSelectedStyle(styleCode);
@@ -325,17 +398,18 @@ function ArtStyleStep() {
                     : 'border-gray-200 hover:border-gray-400'
                   }`}
                 >
-                  <img 
-                    src={dzineStyleImageMap[style.apiCode] || 'https://via.placeholder.com/150?text=No+Preview'}
-                    alt={style.title}
-                    className="w-full h-32 object-cover"
-                    onError={(e) => {
-                       e.target.onerror = null; 
-                       e.target.src = 'https://via.placeholder.com/150?text=Error';
+                  <div 
+                    className="w-full h-32 bg-gray-100 flex items-center justify-center"
+                    style={{
+                      backgroundColor: `hsl(${Math.floor(Math.random() * 360)}, 80%, 90%)`,
+                      backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`,
                     }}
-                  />
-                  <div className="p-3 text-center">
-                    <p className="text-sm font-medium truncate">{style.title}</p> 
+                  >
+                    <span className="text-gray-600 font-medium">{style.title}</span>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-medium truncate">{style.title}</p>
+                    <p className="text-xs text-gray-500 truncate">{style.description}</p>
                   </div>
                 </motion.div>
               ))}
