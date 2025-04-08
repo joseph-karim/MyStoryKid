@@ -333,7 +333,7 @@ function StoryDetailsStep() {
     updateStoryData(formData);
     
     // Move to next step (Summary)
-    setWizardStep(6);
+    setWizardStep(5);
   };
 
   // Show rhyming scheme options only for rhyming story type
