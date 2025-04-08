@@ -179,7 +179,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [progressMessage, setProgressMessage] = useState('');
   const [apiStatus, setApiStatus] = useState({ checked: false, working: false, message: '' });
   const fileInputRef = useRef(null);
-  const pollingSessionRef = useRef({});
+  const pollIntervalRef = useRef(null); // Ref to store interval ID
+  const activeGenerationIdRef = useRef(null); // Ref to track the LATEST generation request - ADDED
   
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
@@ -191,8 +192,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   
-  // --- ADDED STATE: Track generation attempt ---
+  // Track generation attempt
   const [generationAttempted, setGenerationAttempted] = useState(false);
+  
+  // --- ADD previewUrl and generationStatus state --- 
+  const [previewUrl, setPreviewUrl] = useState(null); 
+  const [generationStatus, setGenerationStatus] = useState('idle'); 
+  // -----------------------------------------------
   
   // --- MOVED EFFECT: Update isHuman based on type --- 
   useEffect(() => {
