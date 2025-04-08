@@ -966,249 +966,160 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      }
    };
    
-   // Update the generateCharacterPreview function signature
-   const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
-     try {
-       console.log('[CharacterWizard] Generating preview with style:', styleApiCode);
-       console.log('[CharacterWizard] Style keywords:', getKeywordsForDzineStyle(styleApiCode));
-       // Log that we're setting state accordingly
-       setIsGenerating(true);
-       setProgressMessage('Creating image with selected style...');
-
-       // Clear any previous errors
-       setError('');
-
-       // If we've already attempted generation, skip to avoid multiple attempts
-       if (generationAttempted) {
-         console.log('[GeneratePreview] Generation already attempted, skipping duplicate call');
-         setStep(3); // Just advance to confirm step
-         return;
-       }
-
-       // Use the forced art style if provided, otherwise use the selected style
-       const styleToUse = forcedArtStyle || styleApiCode;
-       console.log('[GeneratePreview] Using style code:', styleToUse);
-       
-       if (!styleToUse) {
-         console.error('[GeneratePreview] No style provided for character preview generation');
-         setError('Please select an art style for your character.');
-         return;
-       }
-
-       // Use either the text description or generate a prompt from character data
-       let promptText = '';
-       if (characterData.useTextToImage && characterData.generationPrompt) {
-         promptText = characterData.generationPrompt;
-       } else {
-         // Build a prompt from character attributes
-         promptText = `Character portrait of ${characterData.name}, ${characterData.age} years old, ${characterData.gender || 'person'}, ${characterData.traits?.join(', ') || 'friendly'}`;
-       }
-
-       // Create a fallback image (placeholder) based on the character's name
-       const fallbackImageBase64 = createColorPlaceholder(
-         stringToColor(characterData.name || 'Character'), 
-         characterData.name || 'Character'
-       );
-       
-       setGenerationAttempted(true);
-       await generateCharacterImage(styleToUse, promptText, fallbackImageBase64, isHumanCharacter);
-     } catch (error) {
-       console.error(`API error during preview generation:`, error);
+   // --- Re-integrate generateCharacterImage function --- 
+   const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
+     // Style validation
+     if (!styleApiCode || !styleApiCode.startsWith('Style-')) {
+       console.error('Invalid or missing style API code passed to generateCharacterImage:', styleApiCode);
+       setError('An invalid art style was specified.');
        setIsGenerating(false);
-       setError(`Generation failed: ${error.message}. Please try again or contact support.`);
-       setProgressMessage('Error occurred during generation');
+       setGenerationStatus('error'); 
+       updateProgressInfo('Error: Invalid style.');
+       useFallbackImage(fallbackImage); // Use fallback on error
+       return; 
+     }
+     
+     const generationId = uuidv4(); 
+     activeGenerationIdRef.current = generationId; // Track this generation attempt
+     let operationType = ''; 
+     
+     try {
+       setIsGenerating(true);
+       setGenerationStatus('processing'); 
+       updateProgressInfo('Starting generation task...');
+       
+       let taskResponse;
+       
+       if (characterData.useTextToImage) {
+         // --- Text-to-Image Logic --- 
+         operationType = 'Text-to-Image';
+         console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
+         
+         if (!prompt) {
+           throw new Error('Description (prompt) is required for Text-to-Image.');
+         }
+         
+         // Enhance prompt slightly if needed
+         let enhancedPrompt = prompt;
+         if (characterData.name && !enhancedPrompt.includes(characterData.name)) {
+             enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
+         }
+         enhancedPrompt += ", high quality illustration"; // Add quality modifier
+         
+         const payload = {
+           prompt: enhancedPrompt.substring(0, 800), 
+           style_code: styleApiCode,
+           target_h: 1024, // Example size
+           target_w: 1024,
+           quality_mode: 1, 
+           output_format: 'webp',
+           seed: Math.floor(Math.random() * 2147483647) + 1,
+           negative_prompt: 'low quality, blurry, bad anatomy'
+         };
+         
+         console.log('Txt2Img Payload:', JSON.stringify(payload, null, 2));
+         taskResponse = await createTxt2ImgTask(payload); // Call the service
+         
+       } else {
+         // --- Image-to-Image Logic --- 
+         operationType = 'Image-to-Image';
+         console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
+         
+         if (!characterData.photoUrl) {
+           throw new Error('Photo is required for Image-to-Image.');
+         }
+
+         if (!characterData.photoUrl.startsWith('data:image')) {
+            throw new Error('Invalid photo data format for Image-to-Image. Expected Base64 data URL.');
+         }
+         
+         // Construct prompt for Img2Img
+         const imgPrompt = prompt || `Character portrait of ${characterData.name || 'person'} in the selected style`;
+
+         const payload = {
+           style_code: styleApiCode, 
+           prompt: imgPrompt.substring(0, 800),
+           images: [{ base64_data: characterData.photoUrl }],
+           quality_mode: 1, 
+           output_format: 'webp',
+           negative_prompt: 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
+           seed: Math.floor(Math.random() * 2147483647) + 1,
+           // Pass isHumanCharacter flag to the API call wrapper if needed
+         };
+         
+         console.log('Img2Img Payload (excluding base64):', JSON.stringify({
+              ...payload,
+              images: [{ base64_data: 'base64_data_present' }]
+            }, null, 2));
+         taskResponse = await createImg2ImgTask(payload, isHumanCharacter);
+       }
+       
+       // --- Common Task Handling --- 
+       if (!taskResponse || !taskResponse.task_id) {
+         throw new Error(`Failed to create ${operationType} task. No task ID received.`);
+       }
+       
+       const taskId = taskResponse.task_id;
+       console.log(`${operationType} Task created with ID:`, taskId);
+       
+       // Use photo as fallback for img2img, generate placeholder for txt2img
+       const actualFallback = characterData.useTextToImage 
+           ? createColorPlaceholder(stringToColor(characterData.name || 'fallback'), characterData.name || 'Generating...') 
+           : fallbackImage; // Use the photo passed in as fallback for img2img
+           
+       // Call startPollingTask correctly
+       startPollingTask(taskId, actualFallback, generationId);
+       
+     } catch (error) {
+       console.error(`API error during ${operationType || 'generation'} process:`, error);
+       // Ensure state is updated correctly on error
+       if(activeGenerationIdRef.current === generationId) { // Only update if it's the current task
+          setIsGenerating(false);
+          setGenerationStatus('error');
+          setError(`Generation failed: ${error.message}. Please try again or contact support.`);
+          updateProgressInfo('Error occurred during generation');
+          useFallbackImage(fallbackImage); // Use fallback on error
+       }
      }
    };
-   
-   // Helper function to use fallback image
-   const useFallbackImage = (fallbackImage) => {
-     setCharacterData(prev => ({
-       ...prev,
-       stylePreview: fallbackImage
-     }));
-     
-     setProgressMessage('Using placeholder image due to API issues');
-     setIsGenerating(false);
-   };
-   
-   // Helper function used within polling & generation
-   const updateProgressInfo = (message) => {
-     console.log(`[Progress Update] ${message}`);
-     setProgressMessage(message);
-   };
+   // --- End generateCharacterImage function ---
 
-   // Start polling for task progress
-   const startPollingTask = async (taskId, fallbackImage, generationId) => {
-     if (!taskId) {
-       console.error('[Polling] Invalid task ID for polling');
-       setError('Error: Invalid task ID received from generation service.');
-       setGenerationStatus('error');
-       setIsGenerating(false);
-       useFallbackImage(fallbackImage);
+   // --- Update generateCharacterPreview to CALL generateCharacterImage --- 
+   const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
+     // REMOVED: setIsGenerating, setError etc. - Moved to generateCharacterImage
+     // REMOVED: generationAttempted check - Let generateCharacterImage handle initial state
+     console.log('[GeneratePreview] Called with style:', styleApiCode);
+
+     const styleToUse = forcedArtStyle || styleApiCode;
+     if (!styleToUse) {
+       setError('Error: No art style provided for preview generation.');
        return;
      }
 
-     console.log(`[Polling] Starting polling for Dzine task ID: ${taskId}, Generation ID: ${generationId}`);
-     updateProgressInfo('Dzine task started. Waiting for preview... (0%)'); 
-     setIsGenerating(true);
-     setGenerationStatus('processing');
-
-     let pollInterval = null;
-     let attempts = 0;
-     const maxAttempts = 60; // Poll for max 3 minutes (60 * 3s)
-     let lastProgress = 0;
-
-     // Clear any previous interval before starting a new one
-     if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        console.log('[Polling] Cleared previous polling interval.');
+     let promptText = '';
+     if (characterData.useTextToImage && characterData.generationPrompt) {
+       promptText = characterData.generationPrompt;
+     } else if (characterData.photoUrl) {
+       // Prompt for img2img can be simpler
+       promptText = `Character portrait of ${characterData.name || 'person'} in the selected style`;
+     } else {
+       setError('Error: Need either a photo or a description to generate preview.');
+       return;
      }
 
-     const pollNextTime = async () => {
-       if (activeGenerationIdRef.current !== generationId) {
-          console.log(`[Polling] Stopping poll for ${taskId} (Gen ID: ${generationId}) as a new generation (${activeGenerationIdRef.current}) has started.`);
-          clearInterval(pollIntervalRef.current);
-          return;
-       }
+     // Fallback image for img2img should be the original photo itself
+     // Fallback for txt2img is generated by generateCharacterImage
+     const fallback = characterData.photoUrl; 
 
-       attempts++;
-       if (attempts > maxAttempts) {
-         console.error(`[Polling] Task ${taskId} timed out after ${maxAttempts} attempts.`);
-         clearInterval(pollIntervalRef.current);
-         if (activeGenerationIdRef.current === generationId) {
-             setError('Preview generation timed out. Please try again.');
-             setGenerationStatus('error');
-             setIsGenerating(false);
-             useFallbackImage(fallbackImage);
-         }
-         return;
-       }
+     // Reset generationAttempted for this specific call? Or manage elsewhere?
+     // setGenerationAttempted(true); // This is likely set in the useEffect hook already
 
-       try {
-         console.log(`[Polling] Attempt ${attempts}: Getting progress for task ${taskId}...`);
-         const progressData = await getTaskProgress(taskId);
-         console.log(`[Polling] Progress data for ${taskId}:`, progressData);
-
-         if (activeGenerationIdRef.current !== generationId) {
-           console.log(`[Polling] Ignoring result for ${taskId} as it's from an old generation.`);
-           clearInterval(pollIntervalRef.current);
-           return;
-         }
-
-         if (progressData && progressData.data) {
-           const { status, progress, eta } = progressData.data;
-           lastProgress = progress !== null && progress !== undefined ? progress : lastProgress;
-           updateProgressInfo(`Generating preview... (${Math.round(lastProgress * 100)}%) Estimated time: ${eta || 'N/A'}s`); 
-
-           if (status === 'SUCCESS') {
-             console.log(`[Polling] Task ${taskId} status is SUCCESS. Fetching result...`);
-             clearInterval(pollIntervalRef.current);
-             const resultData = await getTaskResult(taskId);
-             console.log(`[Polling] Task ${taskId} result:`, resultData);
-
-              if (activeGenerationIdRef.current !== generationId) {
-                 console.log(`[Polling] Ignoring SUCCESS result for ${taskId} - generation changed.`);
-                 return;
-              }
-
-             if (resultData && resultData.code === 200 && resultData.data?.status === 'SUCCESS' && resultData.data?.images?.[0]) {
-               const base64Preview = resultData.data.images[0];
-               console.log('[Polling] Success! Received Base64 preview.');
-
-               // **** UPLOAD BASE64 TO GET URL ****
-               try {
-                 updateProgressInfo('Finalizing character preview...');
-                 console.log('[CharacterWizard] Uploading Dzine preview to get URL...');
-                 const imageUrl = await uploadImageAndGetUrl(base64Preview);
-                 console.log('[CharacterWizard] Upload complete. Received URL:', imageUrl);
-
-                 setPreviewUrl(imageUrl);
-                 updateCharacterPreview(characterData.id, imageUrl);
-                 setGenerationStatus('success');
-                 updateProgressInfo('Character preview ready!');
-                 setIsGenerating(false);
-
-               } catch (uploadError) {
-                 console.error('[CharacterWizard] Failed to upload image preview:', uploadError);
-                 // Keep existing state updates on upload error
-                 if (activeGenerationIdRef.current === generationId) { 
-                     setError(`Failed to prepare image preview URL: ${uploadError.message}`);
-                     setGenerationStatus('error');
-                     setIsGenerating(false);
-                     useFallbackImage(fallbackImage);
-                 }
-               }
-               // **** END UPLOAD LOGIC ****
-
-             } else {
-               console.error(`[Polling] Task ${taskId} result fetching failed or format unexpected.`, resultData);
-               if (activeGenerationIdRef.current === generationId) {
-                   setError('Failed to retrieve valid image result after success status.');
-                   setGenerationStatus('error');
-                   setIsGenerating(false);
-                   useFallbackImage(fallbackImage);
-               }
-             }
-
-           } else if (status === 'FAILED') {
-             console.error(`[Polling] Task ${taskId} failed. Error: ${progressData.data.error_message || 'Unknown error'}`);
-             clearInterval(pollIntervalRef.current);
-              if (activeGenerationIdRef.current === generationId) {
-                 setError(`Preview generation failed: ${progressData.data.error_message || 'Please try again'}`);
-                 setGenerationStatus('error');
-                 setIsGenerating(false);
-                 useFallbackImage(fallbackImage);
-              }
-
-           } else if (status === 'PENDING' || status === 'PROCESSING') {
-             console.log(`[Polling] Task ${taskId} status: ${status}. Progress: ${lastProgress}%. Waiting...`);
-           } else {
-             console.warn(`[Polling] Task ${taskId} has unexpected status: ${status}. Stopping poll.`);
-             clearInterval(pollIntervalRef.current);
-              if (activeGenerationIdRef.current === generationId) {
-                 setError(`Unexpected generation status: ${status}`);
-                 setGenerationStatus('error');
-                 setIsGenerating(false);
-                 useFallbackImage(fallbackImage);
-              }
-           }
-         } else {
-           console.warn(`[Polling] Received empty progress data for task ${taskId}. Retrying...`);
-         }
-       } catch (error) {
-         console.error(`[Polling] Error during polling task ${taskId} (Attempt ${attempts}):`, error);
-         if (attempts >= maxAttempts) {
-           clearInterval(pollIntervalRef.current);
-           if (activeGenerationIdRef.current === generationId) {
-               setError(`Polling failed after multiple attempts: ${error.message}`);
-               setGenerationStatus('error');
-               setIsGenerating(false);
-               useFallbackImage(fallbackImage);
-           }
-         }
-       }
-     }; // End of pollNextTime definition
-
-     pollNextTime();
-     pollIntervalRef.current = setInterval(pollNextTime, 3000);
-   }; // End of startPollingTask function definition
-
-   // ... (handleGeneratePreview function - update the call to pollForTaskResult if needed) ...
-   const handleGeneratePreview = async () => {
-       // ... (existing setup to call createImg2ImgTask) ...
-       try {
-          // ... (call createImg2ImgTask and get taskId) ...
-          
-          // Start polling with the received task ID
-          if (taskId) {
-             pollForTaskResult(taskId);
-          } else {
-             throw new Error('Task ID not received from Dzine API.');
-          }
-       } catch (error) {
-          // ... (error handling) ...
-       }
+     // CALL the reinstated function
+     await generateCharacterImage(styleToUse, promptText, fallback, isHumanCharacter);
    };
+   // --- End generateCharacterPreview update ---
+
+   // ... rest of component, including startPollingTask, renderConfirmStep, etc. ...
 
   // Define the ImagePreviewModal component locally
   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
