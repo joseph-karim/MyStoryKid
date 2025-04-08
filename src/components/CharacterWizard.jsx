@@ -1257,9 +1257,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          const status = progressResult.status?.toLowerCase();
          const progress = progressResult.progress || 0;
          
+         console.log(`[Polling] Task status: "${status}" (original: "${progressResult.status}"), progress: ${progress}`);
+         
          if (status === 'pending' || status === 'running') {
            updateProgressInfo(`Generation in progress... ${Math.round(progress * 100)}%`);
-         } else if (status === 'succeeded' || status === 'completed') {
+         } else if (status === 'succeeded' || status === 'completed' || status === 'succeed') {
            console.log(`[Polling] Task ${taskId} completed successfully!`);
            clearInterval(pollIntervalRef.current);
            pollIntervalRef.current = null;
