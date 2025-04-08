@@ -90,6 +90,85 @@ async function fetchAndConvertToBase64(imageUrl) {
 }
 // --- END HELPER FUNCTION ---
 
+// --- Add back Helper functions for placeholder generation ---
+const stringToColor = (str) => {
+  if (!str) return '#CCCCCC'; // Default color for empty string
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+};
+
+const getContrastColor = (hexColor) => {
+  if (!hexColor || hexColor.length < 7) return '#000000'; // Default to black
+  try {
+    const r = parseInt(hexColor.substr(1, 2), 16);
+    const g = parseInt(hexColor.substr(3, 2), 16);
+    const b = parseInt(hexColor.substr(5, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  } catch (e) {
+    console.error("Error getting contrast color:", e);
+    return '#000000';
+  }
+};
+
+const createColorPlaceholder = (bgColor, text) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='; // Transparent pixel
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = getContrastColor(bgColor);
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Basic text wrapping
+    const words = (text || 'Placeholder').split(' ');
+    let line = '';
+    const lines = [];
+    const y = canvas.height / 2;
+    const lineHeight = 24;
+    const maxWidth = canvas.width - 20; // Add padding
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      const testWidth = metrics.width;
+      if (testWidth > maxWidth && n > 0) {
+        lines.push(line);
+        line = words[n] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+
+    const startY = y - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((ln, i) => {
+      ctx.fillText(ln.trim(), canvas.width / 2, startY + i * lineHeight);
+    });
+
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    console.error("Error creating placeholder:", e);
+    return 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='; // Transparent pixel on error
+  }
+};
+// --- End Placeholder Helper Functions ---
+
 function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
@@ -803,13 +882,87 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      );
    };
    
-   // Modified renderStep to avoid adding duplicate navigation buttons
+   // Add back renderConfirmStep function ---
+   const renderConfirmStep = () => {
+     console.log('[Render] renderConfirmStep');
+     // Use previewUrl which should now hold the URL from the upload service
+     const displayPreviewUrl = previewUrl || characterData.stylePreview; 
+
+     return (
+       <div className="space-y-6 animate-fadeIn">
+         <h2 className="text-2xl font-bold mb-4">Preview Character</h2>
+         
+         {isGenerating ? (
+           <div className="flex flex-col items-center justify-center py-10">
+             <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
+             <p className="text-gray-600">{progressMessage || 'Creating your character...'}</p>
+           </div>
+         ) : displayPreviewUrl ? (
+           <div className="bg-white rounded-lg shadow overflow-hidden">
+             <div className="p-4 flex flex-col items-center">
+               <div className="w-64 h-64 overflow-hidden rounded-lg mb-4 border-2 border-gray-200 shadow-inner">
+                  {/* Ensure img src uses the displayPreviewUrl */}
+                  <img 
+                     src={displayPreviewUrl} 
+                     alt={characterData.name}
+                     className="w-full h-full object-contain bg-gray-100" // Added bg for potential transparency
+                     onError={(e) => { e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error'); }} // Basic error fallback
+                   />
+               </div>
+               
+               <h3 className="text-xl font-bold">{characterData.name}</h3>
+               <p className="text-gray-600 text-sm">
+                 {characterData.age && `${characterData.age} years old • `}
+                 {characterData.gender && `${characterData.gender} • `}
+                 {characterData.type}
+               </p>
+               
+               {/* Optionally show description if used */}
+               {characterData.useTextToImage && characterData.generationPrompt && (
+                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md border border-gray-200">
+                   <p className="text-xs italic text-gray-500">Based on: "{characterData.generationPrompt.substring(0, 100)}{characterData.generationPrompt.length > 100 ? '...' : ''}"</p>
+                 </div>
+               )}
+             </div>
+           </div>
+         ) : (
+           <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300">
+             <p className="text-gray-600">Preview not available.</p>
+             {/* Optionally add a button to retry generation if applicable */}
+           </div>
+         )}
+         
+         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+           <button
+             onClick={handleBack}
+             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+             disabled={isGenerating}
+           >
+             Back
+           </button>
+           <button
+             onClick={handleComplete} // Use the handleComplete function passed via props or defined
+             className={`px-6 py-2 bg-blue-600 text-white rounded ${!displayPreviewUrl || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+             disabled={!displayPreviewUrl || isGenerating}
+           >
+             Complete Character
+           </button>
+         </div>
+       </div>
+     );
+   };
+   // --- End renderConfirmStep --- 
+
+   // Update renderStep to call renderConfirmStep ---
    const renderStep = () => {
      switch (step) {
        case 1: return renderDetailsStep();
-       case 2: return renderAppearanceStep(); // Appearance/Photo step
-       case 3: return renderConfirmStep(); // Confirm step (renders preview)
-       default: return <div>Unknown step</div>;
+       case 2: return renderAppearanceStep();
+       case 3: return renderConfirmStep(); // Ensure this calls the function above
+       default: 
+         console.warn("Unknown step in renderStep, defaulting to 1");
+         setStep(1);
+         return renderDetailsStep(); 
      }
    };
    
