@@ -35,7 +35,7 @@ function CreateBookPage() {
     }
   }, [wizardState.step, unlockedSteps]);
   
-  // Define wizard steps (Updated 5-Step Flow - removed Other Characters step)
+  // Define wizard steps (Updated 5-Step Flow)
   const steps = [
     { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
@@ -60,32 +60,11 @@ function CreateBookPage() {
       case 2:
         return <ArtStyleStep />;
       case 3:
-        // Render CharacterWizard for the main character
-        return (
-          <CharacterWizard 
-            key="main-char-wizard"
-            initialRole="main" 
-            forcedArtStyle={wizardState.storyData.artStyleCode}
-            onComplete={(character) => {
-              if (character) {
-                // Add the role property before saving
-                const mainCharacterWithRole = {
-                  ...character,
-                  role: 'main' // Explicitly set the role
-                };
-                // Update store with main character (including role) and move to next step
-                updateStoryData({ bookCharacters: [mainCharacterWithRole] }); 
-                setWizardStep(4); // Go to Story Details step (was 4 - Other Characters)
-              } else {
-                // Handle cancellation: Go back to Art Style
-                setWizardStep(2); 
-              }
-            }}
-          />
-        );
-      case 4: // Story Details (was 5)
+        // Render CharactersStep for the main character
+        return <CharactersStep />;
+      case 4: // Story Details
         return <StoryDetailsStep />;
-      case 5: // Summary (was 6)
+      case 5: // Summary
         return <SummaryStep />;
       default:
         console.warn(`Unknown wizard step: ${wizardState.currentStep}, returning to step 1.`);

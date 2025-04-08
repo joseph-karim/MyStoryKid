@@ -1242,7 +1242,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            <div className="flex flex-col items-center justify-center py-10">
              <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
              <p className="text-gray-600">{progressMessage || 'Creating your character...'}</p>
-                 </div>
+           </div>
          ) : characterData.stylePreview ? (
            <div className="bg-white rounded-lg shadow overflow-hidden">
              <div className="p-4 flex flex-col items-center">
@@ -1254,9 +1254,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                      alt={characterData.name} 
                      className="w-full h-full object-contain"
                    />
+                 </div>
                </div>
-                </div>
-                
+               
                <h3 className="text-xl font-bold">{characterData.name}</h3>
                <p className="text-gray-600">
                  {characterData.age && `${characterData.age} years old • `}
@@ -1267,9 +1267,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                {characterData.useTextToImage && characterData.generationPrompt && (
                  <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
                    <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-              </div>
+                 </div>
                )}
-            </div>
+             </div>
            </div>
          ) : (
            <div className="bg-gray-100 rounded-lg p-6 text-center">
@@ -1278,21 +1278,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          )}
          
          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-               <button
+           <button
              onClick={handleBack}
              className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-               >
-                 Back
-                 </button>
+           >
+             Back
+           </button>
            <button
              onClick={handleComplete}
              className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
              disabled={!characterData.stylePreview || isGenerating}
            >
-             Confirm Character
-               </button>
-             </div>
-           </div>
+             Complete Character
+           </button>
+         </div>
+       </div>
      );
    };
    
