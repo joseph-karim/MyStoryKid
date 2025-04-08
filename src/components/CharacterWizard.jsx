@@ -1267,7 +1267,36 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            pollIntervalRef.current = null;
            
            try {
-             // Fetch the result
+             // Check if the progress response already contains the result URLs
+             const resultSlots = progressResult.generate_result_slots || [];
+             const validUrls = resultSlots.filter(url => url && typeof url === 'string' && url.startsWith('http'));
+             
+             if (validUrls.length > 0) {
+               console.log(`[Polling] Found ${validUrls.length} image URLs in progress response:`, validUrls);
+               
+               // Use the first valid URL
+               const generatedImageUrl = validUrls[0];
+               
+               try {
+                 // Convert URL to Base64
+                 const base64Image = await fetchAndConvertToBase64(generatedImageUrl);
+                 
+                 if (!base64Image) {
+                   throw new Error('Failed to convert image URL to Base64');
+                 }
+                 
+                 // Use centralized image update helper
+                 updatePreviewImage(base64Image);
+                 // Update UI state
+                 updateGenerationState('complete', 'Character generation complete!');
+                 return; // Success path - exit early
+               } catch (fetchError) {
+                 console.error('[Polling] Error fetching/converting image from progress response:', fetchError);
+                 // Continue to getTaskResult as fallback
+               }
+             }
+             
+             // If we couldn't extract URLs from progress response, try getTaskResult as a fallback
              const resultData = await getTaskResult(taskId);
              console.log(`[Polling] Task result:`, resultData);
              
