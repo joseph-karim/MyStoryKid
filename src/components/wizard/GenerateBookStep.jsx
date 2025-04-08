@@ -212,6 +212,215 @@ const validateOutlineResponse = (response) => {
   }
 };
 
+/**
+ * Generates the story pages with content and illustration prompts
+ * @param {Object} storyData - The story data from the wizard state
+ * @returns {Promise<Array>} - Array of page objects with text and illustration prompts
+ */
+const generateStoryPages = async (storyData) => {
+  console.log('[generateStoryPages] Generating story with data:', storyData);
+  
+  // Get the main character and other data
+  const characters = storyData.bookCharacters || [];
+  const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
+  
+  if (!mainCharacter) {
+    throw new Error('Main character is required to generate a story');
+  }
+  
+  try {
+    // Step 1: Generate story outline
+    console.log('[generateStoryPages] Generating story outline...');
+    const outlinePrompt = createOutlinePrompt(storyData, characters);
+    
+    // Use OpenAI to generate the outline
+    const outlineResponse = await openaiService.generateContent({
+      prompt: outlinePrompt,
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+    
+    // Extract and parse the outline
+    let storyOutline;
+    try {
+      // Try to parse as JSON array directly
+      storyOutline = JSON.parse(outlineResponse);
+      // If not an array, may be wrapped in another object
+      if (!Array.isArray(storyOutline)) {
+        // Try to find an array property
+        const keys = Object.keys(storyOutline);
+        for (const key of keys) {
+          if (Array.isArray(storyOutline[key])) {
+            storyOutline = storyOutline[key];
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to parse outline as JSON, trying to extract array manually:', error);
+      // Try to extract array with regex
+      const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          storyOutline = JSON.parse(arrayMatch[0]);
+        } catch (e) {
+          console.error('Failed to extract array from response:', e);
+          throw new Error('Could not parse story outline from AI response');
+        }
+      } else {
+        // Split by newlines as last resort
+        storyOutline = outlineResponse.split('\n')
+          .filter(line => line.trim().startsWith('Spread') || line.trim().startsWith('"Spread'))
+          .map(line => line.replace(/^"/, '').replace(/",$/, '').trim());
+      }
+    }
+    
+    if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
+      console.error('Invalid outline format:', storyOutline);
+      throw new Error('Failed to generate a valid story outline');
+    }
+    
+    console.log('[generateStoryPages] Generated outline:', storyOutline);
+    
+    // Step 2: Generate detailed content for each spread
+    console.log('[generateStoryPages] Generating content for each spread...');
+    const pagesPromises = storyOutline.map(async (spreadOutline, index) => {
+      const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, spreadOutline);
+      
+      const contentResponse = await openaiService.generateContent({
+        prompt: spreadPrompt,
+        temperature: 0.7,
+        max_tokens: 800
+      });
+      
+      // Parse the response to extract text and image prompt
+      let spreadContent;
+      try {
+        spreadContent = JSON.parse(contentResponse);
+      } catch (error) {
+        console.warn(`Failed to parse content for spread ${index + 1} as JSON:`, error);
+        // Try to extract JSON with regex
+        const jsonMatch = contentResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            spreadContent = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.error(`Failed to extract JSON for spread ${index + 1}:`, e);
+            // Create a basic object as fallback
+            spreadContent = {
+              text: `Spread ${index + 1} text could not be generated.`,
+              imagePrompt: `Child character in a generic scene, spread ${index + 1}`
+            };
+          }
+        } else {
+          // Create a basic object as fallback
+          spreadContent = {
+            text: `Spread ${index + 1} text could not be generated.`,
+            imagePrompt: `Child character in a generic scene, spread ${index + 1}`
+          };
+        }
+      }
+      
+      // Add necessary fields for the page
+      return {
+        id: `page-${index + 1}`,
+        type: 'content',
+        text: spreadContent.text || `Spread ${index + 1}`,
+        characterPrompt: mainCharacter.name, // Add character name to prompt
+        scenePrompt: spreadContent.imagePrompt || `Child character in a scene, spread ${index + 1}`,
+        spreadIndex: index
+      };
+    });
+    
+    // Wait for all pages to be generated
+    const generatedPages = await Promise.all(pagesPromises);
+    console.log('[generateStoryPages] All pages generated successfully:', generatedPages.length);
+    
+    return generatedPages;
+  } catch (error) {
+    console.error('Error generating story pages:', error);
+    throw new Error(`Failed to generate story: ${error.message}`);
+  }
+};
+
+/**
+ * Generates the prompt for the book cover
+ * @param {Object} storyData - The story data from the wizard state
+ * @returns {Promise<Object>} - Object with characterPrompt and scenePrompt for the cover
+ */
+const generateCoverPrompt = async (storyData) => {
+  console.log('[generateCoverPrompt] Generating cover prompt for:', storyData.title);
+  
+  try {
+    const characters = storyData.bookCharacters || [];
+    const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
+    
+    if (!mainCharacter) {
+      throw new Error('Main character is required to generate a cover');
+    }
+    
+    const title = storyData.title || `A Story About ${mainCharacter.name}`;
+    const category = storyData.category || 'adventure';
+    
+    // Build a basic prompt for the cover
+    const coverPrompt = `
+    Generate a cover image prompt for a children's book titled "${title}".
+    The main character is ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}.
+    The book is about ${category}.
+    
+    The prompt should describe an appealing cover image showing the main character in an engaging pose or scene that represents the theme of the book.
+    
+    Return a JSON object with:
+    {
+      "characterPrompt": "How the character should appear on the cover",
+      "scenePrompt": "The background/scene setting for the cover"
+    }
+    `;
+    
+    const coverResponse = await openaiService.generateContent({
+      prompt: coverPrompt,
+      temperature: 0.7,
+      max_tokens: 400
+    });
+    
+    // Parse the response
+    let coverContent;
+    try {
+      coverContent = JSON.parse(coverResponse);
+    } catch (error) {
+      console.warn('Failed to parse cover prompt as JSON:', error);
+      // Try to extract JSON with regex
+      const jsonMatch = coverResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          coverContent = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.error('Failed to extract JSON for cover prompt:', e);
+          // Create a basic object as fallback
+          coverContent = {
+            characterPrompt: `${mainCharacter.name}, the main character of the story`,
+            scenePrompt: `Colorful and engaging cover for a children's book about ${category}`
+          };
+        }
+      } else {
+        // Create a basic object as fallback
+        coverContent = {
+          characterPrompt: `${mainCharacter.name}, the main character of the story`,
+          scenePrompt: `Colorful and engaging cover for a children's book about ${category}`
+        };
+      }
+    }
+    
+    return {
+      characterPrompt: coverContent.characterPrompt || `${mainCharacter.name}, the main character of the story`,
+      scenePrompt: coverContent.scenePrompt || `Colorful and engaging cover for a children's book about ${category}`
+    };
+  } catch (error) {
+    console.error('Error generating cover prompt:', error);
+    throw new Error(`Failed to generate cover prompt: ${error.message}`);
+  }
+};
+
 const GenerateBookStep = () => {
   const {
     wizardState,

@@ -468,3 +468,42 @@ export const generateSpreadContentFromPrompt = async (prompt) => {
 
 // Optional: Add any other OpenAI related functions you might need here
 // e.g., function for suggesting titles, themes, etc.
+
+/**
+ * Simple utility function to generate content with OpenAI
+ * @param {Object} options - Options for content generation
+ * @param {string} options.prompt - The prompt to send to OpenAI
+ * @param {number} options.temperature - Temperature setting (0-1)
+ * @param {number} options.max_tokens - Maximum tokens to generate
+ * @returns {Promise<string>} - The generated content
+ */
+export const generateContent = async (options) => {
+  const { prompt, temperature = 0.7, max_tokens = 1000 } = options;
+  
+  if (!apiKey) {
+    console.warn('OpenAI API key missing. Returning mock content.');
+    return JSON.stringify({ text: "Sample text for this page.", imagePrompt: "Sample image prompt." });
+  }
+  
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o", 
+      messages: [
+        { role: "system", content: "You are a creative children's book author." },
+        { role: "user", content: prompt }
+      ],
+      temperature,
+      max_tokens
+    });
+    
+    const response = completion.choices[0]?.message?.content;
+    if (!response) {
+      throw new Error('No content received from OpenAI.');
+    }
+    
+    return response;
+  } catch (error) {
+    console.error("Error calling OpenAI API:", error);
+    throw new Error(`Failed to generate content: ${error.message}`);
+  }
+};
