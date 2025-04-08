@@ -329,6 +329,12 @@ const STYLE_CODE_MAP = {
   'Delicate Aquarelle': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de'
 };
 
+// Define 'je' function before using it
+const je = (styleName) => {
+  // Example logic: return the style name as is or perform some transformation
+  return styleName;
+};
+
 // Update the component to display thumbnails
 const ArtStyleCard = ({ styleName, styleData }) => (
   <div className="art-style-card">
