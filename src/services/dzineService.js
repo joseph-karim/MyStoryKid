@@ -1122,3 +1122,44 @@ export const fetchDzineStyles = async () => {
     throw error;
   }
 };
+
+// 7. Query Task Result (Add export)
+export const getTaskResult = async (taskId) => {
+  if (!taskId) {
+    console.error('Missing taskId for getTaskResult');
+    throw new Error('Task ID is required to query results.');
+  }
+  
+  // Use the correct endpoint from the documentation
+  const endpoint = '/query_task_result';
+  console.log(`Calling documented endpoint: POST ${endpoint}`);
+  
+  try {
+    const response = await fetchDzine(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ task_id: taskId }),
+    });
+    
+    // Log the raw response for debugging
+    console.log('Raw response from query_task_result API:', JSON.stringify(response));
+
+    // Check the expected success structure based on docs (code 200, data.status)
+    if (response && response.code === 200 && response.data) {
+       console.log(`Task ${taskId} result query successful. Status: ${response.data.status}`);
+      return response; // Return the full response object which includes the 'data' field
+    } else if (response && response.code !== 200) {
+        // Handle API-level errors reported in the response body
+        console.error(`API error in query_task_result response (Code: ${response.code}): ${response.msg}`);
+         throw new Error(`API error querying task result (Code: ${response.code}): ${response.msg || 'Unknown API error'}`);
+    } else {
+      // Handle unexpected structure
+      console.error('Invalid or unexpected response structure from query_task_result API:', response);
+      throw new Error('Unexpected response structure when querying task result.');
+    }
+  } catch (error) {
+     // Catch fetchDzine errors or other exceptions
+     console.error(`Error fetching task result for ${taskId}:`, error);
+     // Re-throw the error for the caller (polling logic) to handle
+     throw error; 
+  }
+};
