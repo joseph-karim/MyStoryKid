@@ -115,7 +115,7 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
       },
       { 
         id: 'skyborne_realm',
-        apiCode: STYLE_CODE_MAP['Skyborne Realm'],
+        apiCode: STYLE_CODE_MAP['Skyborn Realm'],
         title: 'Skyborne Realm',
         description: 'Majestic, airy illustrations with a sense of height and wonder'
       },
@@ -279,21 +279,54 @@ export const ART_STYLE_CATEGORIES_STRUCTURE = [
   }
 ];
 
-// Add thumbnail URLs to the STYLE_CODE_MAP
+// Define STYLE_CODE_MAP before using it
 const STYLE_CODE_MAP = {
-  'Storytime Whimsy': {
-    code: 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
-    thumbnail: 'https://example.com/thumbnails/storytime_whimsy.jpg'
-  },
-  'Fantasy Hero': {
-    code: 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
-    thumbnail: 'https://example.com/thumbnails/fantasy_hero.jpg'
-  },
-  'Soft Radiance': {
-    code: 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
-    thumbnail: 'https://example.com/thumbnails/soft_radiance.jpg'
-  },
-  // Add more styles with thumbnails
+  'Storytime Whimsy': 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
+  'Fantasy Hero': 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
+  'Soft Radiance': 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
+  'Paper Cutout': 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
+  'Joyful Clay': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Playful Enamel': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Ceramic Lifelike': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Colourful Felt': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  'Sketch Elegance': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Skyborn Realm': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+  'Aquarelle Life': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
+  'Vivid Tableaux': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
+  'Everything Kawaii': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
+  'Dreamy 3D': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Cutie 3D': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Shimmering Glow': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Surreal Iridescence': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  'Golden Hour': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Inked Realism': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+  'Magic Portrait': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
+  'Warm Portrait': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
+  'Retro Noir Chromatics': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
+  'Vintage Engraving': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Ancient China': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Graffiti Splash': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Pleasantly Warm': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  '8-Bit Arcade': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Impressionist': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+  'Zen Spirit': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
+  'Vibrant Whimsy': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
+  'Whimsical Brushwork': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
+  'Bedtime Story': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Line & Wash': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Nouveau Classic': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Innocent CUtie': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  'Glossy Elegance': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Memphis Illustration': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
+  'Minimalist Cutesy': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
+  'Watercolor Whimsy': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
+  'Sketchbook Sticker': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
+  'Vibrant Impasto': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
+  'Dreamy Spectrum': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
+  'Enhanced Elegance': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
+  'Cheerful Storybook': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
+  'Starlit Fantasy': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
+  'Delicate Aquarelle': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de'
 };
 
 // Update the component to display thumbnails
