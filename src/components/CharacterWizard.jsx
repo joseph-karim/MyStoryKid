@@ -878,10 +878,25 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      setIsGenerating(false);
    };
    
+   // Helper function used within polling & generation
+   const updateProgressInfo = (message) => {
+     console.log(`[Progress Update] ${message}`);
+     setProgressMessage(message);
+   };
+
    // Start polling for task progress
-   const startPollingTask = (taskId, fallbackImage, generationId) => {
-     console.log(`[Polling] Starting polling for Dzine task ID: ${taskId}`);
-     setProgressMessage('Dzine task started. Waiting for preview... (0%)');
+   const startPollingTask = async (taskId, fallbackImage, generationId) => {
+     if (!taskId) {
+       console.error('[Polling] Invalid task ID for polling');
+       setError('Error: Invalid task ID received from generation service.');
+       setGenerationStatus('error');
+       setIsGenerating(false);
+       useFallbackImage(fallbackImage);
+       return;
+     }
+
+     console.log(`[Polling] Starting polling for Dzine task ID: ${taskId}, Generation ID: ${generationId}`);
+     updateProgressInfo('Dzine task started. Waiting for preview... (0%)'); 
      setIsGenerating(true);
      setGenerationStatus('processing');
 
@@ -890,15 +905,29 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      const maxAttempts = 60; // Poll for max 3 minutes (60 * 3s)
      let lastProgress = 0;
 
+     // Clear any previous interval before starting a new one
+     if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        console.log('[Polling] Cleared previous polling interval.');
+     }
+
      const pollNextTime = async () => {
+       if (activeGenerationIdRef.current !== generationId) {
+          console.log(`[Polling] Stopping poll for ${taskId} (Gen ID: ${generationId}) as a new generation (${activeGenerationIdRef.current}) has started.`);
+          clearInterval(pollIntervalRef.current);
+          return;
+       }
+
        attempts++;
        if (attempts > maxAttempts) {
          console.error(`[Polling] Task ${taskId} timed out after ${maxAttempts} attempts.`);
-         clearInterval(pollInterval);
-         setError('Preview generation timed out. Please try again.');
-         setGenerationStatus('error');
-         setIsGenerating(false);
-         useFallbackImage(fallbackImage);
+         clearInterval(pollIntervalRef.current);
+         if (activeGenerationIdRef.current === generationId) {
+             setError('Preview generation timed out. Please try again.');
+             setGenerationStatus('error');
+             setIsGenerating(false);
+             useFallbackImage(fallbackImage);
+         }
          return;
        }
 
@@ -907,507 +936,145 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          const progressData = await getTaskProgress(taskId);
          console.log(`[Polling] Progress data for ${taskId}:`, progressData);
 
+         if (activeGenerationIdRef.current !== generationId) {
+           console.log(`[Polling] Ignoring result for ${taskId} as it's from an old generation.`);
+           clearInterval(pollIntervalRef.current);
+           return;
+         }
+
          if (progressData && progressData.data) {
            const { status, progress, eta } = progressData.data;
-           lastProgress = progress || lastProgress;
-           setProgressMessage(`Generating preview... (${Math.round(lastProgress * 100)}%) Estimated time: ${eta || 'N/A'}s`);
+           lastProgress = progress !== null && progress !== undefined ? progress : lastProgress;
+           updateProgressInfo(`Generating preview... (${Math.round(lastProgress * 100)}%) Estimated time: ${eta || 'N/A'}s`); 
 
            if (status === 'SUCCESS') {
              console.log(`[Polling] Task ${taskId} status is SUCCESS. Fetching result...`);
-             clearInterval(pollInterval);
+             clearInterval(pollIntervalRef.current);
              const resultData = await getTaskResult(taskId);
              console.log(`[Polling] Task ${taskId} result:`, resultData);
+
+              if (activeGenerationIdRef.current !== generationId) {
+                 console.log(`[Polling] Ignoring SUCCESS result for ${taskId} - generation changed.`);
+                 return;
+              }
 
              if (resultData && resultData.code === 200 && resultData.data?.status === 'SUCCESS' && resultData.data?.images?.[0]) {
                const base64Preview = resultData.data.images[0];
                console.log('[Polling] Success! Received Base64 preview.');
 
-               // **** NEW: Upload Base64 to get URL ****
+               // **** UPLOAD BASE64 TO GET URL ****
                try {
-                 updateProgressInfo('Finalizing character preview...'); // Use consistent progress update
+                 updateProgressInfo('Finalizing character preview...');
                  console.log('[CharacterWizard] Uploading Dzine preview to get URL...');
                  const imageUrl = await uploadImageAndGetUrl(base64Preview);
                  console.log('[CharacterWizard] Upload complete. Received URL:', imageUrl);
 
-                 // Use the URL for preview and store update
                  setPreviewUrl(imageUrl);
                  updateCharacterPreview(characterData.id, imageUrl);
                  setGenerationStatus('success');
-                 updateProgressInfo('Character preview ready!'); // Use consistent progress update
+                 updateProgressInfo('Character preview ready!');
                  setIsGenerating(false);
 
                } catch (uploadError) {
                  console.error('[CharacterWizard] Failed to upload image preview:', uploadError);
-                 setError(`Failed to prepare image preview URL: ${uploadError.message}`);
-                 setGenerationStatus('error');
-                 setIsGenerating(false);
-                 useFallbackImage(fallbackImage);
+                 // Keep existing state updates on upload error
+                 if (activeGenerationIdRef.current === generationId) { 
+                     setError(`Failed to prepare image preview URL: ${uploadError.message}`);
+                     setGenerationStatus('error');
+                     setIsGenerating(false);
+                     useFallbackImage(fallbackImage);
+                 }
                }
-               // **** END NEW PART ****
+               // **** END UPLOAD LOGIC ****
 
              } else {
                console.error(`[Polling] Task ${taskId} result fetching failed or format unexpected.`, resultData);
-               throw new Error('Failed to retrieve valid image result after success status.');
+               if (activeGenerationIdRef.current === generationId) {
+                   setError('Failed to retrieve valid image result after success status.');
+                   setGenerationStatus('error');
+                   setIsGenerating(false);
+                   useFallbackImage(fallbackImage);
+               }
              }
 
            } else if (status === 'FAILED') {
              console.error(`[Polling] Task ${taskId} failed. Error: ${progressData.data.error_message || 'Unknown error'}`);
-             clearInterval(pollInterval);
-             setError(`Preview generation failed: ${progressData.data.error_message || 'Please try again'}`);
-             setGenerationStatus('error');
-             setIsGenerating(false);
-             useFallbackImage(fallbackImage);
-             
+             clearInterval(pollIntervalRef.current);
+              if (activeGenerationIdRef.current === generationId) {
+                 setError(`Preview generation failed: ${progressData.data.error_message || 'Please try again'}`);
+                 setGenerationStatus('error');
+                 setIsGenerating(false);
+                 useFallbackImage(fallbackImage);
+              }
+
            } else if (status === 'PENDING' || status === 'PROCESSING') {
-             // Continue polling
-             console.log(`[Polling] Task ${taskId} status: ${status}. Progress: ${progress}%. Waiting...`);
+             console.log(`[Polling] Task ${taskId} status: ${status}. Progress: ${lastProgress}%. Waiting...`);
            } else {
              console.warn(`[Polling] Task ${taskId} has unexpected status: ${status}. Stopping poll.`);
-             clearInterval(pollInterval);
-             setError(`Unexpected generation status: ${status}`);
-             setGenerationStatus('error');
-             setIsGenerating(false);
-             useFallbackImage(fallbackImage);
+             clearInterval(pollIntervalRef.current);
+              if (activeGenerationIdRef.current === generationId) {
+                 setError(`Unexpected generation status: ${status}`);
+                 setGenerationStatus('error');
+                 setIsGenerating(false);
+                 useFallbackImage(fallbackImage);
+              }
            }
          } else {
            console.warn(`[Polling] Received empty progress data for task ${taskId}. Retrying...`);
          }
        } catch (error) {
          console.error(`[Polling] Error during polling task ${taskId} (Attempt ${attempts}):`, error);
-         // Don't stop polling immediately on error, allow retries
          if (attempts >= maxAttempts) {
-           clearInterval(pollInterval);
-           setError(`Polling failed after multiple attempts: ${error.message}`);
-           setGenerationStatus('error');
-           setIsGenerating(false);
-           useFallbackImage(fallbackImage);
+           clearInterval(pollIntervalRef.current);
+           if (activeGenerationIdRef.current === generationId) {
+               setError(`Polling failed after multiple attempts: ${error.message}`);
+               setGenerationStatus('error');
+               setIsGenerating(false);
+               useFallbackImage(fallbackImage);
+           }
          }
        }
-     };
+     }; // End of pollNextTime definition
 
-     // Start the polling immediately and then set the interval
      pollNextTime();
-     pollInterval = setInterval(pollNextTime, 3000); // Poll every 3 seconds
-   };
-   
-   // Helper function to extract image URLs from response
-   const extractImageUrls = (obj, prefix = '') => {
-     let urls = [];
-     if (typeof obj !== 'object' || obj === null) return urls;
-     
-     Object.keys(obj).forEach(key => {
-       const path = prefix ? `${prefix}.${key}` : key;
-       if (typeof obj[key] === 'string' && 
-           (obj[key].includes('.png') || 
-            obj[key].includes('.jpg') || 
-            obj[key].includes('.jpeg') || 
-            obj[key].includes('.webp'))) {
-         console.log(`Found potential image URL at ${path}:`, obj[key]);
-         urls.push(obj[key]);
-       } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-         urls = [...urls, ...extractImageUrls(obj[key], path)];
-       }
-     });
-     return urls;
-   };
-   
-   // Helper function to create a colored placeholder image as a data URL
-   const createColorPlaceholder = (bgColor, text) => {
-     // Create a simple canvas-based placeholder
-     const canvas = document.createElement('canvas');
-     canvas.width = 200;
-     canvas.height = 200;
-     const ctx = canvas.getContext('2d');
-     
-     // Fill background
-     ctx.fillStyle = bgColor;
-     ctx.fillRect(0, 0, canvas.width, canvas.height);
-     
-     // Add text
-     ctx.fillStyle = getContrastColor(bgColor);
-     ctx.font = '18px sans-serif';
-     ctx.textAlign = 'center';
-     ctx.textBaseline = 'middle';
-     
-     // Wrap text
-     const words = text.split(' ');
-     let line = '';
-     let y = 100;
-     const lineHeight = 24;
-     const maxLines = 3;
-     let lines = [];
-     
-     for (let i = 0; i < words.length; i++) {
-       const testLine = line + words[i] + ' ';
-       if (ctx.measureText(testLine).width < 180) {
-         line = testLine;
-       } else {
-         lines.push(line);
-         line = words[i] + ' ';
-       }
-     }
-     lines.push(line);
-     
-     // Only show up to maxLines
-     lines = lines.slice(0, maxLines);
-     
-     // Center the lines vertically
-     const startY = y - ((lines.length - 1) * lineHeight) / 2;
-     
-     // Draw each line
-     lines.forEach((line, i) => {
-       ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
-     });
-     
-     return canvas.toDataURL('image/png');
-   };
-   
-   // Helper to generate a color from a string
-   const stringToColor = (str) => {
-     let hash = 0;
-     for (let i = 0; i < str.length; i++) {
-       hash = str.charCodeAt(i) + ((hash << 5) - hash);
-     }
-     let color = '#';
-     for (let i = 0; i < 3; i++) {
-       const value = (hash >> (i * 8)) & 0xFF;
-       color += ('00' + value.toString(16)).substr(-2);
-     }
-     return color;
-   };
-   
-   // Helper to get contrasting text color (black or white) based on background
-   const getContrastColor = (hexColor) => {
-     // Convert hex to RGB
-     const r = parseInt(hexColor.substr(1, 2), 16);
-     const g = parseInt(hexColor.substr(3, 2), 16);
-     const b = parseInt(hexColor.substr(5, 2), 16);
-     
-     // Calculate luminance
-     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-     
-     // Return black or white based on luminance
-     return luminance > 0.5 ? '#000000' : '#FFFFFF';
-   };
-   
-   // Image Preview Modal Component
-   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
-     if (!isOpen) return null;
-     
-     return (
-       <AnimatePresence>
-         {isOpen && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
-             <motion.div
-               initial={{ opacity: 0, scale: 0.8 }}
-               animate={{ opacity: 1, scale: 1 }}
-               exit={{ opacity: 0, scale: 0.8 }}
-               className="relative max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg shadow-xl"
-             >
-               <button
-                 onClick={onClose}
-                 className="absolute top-2 right-2 z-10 p-2 bg-white bg-opacity-70 rounded-full text-gray-800 hover:bg-opacity-100"
-               >
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                 </svg>
-               </button>
-               <div className="overflow-hidden flex items-center justify-center">
-                 <img
-                   src={imageUrl}
-                   alt="Character Preview"
-                   className="max-w-full max-h-[85vh] object-contain shadow-xl"
-                         />
-                       </div>
-             </motion.div>
-                  </div>
-                )}
-       </AnimatePresence>
-     );
-   };
-   
-   // Rename renderPreviewStep to renderConfirmStep
-   const renderConfirmStep = () => {
-     console.log('[Render] renderConfirmStep');
-     return (
-       <div className="space-y-6 animate-fadeIn">
-         <h2 className="text-2xl font-bold mb-4">Preview Character</h2>
-         
-         {isGenerating ? (
-           <div className="flex flex-col items-center justify-center py-10">
-             <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
-             <p className="text-gray-600">{progressMessage || 'Creating your character...'}</p>
-           </div>
-         ) : characterData.stylePreview ? (
-           <div className="bg-white rounded-lg shadow overflow-hidden">
-             <div className="p-4 flex flex-col items-center">
-               <div className="w-64 h-64 overflow-hidden rounded-lg mb-4 border-2 border-gray-200 shadow-inner">
-                 <div className="relative w-full h-full">
-                   <div className="absolute inset-0 bg-white opacity-50"></div>
-                   <img 
-                     src={characterData.stylePreview} 
-                     alt={characterData.name} 
-                     className="w-full h-full object-contain"
-                   />
-                 </div>
-               </div>
-               
-               <h3 className="text-xl font-bold">{characterData.name}</h3>
-               <p className="text-gray-600">
-                 {characterData.age && `${characterData.age} years old • `}
-                 {characterData.gender && `${characterData.gender} • `}
-                 {characterData.type}
-               </p>
-               
-               {characterData.useTextToImage && characterData.generationPrompt && (
-                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md">
-                   <p className="text-sm italic text-gray-600">{characterData.generationPrompt}</p>
-                 </div>
-               )}
-             </div>
-           </div>
-         ) : (
-           <div className="bg-gray-100 rounded-lg p-6 text-center">
-             <p className="text-gray-600">No preview available. Please go back and select an art style.</p>
-           </div>
-         )}
-         
-         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-           <button
-             onClick={handleBack}
-             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-           >
-             Back
-           </button>
-           <button
-             onClick={handleComplete}
-             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.stylePreview || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-             disabled={!characterData.stylePreview || isGenerating}
-           >
-             Complete Character
-           </button>
-         </div>
-       </div>
-     );
-   };
-   
-   // Update generateCharacterImage signature to accept isHuman flag
-   const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
-     // Style validation
-     if (!styleApiCode || !styleApiCode.startsWith('Style-')) {
-       console.error('Invalid or missing style API code passed to generateCharacterImage:', styleApiCode);
-       setError('An invalid art style was specified.');
-       setIsGenerating(false);
-       setProgressMessage('Error: Invalid style.');
-       return; 
-     }
-     
-     const generationId = uuidv4(); 
-     pollingSessionRef.current[generationId] = { stopPolling: false }; 
-     let operationType = ''; // <<< Declare operationType outside the try block
-     
-     try {
-       setIsGenerating(true);
-       setProgressMessage('Starting generation...');
-       
-       let taskResponse;
-       // let operationType = ''; // <<< Remove declaration from inside try block
-       
-       if (characterData.useTextToImage) {
-         // --- Text-to-Image Logic --- 
-         operationType = 'Text-to-Image';
-         console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
-         
-         if (!prompt) {
-           throw new Error('Description (prompt) is required for Text-to-Image.');
-         }
-         
-         // Enhance prompt slightly if needed (can be more elaborate)
-         let enhancedPrompt = prompt;
-         if (characterData.name && !enhancedPrompt.includes(characterData.name)) {
-             enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
-         }
-         enhancedPrompt += ", high quality illustration"; // Add quality modifier
-         
-         const payload = {
-           prompt: enhancedPrompt.substring(0, 800), 
-           style_code: styleApiCode,
-           // Add other Txt2Img specific parameters from docs
-           style_intensity: characterData.style_intensity ?? 1.0, 
-           quality_mode: characterData.quality_mode ?? 1, 
-           target_h: 1024, // Example size, adjust as needed
-           target_w: 1024,
-           generate_slots: characterData.generate_slots ?? [1, 1], 
-           output_format: 'webp',
-           seed: Math.floor(Math.random() * 2147483647) + 1,
-           negative_prompt: characterData.negative_prompt || 'low quality, blurry, bad anatomy' // Txt2Img specific negative?
-         };
-         
-         console.log('Txt2Img Payload:', JSON.stringify(payload, null, 2));
-         taskResponse = await createTxt2ImgTask(payload);
-         
-       } else {
-         // --- Image-to-Image Logic --- 
-         operationType = 'Image-to-Image';
-         console.log(`[API CALL] Generating ${operationType} with Style Code:`, styleApiCode);
-         
-         if (!characterData.photoUrl) {
-           throw new Error('Photo is required for Image-to-Image.');
-         }
+     pollIntervalRef.current = setInterval(pollNextTime, 3000);
+   }; // End of startPollingTask function definition
 
-         // Use photoUrl directly for base64_data
-         if (!characterData.photoUrl.startsWith('data:image')) {
-            throw new Error('Invalid photo data format for Image-to-Image.');
-         }
-         
-         // Construct prompt for Img2Img (can be simpler)
-         const imgPrompt = prompt || `Character portrait of ${characterData.name || 'person'} in the selected style`;
-
-         const payload = {
-           style_code: styleApiCode, 
-           prompt: imgPrompt.substring(0, 800),
-           images: [{ base64_data: characterData.photoUrl }],
-           color_match: characterData.color_match ?? 0, 
-           style_intensity: characterData.style_intensity ?? 1.0, 
-           structure_match: characterData.structure_match ?? 0.8, 
-           quality_mode: characterData.quality_mode ?? 1, 
-           generate_slots: characterData.generate_slots ?? [1, 1], 
-           output_format: 'webp',
-           negative_prompt: characterData.negative_prompt || 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
-           seed: Math.floor(Math.random() * 2147483647) + 1,
-         };
-         
-         console.log('Img2Img Payload (excluding base64):', JSON.stringify({
-              ...payload,
-              images: [{ base64_data: 'base64_data_present' }]
-            }, null, 2));
-         taskResponse = await createImg2ImgTask(payload, isHumanCharacter);
-       }
-       
-       // --- Common Task Handling --- 
-       if (!taskResponse || !taskResponse.task_id) {
-         throw new Error(`Failed to create ${operationType} task. No task ID received.`);
-       }
-       
-       const taskId = taskResponse.task_id;
-       console.log(`${operationType} Task created with ID:`, taskId);
-       
-       // Use photo as fallback for img2img, generate placeholder for txt2img
-       const actualFallback = characterData.useTextToImage 
-           ? createColorPlaceholder(stringToColor(characterData.name || 'fallback'), characterData.name || 'Generating...') 
-           : fallbackImage; 
-           
-       await startPollingTask(taskId, actualFallback, generationId);
-       
-     } catch (error) {
-       console.error(`API error during ${operationType || 'generation'} process:`, error);
-       setIsGenerating(false);
-       
-       // Simplified error handling - No retry, just show the error
-       // The specific "Style Invalid" case is less likely now if style is always forced,
-       // but we keep the check just in case.
-       if (error.message && error.message.includes('108005') && error.message.toLowerCase().includes('style are invalid')) {
-         const userErrorMessage = `The selected style (${styleApiCode}) cannot be used. Please inform the administrator.`;
-         setError(userErrorMessage);
-         setProgressMessage('Error: Invalid style specified'); 
-       } else {
-         setError(`Generation failed: ${error.message}. Please try again or contact support.`);
-         setProgressMessage('Error occurred during generation');
-       }
-     }
-   };
-   
-   // Update tab rendering logic for 3 steps
-   const stepsConfig = [
-     { index: 1, title: 'Details' },
-     { index: 2, title: 'Photo & Style' }, 
-     { index: 3, title: 'Confirm' }    
-   ];
-   
-   // Update any places where we need to display the style name
-   const getStyleDisplayName = (styleCode) => {
-     return getStyleNameFromCode(styleCode);
-   };
-   
-   // Function to poll for task completion
-   const pollForTaskResult = async (taskId, attempt = 1) => {
-     // ... (polling logic remains the same until success) ...
-
-          if (status === 'SUCCESS' && resultData && resultData.images && resultData.images[0]) {
-            console.log(`[CharacterWizard] Dzine task ${taskId} succeeded.`);
-            
-            // **** MODIFIED PART: Upload Base64 and get URL ****
-            const base64Preview = resultData.images[0]; // Assuming this is 'data:image/...'
-            
-            if (!base64Preview || !base64Preview.startsWith('data:image')) {
-              throw new Error('Dzine task succeeded but returned invalid image data.');
-            }
-            
-            try {
-              console.log('[CharacterWizard] Uploading Dzine preview to get URL...');
-              updateProgressInfo('Finalizing character preview...'); // Update UI
-              const imageUrl = await uploadImageAndGetUrl(base64Preview);
-              console.log('[CharacterWizard] Upload complete. Received URL:', imageUrl);
-              
-              // Now update the store with the URL, not the Base64
-              updateCharacterPreview(characterData.id, imageUrl); 
-              setPreviewUrl(imageUrl); // Update local state for display
-              setGenerationStatus('success');
-              updateProgressInfo('Character preview ready!');
-              
-            } catch (uploadError) {
-              console.error('[CharacterWizard] Failed to upload image preview:', uploadError);
-              throw new Error(`Failed to prepare image preview URL: ${uploadError.message}`);
-            }
-            // **** END MODIFIED PART ****
-            
-          } else if (status === 'FAILED') {
-            // ... (failure handling remains the same) ...
+   // ... (handleGeneratePreview function - update the call to pollForTaskResult if needed) ...
+   const handleGeneratePreview = async () => {
+       // ... (existing setup to call createImg2ImgTask) ...
+       try {
+          // ... (call createImg2ImgTask and get taskId) ...
+          
+          // Start polling with the received task ID
+          if (taskId) {
+             pollForTaskResult(taskId);
+          } else {
+             throw new Error('Task ID not received from Dzine API.');
           }
-        } else {
-          // ... (progress handling remains the same) ...
-        }
-      } catch (error) {
-        // ... (error handling remains the same) ...
-      }
-    }, 3000); // Poll every 3 seconds
-  };
+       } catch (error) {
+          // ... (error handling) ...
+       }
+   };
 
-  // ... (handleGeneratePreview function - update the call to pollForTaskResult if needed) ...
-  const handleGeneratePreview = async () => {
-      // ... (existing setup to call createImg2ImgTask) ...
-      try {
-         // ... (call createImg2ImgTask and get taskId) ...
-         
-         // Start polling with the received task ID
-         if (taskId) {
-            pollForTaskResult(taskId);
-         } else {
-            throw new Error('Task ID not received from Dzine API.');
-         }
-      } catch (error) {
-         // ... (error handling) ...
-      }
-  };
-
-  // ... (rest of the component, including onComplete which uses the store state) ...
-  const onComplete = () => {
-      console.log('[CharacterWizard] Invoking completion callback...');
-      // Get the potentially updated character data from the store
-      const currentStoreCharacter = useBookStore.getState().wizardState.storyData.bookCharacters.find(c => c.id === characterData.id);
-      if (currentStoreCharacter) {
-          console.log('[CharacterWizard] Character completed:', currentStoreCharacter);
-          completeCharacterCreation(currentStoreCharacter);
-      } else {
-          console.error('[CharacterWizard] Could not find updated character in store on completion');
-          // Fallback to local state or handle error
-          completeCharacterCreation({ 
-             ...characterData, 
-             stylePreview: previewUrl, // Use local previewUrl as fallback
-             // photoUrl is handled by the upload input 
-          });
-      }
-  };
+   // ... (rest of the component, including onComplete which uses the store state) ...
+   const onComplete = () => {
+       console.log('[CharacterWizard] Invoking completion callback...');
+       // Get the potentially updated character data from the store
+       const currentStoreCharacter = useBookStore.getState().wizardState.storyData.bookCharacters.find(c => c.id === characterData.id);
+       if (currentStoreCharacter) {
+           console.log('[CharacterWizard] Character completed:', currentStoreCharacter);
+           completeCharacterCreation(currentStoreCharacter);
+       } else {
+           console.error('[CharacterWizard] Could not find updated character in store on completion');
+           // Fallback to local state or handle error
+           completeCharacterCreation({ 
+              ...characterData, 
+              stylePreview: previewUrl, // Use local previewUrl as fallback
+              // photoUrl is handled by the upload input 
+           });
+       }
+   };
    
    return (
      <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
