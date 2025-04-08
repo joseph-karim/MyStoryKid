@@ -8,7 +8,8 @@ import {
   getTaskProgress, 
   checkApiAccess, 
   getDzineStyles,
-  getStyleCode 
+  getStyleCode,
+  getKeywordsForDzineStyle 
 } from '../services/dzineService';
 
 // Initialize form state with defaults
@@ -373,6 +374,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       // Check for forced art style or user selected style
       if (forcedArtStyle) {
         console.log('[CharacterWizard] Using forced art style:', forcedArtStyle);
+        console.log('[CharacterWizard] Style keywords:', getKeywordsForDzineStyle(forcedArtStyle));
         // Update the character data with the forced art style
         setCharacterData(prevData => ({
           ...prevData,
@@ -810,43 +812,56 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    
    // Update the generateCharacterPreview function signature
    const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
-     // Clear any previous errors
-     setError('');
+     try {
+       console.log('[CharacterWizard] Generating preview with style:', styleApiCode);
+       console.log('[CharacterWizard] Style keywords:', getKeywordsForDzineStyle(styleApiCode));
+       // Log that we're setting state accordingly
+       setIsGenerating(true);
+       setProgressMessage('Creating image with selected style...');
 
-     // If we've already attempted generation, skip to avoid multiple attempts
-     if (generationAttempted) {
-       console.log('[GeneratePreview] Generation already attempted, skipping duplicate call');
-       setStep(3); // Just advance to confirm step
-       return;
+       // Clear any previous errors
+       setError('');
+
+       // If we've already attempted generation, skip to avoid multiple attempts
+       if (generationAttempted) {
+         console.log('[GeneratePreview] Generation already attempted, skipping duplicate call');
+         setStep(3); // Just advance to confirm step
+         return;
+       }
+
+       // Use the forced art style if provided, otherwise use the selected style
+       const styleToUse = forcedArtStyle || styleApiCode;
+       console.log('[GeneratePreview] Using style code:', styleToUse);
+       
+       if (!styleToUse) {
+         console.error('[GeneratePreview] No style provided for character preview generation');
+         setError('Please select an art style for your character.');
+         return;
+       }
+
+       // Use either the text description or generate a prompt from character data
+       let promptText = '';
+       if (characterData.useTextToImage && characterData.generationPrompt) {
+         promptText = characterData.generationPrompt;
+       } else {
+         // Build a prompt from character attributes
+         promptText = `Character portrait of ${characterData.name}, ${characterData.age} years old, ${characterData.gender || 'person'}, ${characterData.traits?.join(', ') || 'friendly'}`;
+       }
+
+       // Create a fallback image (placeholder) based on the character's name
+       const fallbackImageBase64 = createColorPlaceholder(
+         stringToColor(characterData.name || 'Character'), 
+         characterData.name || 'Character'
+       );
+       
+       setGenerationAttempted(true);
+       await generateCharacterImage(styleToUse, promptText, fallbackImageBase64, isHumanCharacter);
+     } catch (error) {
+       console.error(`API error during preview generation:`, error);
+       setIsGenerating(false);
+       setError(`Generation failed: ${error.message}. Please try again or contact support.`);
+       setProgressMessage('Error occurred during generation');
      }
-
-     // Use the forced art style if provided, otherwise use the selected style
-     const styleToUse = forcedArtStyle || styleApiCode;
-     console.log('[GeneratePreview] Using style code:', styleToUse);
-     
-     if (!styleToUse) {
-       console.error('[GeneratePreview] No style provided for character preview generation');
-       setError('Please select an art style for your character.');
-       return;
-     }
-
-     // Use either the text description or generate a prompt from character data
-     let promptText = '';
-     if (characterData.useTextToImage && characterData.generationPrompt) {
-       promptText = characterData.generationPrompt;
-     } else {
-       // Build a prompt from character attributes
-       promptText = `Character portrait of ${characterData.name}, ${characterData.age} years old, ${characterData.gender || 'person'}, ${characterData.traits?.join(', ') || 'friendly'}`;
-     }
-
-     // Create a fallback image (placeholder) based on the character's name
-     const fallbackImageBase64 = createColorPlaceholder(
-       stringToColor(characterData.name || 'Character'), 
-       characterData.name || 'Character'
-     );
-     
-     setGenerationAttempted(true);
-     await generateCharacterImage(styleToUse, promptText, fallbackImageBase64, isHumanCharacter);
    };
    
    // Helper function to use fallback image

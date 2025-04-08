@@ -260,6 +260,11 @@ const GenerateBookStep = () => {
   
   const generateBook = async () => {
     try {
+      // Add extra debugging for art style information
+      console.log("[GenerateBook] Art style information check:");
+      console.log("  - Art Style Code:", bookDetails.artStyleCode);
+      console.log("  - Selected Style Keywords:", bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode));
+      
       // ---------- STEP 1: Generate story outline ----------
       setGenerationState('generatingOutline');
       setProgressInfo('Creating your book outline...');
@@ -326,7 +331,9 @@ const GenerateBookStep = () => {
       let referenceBase64 = mainCharacter.stylePreview; // Get Dzine preview from character data
       const styleKeywords = bookDetails.selectedStyleKeywords || getKeywordsForDzineStyle(bookDetails.artStyleCode); // Get keywords
       
-      console.log("Using Segmind Style Keywords:", styleKeywords);
+      console.log("[GenerateBook] Using for Segmind generation:");
+      console.log("  - Art Style Code:", bookDetails.artStyleCode);
+      console.log("  - Style Keywords:", styleKeywords);
       // -------- DEBUG LOG --------
       console.log("[Segmind Prep] Raw stylePreview from character:", referenceBase64); 
       console.log("[Segmind Prep] Type of stylePreview:", typeof referenceBase64);
