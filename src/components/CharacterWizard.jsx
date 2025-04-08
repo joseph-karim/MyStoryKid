@@ -205,21 +205,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   
   // Character types
   const CHARACTER_TYPES = [
-    { id: 'child', name: 'Child', description: 'The main character - based on your child' },
-    { id: 'sibling', name: 'Sibling', description: 'Brother or sister' },
-    { id: 'friend', name: 'Friend', description: 'A friend to join the adventure' },
-    { id: 'magical', name: 'Magical Character', description: 'A fairy, wizard or magical creature' },
-    { id: 'animal', name: 'Animal', description: 'A pet or wild animal companion' },
+    { id: 'child', name: 'Main Character', description: 'The main character of your story' },
   ];
   
-  // Character roles (imported from the roles defined in CharactersStep)
+  // Character roles (simplified to just main character)
   const CHARACTER_ROLES = [
-    { id: 'main', label: 'Main Character', description: 'The hero of the story (usually your child)' },
-    { id: 'sidekick', label: 'Sidekick', description: 'Friend or companion who helps the main character' },
-    { id: 'mentor', label: 'Mentor', description: 'Wise character who guides the main character' },
-    { id: 'pet', label: 'Pet', description: 'Animal companion or pet' },
-    { id: 'magical_friend', label: 'Magical Friend', description: 'Enchanted or fantasy character with special abilities' },
-    { id: 'custom', label: 'Custom Role', description: 'Define your own character role in the story' }
+    { id: 'main', label: 'Main Character', description: 'The hero of the story' },
   ];
   
   const handleChange = (field, value) => {
@@ -534,10 +525,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     setShowImagePreview(false);
   };
   
-  // Step 1: Basic character details
+  // Step 1: Basic character details (simplified)
   const renderDetailsStep = () => {
     console.log('[Render] renderDetailsStep');
-  return (
+    return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
@@ -555,82 +546,65 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter character name"
               required
-                        />
-                      </div>
+            />
+          </div>
 
-          {/* Character Type Radio Buttons */}
-          <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">Character Type</label>
-                  <div className="space-y-2">
-               {CHARACTER_TYPES.map((charType) => (
-                 <label key={charType.id} className="flex items-center space-x-2 text-sm">
-                        <input
-                          type="radio"
-                          name="characterType"
-                     value={charType.id} 
-                     checked={characterData.type === charType.id} 
-                     onChange={() => {
-                       handleChange('type', charType.id);
-                       // Automatically update isHuman based on the new type
-                       const isTypeHuman = !['pet', 'magical', 'animal'].includes(charType.id);
-                       handleChange('isHuman', isTypeHuman);
-                     }}
-                     className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                   />
-                   <span>{charType.name} <span className="text-gray-500">({charType.description})</span></span>
-                      </label>
-                    ))}
-                </div>
-              </div>
-              
+          {/* Set type to 'child' by default - no need to show options */}
+          <input 
+            type="hidden" 
+            name="characterType" 
+            value="child" 
+            onChange={() => handleChange('type', 'child')}
+          />
+
           {/* --- Is Human Toggle --- */}
           <div className="mb-4 pt-2 border-t border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Use Face Matching?</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Character Type</label>
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2 text-sm">
-                  <input
+                <input
                   type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === true} 
                   onChange={() => handleChange('isHuman', true)} 
                   className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
-                <span>Yes (Try to keep facial features)</span>
+                <span>Human Character</span>
               </label>
               <label className="flex items-center space-x-2 text-sm">
-                  <input
-                          type="radio" 
+                <input
+                  type="radio" 
                   name="isHuman" 
                   checked={characterData.isHuman === false} 
                   onChange={() => handleChange('isHuman', false)} 
                   className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
-                <span>No (e.g., Pet, Creature)</span>
-                      </label>
-                </div>
-            <p className="text-xs text-gray-500 mt-1">Select 'No' for pets or fantasy creatures if face matching causes issues.</p>
-                </div>
+                <span>Creature/Animal</span>
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Select 'Creature/Animal' if this character isn't human.</p>
+          </div>
           {/* --- END: Is Human Toggle --- */}
 
           {/* Age and Gender */}
           <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div>
               <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
                 Age
               </label>
-                        <input
-                    type="text"
+              <input
+                type="text"
                 id="age"
                 value={characterData.age || ''}
                 onChange={(e) => handleChange('age', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., 5, Adult, Ancient"
+                placeholder="e.g., 5, Adult, Young"
               />
             </div>
             <div>
               <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
                 Gender (Optional)
-                      </label>
+              </label>
               <select
                 id="gender"
                 value={characterData.gender || ''}
@@ -643,22 +617,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <option value="Non-binary">Non-binary</option>
                 <option value="Other">Other/Not applicable</option>
               </select>
-                  </div>
-                </div>
-                
             </div>
+          </div>
+        </div>
             
         {/* Navigation Buttons for Step 1 */}
         <div className="flex justify-end pt-4 mt-6 border-t border-gray-200">
-              <button
-             onClick={handleNext}
-             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-                disabled={!characterData.name}
-              >
-             Next: Appearance
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={handleNext}
+            className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+            disabled={!characterData.name}
+          >
+            Next: Appearance
+          </button>
+        </div>
+      </div>
     );
   };
   
