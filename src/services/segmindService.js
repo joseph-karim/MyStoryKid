@@ -402,7 +402,46 @@ export const generateIllustrationWithWorkflow = async (referenceImageUrl, charac
         if (initialResponse.data && initialResponse.data.poll_url) {
             console.log(`Segmind Workflow started. Request ID: ${initialResponse.data.request_id}. Polling URL: ${initialResponse.data.poll_url}`);
             // Start polling for the result using the dedicated helper
-            return await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
+            const segmindImageUrl = await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
+            console.log("Segmind workflow successful. Generated image URL (from Segmind):", segmindImageUrl);
+
+            // --- New: Fetch image from Segmind URL, convert, and upload to Supabase ---
+            try {
+                console.log(`Fetching image data from Segmind URL: ${segmindImageUrl}`);
+                const imageResponse = await fetch(segmindImageUrl);
+                if (!imageResponse.ok) {
+                    throw new Error(`Failed to fetch image from Segmind URL: ${imageResponse.status} ${imageResponse.statusText}`);
+                }
+                const imageBlob = await imageResponse.blob();
+                console.log(`Fetched image as Blob (${imageBlob.size} bytes, type: ${imageBlob.type})`);
+
+                // Convert Blob to Base64 Data URL
+                const base64Image = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = (error) => {
+                        console.error("Error converting fetched blob to Base64:", error);
+                        reject(new Error("Failed to read fetched image blob."));
+                    };
+                    reader.readAsDataURL(imageBlob);
+                });
+                console.log("Converted fetched image to Base64 Data URL.");
+
+                // Upload to Supabase Storage (using the dedicated bucket)
+                const supabaseBucketName = 'generated-illustrations'; // Use dedicated bucket
+                console.log(`Uploading generated image to Supabase bucket: ${supabaseBucketName}`);
+                const supabasePublicUrl = await uploadImageToSupabase(base64Image, supabaseBucketName);
+                console.log(`Successfully uploaded to Supabase. Public URL: ${supabasePublicUrl}`);
+
+                return supabasePublicUrl; // Return the permanent Supabase URL
+
+            } catch (uploadError) {
+                console.error(`Failed to fetch/upload image from Segmind URL (${segmindImageUrl}) to Supabase:`, uploadError);
+                // Decide on fallback behavior: throw error, return Segmind URL, or return placeholder?
+                // For now, let's re-throw the error to make the failure explicit.
+                throw new Error(`Failed to process and store generated image: ${uploadError.message}`);
+            }
+            // --- End of new section ---
         } else {
             console.error("Unexpected initial response from Segmind PixelFlow:", initialResponse.data);
             throw new Error('Failed to start Segmind PixelFlow workflow. Response missing poll_url.');

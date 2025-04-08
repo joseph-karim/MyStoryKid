@@ -8,7 +8,8 @@ function LoginPage() {
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
-  const { login, setLoading, isAuthenticated } = useAuthStore();
+  const { signIn, signUp, setLoading, isAuthenticated, isLoading } = useAuthStore();
+  const [isSigningUp, setIsSigningUp] = useState(false);
   
   // Auto-redirect to dashboard since authentication is bypassed for testing
   useEffect(() => {
@@ -29,21 +30,27 @@ function LoginPage() {
     try {
       setLoading(true);
       
-      // This is a placeholder for Firebase Authentication
-      // For now, we'll simulate a successful login
-      setTimeout(() => {
-        // Mock user data
-        const userData = {
-          id: 'user123',
-          email,
-          displayName: 'John Doe',
-        };
-        
-        login(userData);
-        navigate('/dashboard');
-      }, 1000);
+      // Use the appropriate auth function based on whether user is signing up or logging in
+      const { success, error } = isSigningUp
+        ? await signUp(email, password)
+        : await signIn(email, password);
+      
+      if (!success) {
+        throw new Error(error || 'Authentication failed');
+      }
+      
+      // Check if there's a book to claim after login
+      const { completeAuthFlow } = await import('../services/anonymousAuthService');
+      const { claimed, bookId } = await completeAuthFlow();
+      
+      if (claimed) {
+        console.log(`Successfully claimed book: ${bookId}`);
+      }
+      
+      // Redirect to dashboard
+      navigate('/dashboard');
     } catch (err) {
-      setError('Login failed: ' + err.message);
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -67,8 +74,14 @@ function LoginPage() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-bold text-blue-600">MyStoryKid</Link>
-          <h2 className="mt-4 text-2xl font-semibold">Welcome Back</h2>
-          <p className="mt-2 text-gray-600">Sign in to continue to your dashboard</p>
+          <h2 className="mt-4 text-2xl font-semibold">
+            {isSigningUp ? 'Create an Account' : 'Welcome Back'}
+          </h2>
+          <p className="mt-2 text-gray-600">
+            {isSigningUp
+              ? 'Sign up to save your books and access them anytime'
+              : 'Sign in to continue to your dashboard'}
+          </p>
         </div>
         
         {error && (
@@ -117,17 +130,22 @@ function LoginPage() {
           <button
             type="submit"
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+            disabled={isLoading}
           >
-            Sign In
+            {isLoading ? 'Processing...' : (isSigningUp ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
         
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <a href="#" className="text-blue-600 hover:underline">
-              Sign up
-            </a>
+            {isSigningUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={() => setIsSigningUp(!isSigningUp)}
+              className="text-blue-600 hover:underline"
+            >
+              {isSigningUp ? 'Log in' : 'Sign up'}
+            </button>
           </p>
         </div>
       </div>

@@ -395,12 +395,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Reset character data with a new ID
     setCharacterData({
       id: uuidv4(),
-      name: '',
-      type: 'child',
-      age: '',
-      gender: '',
-      traits: [],
-      interests: [],
+    name: '',
+    type: 'child',
+    age: '',
+    gender: '',
+    traits: [],
+    interests: [],
       photoUrl: null, // Reset photoUrl
       artStyle: forcedArtStyle || null,
       stylePreview: null, // Reset stylePreview
@@ -695,7 +695,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Step 1: Basic character details (simplified)
   const renderDetailsStep = () => {
     console.log('[Render] renderDetailsStep');
-    return (
+  return (
       <div className="space-y-6 animate-fadeIn">
         <h2 className="text-2xl font-bold mb-4">Character Details</h2>
         
@@ -713,8 +713,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter character name"
               required
-            />
-          </div>
+                        />
+                      </div>
 
           {/* Set type to 'child' by default - no need to show options */}
           <input 
@@ -729,15 +729,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             <label className="block text-sm font-medium text-gray-700 mb-1">Character Type</label>
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2 text-sm">
-                <input
-                  type="radio" 
+                        <input
+                          type="radio"
                   name="isHuman" 
                   checked={characterData.isHuman === true} 
                   onChange={() => handleChange('isHuman', true)} 
                   className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
                 <span>Human Character</span>
-              </label>
+                      </label>
               <label className="flex items-center space-x-2 text-sm">
                 <input
                   type="radio" 
@@ -748,30 +748,30 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 />
                 <span>Creature/Animal</span>
               </label>
-            </div>
+                  </div>
             <p className="text-xs text-gray-500 mt-1">Select 'Creature/Animal' if this character isn't human.</p>
-          </div>
+                </div>
           {/* --- END: Is Human Toggle --- */}
-
+              
           {/* Age and Gender */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
+              <div>
               <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
                 Age
               </label>
-              <input
-                type="text"
-                id="age"
+                  <input
+                    type="text"
+                    id="age"
                 value={characterData.age || ''}
                 onChange={(e) => handleChange('age', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 placeholder="e.g., 5, Adult, Young"
-              />
-            </div>
+                  />
+                </div>
             <div>
               <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
                 Gender (Optional)
-              </label>
+                      </label>
               <select
                 id="gender"
                 value={characterData.gender || ''}
@@ -784,21 +784,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <option value="Non-binary">Non-binary</option>
                 <option value="Other">Other/Not applicable</option>
               </select>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
             
         {/* Navigation Buttons for Step 1 */}
         <div className="flex justify-end pt-4 mt-6 border-t border-gray-200">
-          <button
+              <button
             onClick={handleNext}
             className={`px-6 py-2 bg-blue-600 text-white rounded ${!characterData.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-            disabled={!characterData.name}
-          >
+                disabled={!characterData.name}
+              >
             Next: Appearance
-          </button>
-        </div>
-      </div>
+              </button>
+            </div>
+          </div>
     );
   };
   
@@ -981,9 +981,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                         console.log('[Image] Error loading image, using placeholder');
                         e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error');
                      }} 
-                   />
-               </div>
-               
+                  />
+                </div>
+                
                <h3 className="text-xl font-bold">{characterData.name}</h3>
                <p className="text-gray-600 text-sm">
                  {characterData.age && `${characterData.age} years old • `}
@@ -995,7 +995,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                {characterData.useTextToImage && characterData.generationPrompt && (
                  <div className="mt-4 w-full p-3 bg-gray-50 rounded-md border border-gray-200">
                    <p className="text-xs italic text-gray-500">Based on: "{characterData.generationPrompt.substring(0, 100)}{characterData.generationPrompt.length > 100 ? '...' : ''}"</p>
-                 </div>
+            </div>
                )}
              </div>
            </div>
@@ -1004,7 +1004,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              <p className="text-gray-600">Preview not available.</p>
              {/* Add a retry button for better UX */}
              {generationAttempted && (
-               <button 
+                <button
                  onClick={() => {
                    console.log('[Retry] User requested retry');
                    const styleToUse = forcedArtStyle || characterData.artStyle;
@@ -1014,13 +1014,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                  className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                >
                  Retry Generation
-               </button>
+                </button>
              )}
            </div>
-         )}
-         
+              )}
+              
          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
-           <button
+              <button
              onClick={handleBack}
              className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
              disabled={isGenerating}
@@ -1033,8 +1033,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              disabled={!displayPreviewUrl || isGenerating}
            >
              Complete Character
-           </button>
-         </div>
+              </button>
+            </div>
        </div>
      );
    };

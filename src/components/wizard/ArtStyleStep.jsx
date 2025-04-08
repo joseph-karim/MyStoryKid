@@ -321,7 +321,7 @@ function ArtStyleStep() {
   const handleNext = () => {
     if (!selectedStyle) {
         alert('Please select an art style.');
-        return;
+      return;
     }
     setWizardStep(3); // Move to Main Character step
   };
@@ -343,14 +343,14 @@ function ArtStyleStep() {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1 }
   };
-
+  
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">Choose Your Art Style</h2>
         <p className="text-gray-600">Select the visual style for your book's illustrations.</p>
       </div>
-
+      
       <motion.div 
         className="space-y-8"
         variants={containerVariants}
@@ -385,18 +385,18 @@ function ArtStyleStep() {
                     }}
                   >
                     <span className="text-gray-600 font-medium">{style.title}</span>
-                  </div>
-                  <div className="p-3">
+            </div>
+            <div className="p-3">
                     <p className="text-sm font-medium truncate">{style.title}</p>
                     <p className="text-xs text-gray-500 truncate">{style.description}</p>
-                  </div>
+            </div>
                 </motion.div>
               ))}
             </motion.div>
           </div>
         ))}
       </motion.div>
-
+      
       <div className="flex justify-between pt-6">
         <button
           onClick={handleBack}

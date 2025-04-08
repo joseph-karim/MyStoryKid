@@ -1,27 +1,150 @@
 import { create } from 'zustand';
+import supabase from '../services/supabaseClient';
+import { isAnonymousUser } from '../services/anonymousAuthService';
 
-// This is a placeholder store for authentication
-// Later we'll integrate with Firebase and add more functionality
-const useAuthStore = create((set) => ({
-  // User state - default to authenticated for testing
-  user: { id: 'test-user', displayName: 'Test User', email: 'test@example.com' },
-  isAuthenticated: true,
-  isLoading: false,
-
-  // Actions
-  login: (userData) => set({ 
-    user: userData, 
-    isAuthenticated: true 
+// Create a store for authentication state
+const useAuthStore = create((set, get) => ({
+  // Initial state
+  user: null,
+  isAuthenticated: false,
+  isAnonymous: false,
+  isLoading: true,
+  
+  // Initialize auth state from Supabase session
+  initialize: async () => {
+    set({ isLoading: true });
+    
+    try {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const anonymous = await isAnonymousUser();
+        
+        set({
+          user: session.user,
+          isAuthenticated: true,
+          isAnonymous: anonymous,
+        });
+      } else {
+        set({
+          user: null,
+          isAuthenticated: false,
+          isAnonymous: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error initializing auth state:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  // Sign in with email and password
+  signIn: async (email, password) => {
+    set({ isLoading: true });
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      set({
+        user: data.user,
+        isAuthenticated: true,
+        isAnonymous: false,
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error signing in:', error);
+      return { success: false, error: error.message };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  // Sign up with email and password
+  signUp: async (email, password) => {
+    set({ isLoading: true });
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      set({
+        user: data.user,
+        isAuthenticated: true,
+        isAnonymous: false,
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      return { success: false, error: error.message };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  // Sign out
+  signOut: async () => {
+    set({ isLoading: true });
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+      
+      set({
+        user: null,
+        isAuthenticated: false,
+        isAnonymous: false,
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error signing out:', error);
+      return { success: false, error: error.message };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  // Set loading state
+  setLoading: (isLoading) => set({ isLoading }),
+  
+  // For backward compatibility
+  login: (userData) => set({
+    user: userData,
+    isAuthenticated: true,
+    isAnonymous: false,
   }),
   
-  logout: () => set({ 
-    user: null, 
-    isAuthenticated: false 
-  }),
-  
-  setLoading: (isLoading) => set({ 
-    isLoading 
-  }),
+  logout: () => get().signOut(),
 }));
 
-export default useAuthStore; 
+// Set up auth state listener
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    useAuthStore.getState().initialize();
+  } else if (event === 'SIGNED_OUT') {
+    useAuthStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isAnonymous: false,
+    });
+  }
+});
+
+// Initialize auth state
+useAuthStore.getState().initialize();
+
+export default useAuthStore;

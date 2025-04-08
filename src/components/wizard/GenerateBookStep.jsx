@@ -5,6 +5,7 @@ import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
 import { getKeywordsForDzineStyle, getStyleNameFromCode } from '../../services/dzineService';
 import { generateIllustrationWithWorkflow } from '../../services/segmindService';
+import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to create the outline prompt
@@ -437,11 +438,27 @@ const GenerateBookStep = () => {
   const [generatedBook, setGeneratedBook] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-
   useEffect(() => {
-    // Automatically start generation when the component mounts
-    // Or you could have a button call generateBook()
-    generateBook();
+    // Ensure we have an anonymous session before starting generation
+    const initializeAndGenerate = async () => {
+      try {
+        // Ensure we have an anonymous session (if not already authenticated)
+        const { success, error } = await ensureAnonymousSession();
+        if (!success) {
+          console.error('Failed to create anonymous session:', error);
+          setError(`Authentication error: ${error}`);
+          return;
+        }
+        
+        // Start book generation
+        generateBook();
+      } catch (err) {
+        console.error('Error initializing session:', err);
+        setError(`Session initialization error: ${err.message}`);
+      }
+    };
+    
+    initializeAndGenerate();
   }, []); // Empty dependency array ensures this runs only once on mount
 
   const updateProgressInfo = (info) => {
@@ -605,6 +622,11 @@ const GenerateBookStep = () => {
       };
 
       setGeneratedBook(finalBook);
+      
+      // Store the book ID in localStorage for claiming after login
+      storeCurrentBookId(finalBook.id);
+      console.log(`[GenerateBookStep] Stored book ID ${finalBook.id} for potential claiming after login`);
+      
       // Add the book to the store
       if (typeof addBook === 'function') {
         addBook(finalBook);

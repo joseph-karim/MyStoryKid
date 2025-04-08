@@ -9,8 +9,36 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables. Please check your .env file.');
 }
 
+// Define auth configuration
+const authConfig = {
+  auth: {
+    // The site URL to use for the auth flow
+    // This should match the site URL configured in Supabase Auth settings
+    site: 'https://mystorykid.com',
+    
+    // The URL to redirect to after a successful sign-in or sign-up
+    redirectTo: 'https://mystorykid.com/dashboard',
+    
+    // Persist the session in localStorage
+    persistSession: true,
+    
+    // Detect session changes and update the store
+    detectSessionInUrl: true,
+    
+    // Use secure cookies in production
+    cookieSecure: import.meta.env.PROD,
+    
+    // Set the storage mechanism (default is 'localStorage')
+    storage: {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+      removeItem: (key) => localStorage.removeItem(key),
+    },
+  },
+};
+
 // Create a single supabase client for interacting with your database
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, authConfig);
 
 /**
  * Uploads a Base64 image to Supabase Storage and returns the public URL

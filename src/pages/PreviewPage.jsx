@@ -1,10 +1,8 @@
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useBookStore } from '../store';
-
-// Comment out complex components/hooks
-// import PageFlip from 'react-pageflip';
-// import InteractionLayer from '../components/InteractionLayer'; 
+import BookPreview from '../components/BookPreview';
+import BookActions from '../components/BookActions';
 
 function PreviewPage() {
   const { bookId } = useParams();
@@ -21,18 +19,26 @@ function PreviewPage() {
     }
   }, [bookId, books, currentBook, setCurrentBook]);
 
-  // Simple Render Test
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Book Preview (Debug View)</h1>
-      <p>Book ID: {bookId}</p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Book Preview</h1>
+        <Link to="/dashboard" className="text-blue-600 hover:underline">Back to Dashboard</Link>
+      </div>
+      
       {currentBook ? (
-        <p>Book Title: {currentBook.title}</p>
+        <div className="space-y-8">
+          {/* Book Preview Component */}
+          <BookPreview book={currentBook} isWatermarked={true} />
+          
+          {/* Book Actions Component */}
+          <BookActions book={currentBook} />
+        </div>
       ) : (
-        <p>Loading book...</p>
+        <div className="flex justify-center items-center h-64">
+          <p className="text-gray-500">Loading book...</p>
+        </div>
       )}
-      <p>If you see this, the basic PreviewPage rendered without the TypeError.</p>
-      <Link to="/dashboard" className="text-blue-600 hover:underline mt-4 inline-block">Back to Dashboard</Link>
     </div>
   );
 }
