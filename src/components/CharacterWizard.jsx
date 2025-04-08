@@ -10,8 +10,10 @@ import {
   getDzineStyles,
   getStyleCode,
   getKeywordsForDzineStyle,
-  getStyleNameFromCode 
+  getStyleNameFromCode,
+  getTaskResult
 } from '../services/dzineService';
+import { uploadImageAndGetUrl } from '../../services/imageUploadService';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
@@ -878,259 +880,114 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    
    // Start polling for task progress
    const startPollingTask = (taskId, fallbackImage, generationId) => {
-     if (!taskId) {
-       console.error('Invalid task ID for polling');
-       setProgressMessage('Error: Invalid task ID');
-       setIsGenerating(false);
-       useFallbackImage(fallbackImage);
-       return;
-     }
-     
-     console.log(`Starting to poll for task: ${taskId}`);
-     setProgressMessage('Starting image generation...');
-     
-     // Generate a unique ID for this polling session to avoid conflicts
-     const pollingId = `poll_${Date.now()}`;
-     let pollCount = 0;
-     const maxPolls = 60; // Increased to 60 seconds max wait time
-     
-     // Count consecutive errors and 404s
-     let consecutiveErrors = 0;
-     let consecutive404s = 0;
-     const maxConsecutiveErrors = 5; // Increased tolerance for errors
-     const maxConsecutive404s = 10; // Increased tolerance for 404s
-     
-     // Dynamic polling interval
-     let currentPollingInterval = 1000; // Start with 1s
-     const maxPollingInterval = 5000; // Max 5s between polls
-     const pollingIntervalIncrease = 1.5; // Increase by 50% each time
-     
-     // Store the interval in a ref so we can clear it from anywhere
+     console.log(`[Polling] Starting polling for Dzine task ID: ${taskId}`);
+     setProgressMessage('Dzine task started. Waiting for preview... (0%)');
+     setIsGenerating(true);
+     setGenerationStatus('processing');
+
+     let pollInterval = null;
+     let attempts = 0;
+     const maxAttempts = 60; // Poll for max 3 minutes (60 * 3s)
+     let lastProgress = 0;
+
      const pollNextTime = async () => {
-       pollCount++;
-       console.log(`Polling attempt ${pollCount} for task ${taskId}`);
-       
-       // Update progress message with more informative status
-       if (pollCount <= 10) {
-         setProgressMessage(`Initializing generation... (${pollCount}s)`);
-       } else if (pollCount <= 30) {
-         setProgressMessage(`Processing your image... (${pollCount}s)`);
-       } else {
-         setProgressMessage(`Still working... (${pollCount}s)`);
-       }
-       
-       if (pollCount >= maxPolls) {
-         console.log(`Reached maximum polling time (${maxPolls}s), stopping`);
-         setProgressMessage('Generation timeout - please try again');
-         clearTimeout(pollingSessionRef.current[pollingId]);
+       attempts++;
+       if (attempts > maxAttempts) {
+         console.error(`[Polling] Task ${taskId} timed out after ${maxAttempts} attempts.`);
+         clearInterval(pollInterval);
+         setError('Preview generation timed out. Please try again.');
+         setGenerationStatus('error');
          setIsGenerating(false);
-         delete pollingSessionRef.current[pollingId];
-         
-         // Only use fallback after maximum time
          useFallbackImage(fallbackImage);
          return;
        }
-       
+
        try {
-         // Fetch the task progress
-         let progressData;
-         let is404 = false;
-         
-         try {
-           progressData = await getTaskProgress(taskId);
-           
-           // Check if it's a pending status due to 404
-           if (progressData.status === 'pending' && progressData.message === 'Task is still initializing') {
-             consecutive404s++;
-             is404 = true;
-             console.warn(`Got 404 (${consecutive404s}/${maxConsecutive404s}) for task ${taskId}`);
-             
-             if (consecutive404s >= maxConsecutive404s) {
-               // Too many 404s usually means the task ID is invalid or the API is having issues
-               console.error(`Too many 404s (${consecutive404s}), task may not exist`);
-               throw new Error('Task ID not found after multiple attempts');
-             }
-           } else {
-             // Reset counters on success
-             consecutiveErrors = 0;
-             consecutive404s = 0;
-           }
-         } catch (fetchError) {
-           consecutiveErrors++;
-           console.warn(`Fetch error (${consecutiveErrors}/${maxConsecutiveErrors}):`, fetchError);
-           
-           // If we've had too many consecutive errors, use fallback
-           if (consecutiveErrors >= maxConsecutiveErrors) {
-             console.error(`Too many consecutive errors (${consecutiveErrors}), using fallback`);
-             setProgressMessage('Network issues - using fallback image');
-             clearTimeout(pollingSessionRef.current[pollingId]);
-             setIsGenerating(false);
-             delete pollingSessionRef.current[pollingId];
-             
-             useFallbackImage(fallbackImage);
-             return;
-           }
-           
-           // Increase polling interval on errors
-           currentPollingInterval = Math.min(
-             currentPollingInterval * pollingIntervalIncrease,
-             maxPollingInterval
-           );
-           console.log(`Increased polling interval to ${currentPollingInterval}ms due to error`);
-           
-           // Schedule next poll with increased interval
-           pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
-           return;
-         }
-         
-         // Debug log all response data
-         console.log(`Task ${taskId} progress data (attempt ${pollCount}):`, progressData);
-         
-         // Extract status from various possible response structures
-         let status = null;
-         let normalizedStatus = 'pending'; // Default to pending
-         
-         if (progressData?.status) {
-           status = progressData.status.toLowerCase();
-         } else if (progressData?.data?.status) {
-           status = progressData.data.status.toLowerCase();
-         }
-         
-         // Normalize status according to docs + observed values
-         if (status === 'succeed' || status === 'succeeded') {
-           normalizedStatus = 'success';
-         } else if (status === 'failed' || status === 'error') {
-           normalizedStatus = 'failed';
-         } else if (['processing', 'running', 'waiting', 'in_queue', 'uploading'].includes(status)) {
-           normalizedStatus = 'running';
-         } else if (status === 'pending' && is404) {
-           normalizedStatus = 'pending_404'; // Special case for initial 404s
-         } else {
-           normalizedStatus = 'running'; // Assume running if status is unknown/missing but no error occurred
-         }
-         
-         console.log(`Extracted status: ${status}, Normalized status: ${normalizedStatus}`);
-         
-         // -- Success Path --
-         if (normalizedStatus === 'success') {
-           console.log(`Task ${taskId} completed successfully`);
-           setProgressMessage('Image generated successfully!');
-           
-           // Extract image URLs (Simplified based on latest logs/docs)
-           let resultUrls = [];
-           if (progressData?.data?.generate_result_slots?.length > 0) {
-             resultUrls = progressData.data.generate_result_slots.filter(url => url); // Filter out empty slots
-             console.log("Found URLs in data.generate_result_slots:", resultUrls);
-           } else {
-             // Fallback extraction (less likely needed now but kept for safety)
-             resultUrls = extractImageUrls(progressData);
-              console.log("Used fallback URL extraction:", resultUrls);
-           }
-           
-           const imageUrl = resultUrls[0] || null; // Take the first non-empty URL
-           
-           if (imageUrl) {
-             console.log('[Polling Success] Found image URL:', imageUrl);
-             setProgressMessage('Finalizing image...'); // Update message
-             
-             // Attempt to fetch and convert the URL to Base64
-             const base64Preview = await fetchAndConvertToBase64(imageUrl);
-             
-             if (base64Preview) {
-               console.log('[Polling Success] Successfully converted URL to Base64. Saving preview.');
-               setCharacterData(prev => ({ ...prev, stylePreview: base64Preview }));
-               setProgressMessage('Image generated successfully!');
+         console.log(`[Polling] Attempt ${attempts}: Getting progress for task ${taskId}...`);
+         const progressData = await getTaskProgress(taskId);
+         console.log(`[Polling] Progress data for ${taskId}:`, progressData);
+
+         if (progressData && progressData.data) {
+           const { status, progress, eta } = progressData.data;
+           lastProgress = progress || lastProgress;
+           setProgressMessage(`Generating preview... (${Math.round(lastProgress * 100)}%) Estimated time: ${eta || 'N/A'}s`);
+
+           if (status === 'SUCCESS') {
+             console.log(`[Polling] Task ${taskId} status is SUCCESS. Fetching result...`);
+             clearInterval(pollInterval);
+             const resultData = await getTaskResult(taskId);
+             console.log(`[Polling] Task ${taskId} result:`, resultData);
+
+             if (resultData && resultData.code === 200 && resultData.data?.status === 'SUCCESS' && resultData.data?.images?.[0]) {
+               const base64Preview = resultData.data.images[0];
+               console.log('[Polling] Success! Received Base64 preview.');
+
+               // **** NEW: Upload Base64 to get URL ****
+               try {
+                 updateProgressInfo('Finalizing character preview...'); // Use consistent progress update
+                 console.log('[CharacterWizard] Uploading Dzine preview to get URL...');
+                 const imageUrl = await uploadImageAndGetUrl(base64Preview);
+                 console.log('[CharacterWizard] Upload complete. Received URL:', imageUrl);
+
+                 // Use the URL for preview and store update
+                 setPreviewUrl(imageUrl);
+                 updateCharacterPreview(characterData.id, imageUrl);
+                 setGenerationStatus('success');
+                 updateProgressInfo('Character preview ready!'); // Use consistent progress update
+                 setIsGenerating(false);
+
+               } catch (uploadError) {
+                 console.error('[CharacterWizard] Failed to upload image preview:', uploadError);
+                 setError(`Failed to prepare image preview URL: ${uploadError.message}`);
+                 setGenerationStatus('error');
+                 setIsGenerating(false);
+                 useFallbackImage(fallbackImage);
+               }
+               // **** END NEW PART ****
+
              } else {
-               // Conversion failed (likely CORS or network issue)
-               console.error('[Polling Success] Failed to convert final image URL to Base64. Using fallback.');
-               setError('Could not fetch the final image. Using placeholder.'); // Inform user
-               setProgressMessage('Error fetching final image.');
-               useFallbackImage(fallbackImage); // Use the provided fallback
+               console.error(`[Polling] Task ${taskId} result fetching failed or format unexpected.`, resultData);
+               throw new Error('Failed to retrieve valid image result after success status.');
              }
 
+           } else if (status === 'FAILED') {
+             console.error(`[Polling] Task ${taskId} failed. Error: ${progressData.data.error_message || 'Unknown error'}`);
+             clearInterval(pollInterval);
+             setError(`Preview generation failed: ${progressData.data.error_message || 'Please try again'}`);
+             setGenerationStatus('error');
+             setIsGenerating(false);
+             useFallbackImage(fallbackImage);
+             
+           } else if (status === 'PENDING' || status === 'PROCESSING') {
+             // Continue polling
+             console.log(`[Polling] Task ${taskId} status: ${status}. Progress: ${progress}%. Waiting...`);
            } else {
-             // Task succeeded but no valid image URLs found
-             console.warn('Task succeeded but no valid image URLs found in generate_result_slots.');
-             setProgressMessage('Task finished but no image found - using placeholder.');
-             useFallbackImage(fallbackImage); // Use fallback if success but no image
+             console.warn(`[Polling] Task ${taskId} has unexpected status: ${status}. Stopping poll.`);
+             clearInterval(pollInterval);
+             setError(`Unexpected generation status: ${status}`);
+             setGenerationStatus('error');
+             setIsGenerating(false);
+             useFallbackImage(fallbackImage);
            }
-
-           // --- STOP POLLING (common for success/failure branches) --- 
-           clearTimeout(pollingSessionRef.current[pollingId]);
-           setIsGenerating(false);
-           delete pollingSessionRef.current[pollingId];
-           console.log(`Success: Cleared polling interval ${pollingId}`);
-           return; // Exit interval callback
-           // --- END MODIFIED LOGIC ---
-
+         } else {
+           console.warn(`[Polling] Received empty progress data for task ${taskId}. Retrying...`);
          }
-         // -- Failure Path --
-         else if (normalizedStatus === 'failed') {
-           console.error(`Task ${taskId} failed. Reason:`, progressData?.data?.error_reason || progressData?.error_reason || 'Unknown');
-           setProgressMessage('Generation failed. Please try again.');
-           setError('Image generation failed. Please check the style or try again.');
-           // --- STOP POLLING --- 
-           clearTimeout(pollingSessionRef.current[pollingId]);
-           setIsGenerating(false);
-           delete pollingSessionRef.current[pollingId];
-           console.log(`Failed: Cleared polling interval ${pollingId}`);
-           return; // Exit interval callback
-         }
-         // -- Rate Limit Path --
-         else if (progressData.message && progressData.message.toLowerCase().includes('rate limit')) {
-           console.warn(`Rate limit hit for task ${taskId}, backing off`);
-           // Increase polling interval substantially
-           currentPollingInterval = Math.min(currentPollingInterval * 2, maxPollingInterval);
-           console.log(`Increased polling interval to ${currentPollingInterval}ms due to rate limiting`);
-         }
-         // -- Still Running Path --
-         else {
-           // Task is still running (running, pending_404, or unknown)
-           console.log(`Task ${taskId} is still running (Status: ${normalizedStatus})`);
-           
-           // Gradually increase polling interval for long-running tasks
-           if (pollCount > 10) {
-             currentPollingInterval = Math.min(
-               currentPollingInterval * 1.2, // Increase by 20%
-               maxPollingInterval
-             );
-             console.log(`Increased polling interval to ${currentPollingInterval}ms (attempt ${pollCount})`);
-           }
-         }
-         
-         // Schedule next poll
-         pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
-         
        } catch (error) {
-         console.error(`Error in polling attempt ${pollCount}:`, error);
-         consecutiveErrors++;
-         
-         if (consecutiveErrors >= maxConsecutiveErrors || pollCount >= maxPolls) {
-           setProgressMessage('Polling error or timeout - using placeholder image');
-           setError('Could not retrieve image result due to polling errors or timeout.');
-           // --- STOP POLLING --- 
-           clearTimeout(pollingSessionRef.current[pollingId]);
+         console.error(`[Polling] Error during polling task ${taskId} (Attempt ${attempts}):`, error);
+         // Don't stop polling immediately on error, allow retries
+         if (attempts >= maxAttempts) {
+           clearInterval(pollInterval);
+           setError(`Polling failed after multiple attempts: ${error.message}`);
+           setGenerationStatus('error');
            setIsGenerating(false);
-           delete pollingSessionRef.current[pollingId];
-           useFallbackImage(fallbackImage); // Use fallback only on repeated errors/timeout
-           console.log(`Error/Timeout: Cleared polling interval ${pollingId}`);
-           return; // Exit interval callback
+           useFallbackImage(fallbackImage);
          }
-         
-         // Increase polling interval on errors
-         currentPollingInterval = Math.min(
-           currentPollingInterval * pollingIntervalIncrease,
-           maxPollingInterval
-         );
-         console.log(`Increased polling interval to ${currentPollingInterval}ms due to error`);
-         
-         // Schedule next poll with increased interval
-         pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
        }
      };
-     
-     // Start the first poll
-     pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, 1000);
+
+     // Start the polling immediately and then set the interval
+     pollNextTime();
+     pollInterval = setInterval(pollNextTime, 3000); // Poll every 3 seconds
    };
    
    // Helper function to extract image URLs from response
@@ -1471,6 +1328,86 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    const getStyleDisplayName = (styleCode) => {
      return getStyleNameFromCode(styleCode);
    };
+   
+   // Function to poll for task completion
+   const pollForTaskResult = async (taskId, attempt = 1) => {
+     // ... (polling logic remains the same until success) ...
+
+          if (status === 'SUCCESS' && resultData && resultData.images && resultData.images[0]) {
+            console.log(`[CharacterWizard] Dzine task ${taskId} succeeded.`);
+            
+            // **** MODIFIED PART: Upload Base64 and get URL ****
+            const base64Preview = resultData.images[0]; // Assuming this is 'data:image/...'
+            
+            if (!base64Preview || !base64Preview.startsWith('data:image')) {
+              throw new Error('Dzine task succeeded but returned invalid image data.');
+            }
+            
+            try {
+              console.log('[CharacterWizard] Uploading Dzine preview to get URL...');
+              updateProgressInfo('Finalizing character preview...'); // Update UI
+              const imageUrl = await uploadImageAndGetUrl(base64Preview);
+              console.log('[CharacterWizard] Upload complete. Received URL:', imageUrl);
+              
+              // Now update the store with the URL, not the Base64
+              updateCharacterPreview(characterData.id, imageUrl); 
+              setPreviewUrl(imageUrl); // Update local state for display
+              setGenerationStatus('success');
+              updateProgressInfo('Character preview ready!');
+              
+            } catch (uploadError) {
+              console.error('[CharacterWizard] Failed to upload image preview:', uploadError);
+              throw new Error(`Failed to prepare image preview URL: ${uploadError.message}`);
+            }
+            // **** END MODIFIED PART ****
+            
+          } else if (status === 'FAILED') {
+            // ... (failure handling remains the same) ...
+          }
+        } else {
+          // ... (progress handling remains the same) ...
+        }
+      } catch (error) {
+        // ... (error handling remains the same) ...
+      }
+    }, 3000); // Poll every 3 seconds
+  };
+
+  // ... (handleGeneratePreview function - update the call to pollForTaskResult if needed) ...
+  const handleGeneratePreview = async () => {
+      // ... (existing setup to call createImg2ImgTask) ...
+      try {
+         // ... (call createImg2ImgTask and get taskId) ...
+         
+         // Start polling with the received task ID
+         if (taskId) {
+            pollForTaskResult(taskId);
+         } else {
+            throw new Error('Task ID not received from Dzine API.');
+         }
+      } catch (error) {
+         // ... (error handling) ...
+      }
+  };
+
+  // ... (rest of the component, including onComplete which uses the store state) ...
+  const onComplete = () => {
+      console.log('[CharacterWizard] Invoking completion callback...');
+      // Get the potentially updated character data from the store
+      const currentStoreCharacter = useBookStore.getState().wizardState.storyData.bookCharacters.find(c => c.id === characterData.id);
+      if (currentStoreCharacter) {
+          console.log('[CharacterWizard] Character completed:', currentStoreCharacter);
+          completeCharacterCreation(currentStoreCharacter);
+      } else {
+          console.error('[CharacterWizard] Could not find updated character in store on completion');
+          // Fallback to local state or handle error
+          completeCharacterCreation({ 
+             ...characterData, 
+             stylePreview: previewUrl, // Use local previewUrl as fallback
+             // photoUrl is handled by the upload input 
+          });
+      }
+  };
    
    return (
      <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
