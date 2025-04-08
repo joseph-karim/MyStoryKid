@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getFriendlyStyleName, getFriendlySceneName } from '../../services/dzineService';
+import { getFriendlySceneName, getStyleNameFromCode } from '../../services/dzineService';
 import { useNavigate } from 'react-router-dom';
 import { STYLE_CODE_MAP } from './ArtStyleStep';
 
@@ -64,18 +64,7 @@ function SummaryStep() {
   
   // Helper function to get a friendly style name
   const getStyleDisplayName = (styleCode) => {
-    if (!styleCode) return 'Not Selected';
-    if (styleCode === 'custom') return 'Custom Style';
-
-    // First try to find in our direct mapping
-    for (const styleName in STYLE_CODE_MAP) {
-      if (STYLE_CODE_MAP[styleName] === styleCode) {
-        return styleName;
-      }
-    }
-
-    // Fall back to the service function
-    return getFriendlyStyleName(styleCode);
+    return getStyleNameFromCode(styleCode);
   };
   
   // Helper function to get a friendly scene name

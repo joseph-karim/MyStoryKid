@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
-import { getKeywordsForDzineStyle } from '../../services/dzineService';
+import { getKeywordsForDzineStyle, getStyleNameFromCode } from '../../services/dzineService';
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -548,6 +548,11 @@ const GenerateBookStep = () => {
     } finally {
       setRegeneratingImage(false);
     }
+  };
+  
+  // Add helper for style name display if needed
+  const getStyleDisplayName = (styleCode) => {
+    return getStyleNameFromCode(styleCode);
   };
   
   // Render Content with Loading State

@@ -9,7 +9,8 @@ import {
   checkApiAccess, 
   getDzineStyles,
   getStyleCode,
-  getKeywordsForDzineStyle 
+  getKeywordsForDzineStyle,
+  getStyleNameFromCode 
 } from '../services/dzineService';
 
 // Initialize form state with defaults
@@ -1465,6 +1466,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      { index: 2, title: 'Photo & Style' }, 
      { index: 3, title: 'Confirm' }    
    ];
+   
+   // Update any places where we need to display the style name
+   const getStyleDisplayName = (styleCode) => {
+     return getStyleNameFromCode(styleCode);
+   };
    
    return (
      <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">

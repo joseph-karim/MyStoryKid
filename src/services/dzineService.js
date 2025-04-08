@@ -127,6 +127,79 @@ export const getKeywordsForDzineStyle = (dzineCode) => {
 
 // --- End: Style Keyword Mapping --- //
 
+// Direct mapping of style names to API codes from the Dzine API
+export const STYLE_CODE_MAP = {
+  // Whimsical & Fun
+  'Storytime Whimsy': 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
+  'Fantasy Hero': 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
+  'Soft Radiance': 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
+  'Paper Cutout': 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
+  'Joyful Clay': 'Style-2bc87a82-7ce3-4f1a-828a-e1a2079a4af4',
+  'Playful Enamel': 'Style-25d747a3-1ee3-43f8-a9ea-261f7528692e',
+  'Ceramic Lifelike': 'Style-0d23e0e7-74df-4023-9501-4eb91b86f1a7',
+  'Colourful Felt': 'Style-4242a4eb-3dd4-40f0-996b-1cb4aa8d1c72',
+  
+  // Illustrated & Artistic
+  'Sketch Elegance': 'Style-a7fe4778-28ce-4954-9830-73d5ab78f930',
+  'Skyborn Realm': 'Style-0f7bdbe9-fd6a-414a-86a6-6ab4d11dfbda',
+  'Aquarelle Life': 'Style-05d55ae3-02f0-45e0-8558-95cbad46de58',
+  'Vivid Tableaux': 'Style-69ae18aa-0143-4c37-bd8b-3b6f3be9423c',
+  'Everything Kawaii': 'Style-ed8cde7f-35e9-4bd8-a473-c688ee598c44',
+  'Dreamy 3D': 'Style-e2e04d13-2bed-4401-a9ba-4c4f3adee9ad',
+  'Cutie 3D': 'Style-b5be98eb-02a0-4e9f-aac6-bcba25247ae7',
+  'Shimmering Glow': 'Style-1a5c3743-1237-4a1a-a390-72f14f852a64',
+  
+  // Stylized & Modern
+  'Surreal Iridescence': 'Style-59eb9cff-5dd3-424b-8722-39cb4a46d037',
+  'Golden Hour': 'Style-1be5b95e-77ca-4a4c-8c40-cb93ae5be3b6',
+  'Inked Realism': 'Style-d9d2fd95-bcf5-403e-a39e-bea1ab87b095',
+  'Magic Portrait': 'Style-56bd3dc6-657c-4b8a-b8b6-4c01ef8c2d99',
+  'Warm Portrait': 'Style-a85e6a2f-ce7f-409a-9f6b-832b46d0808e',
+  'Retro Noir Chromatics': 'Style-aaeb3c40-e356-41ea-ad9f-fe0a207d5cf9',
+  'Vintage Engraving': 'Style-93e5d1b5-de41-4b42-81a9-f73b988ab106',
+  'Ancient China': 'Style-ce6ad43e-6508-49ad-b997-ec834c25bc44',
+  
+  // Portraits & Characters
+  'Graffiti Splash': 'Style-6a78c1f0-c343-454e-97cc-c70a1b72d024',
+  'Pleasantly Warm': 'Style-1ec5e5b8-5d9a-4c3e-b743-8b89423c6058',
+  '80bit Arcade': 'Style-d4e39012-3d0c-4736-97f7-3a3ea6e3862d',
+  'Impressionist': 'Style-87c339f1-e1cc-44d9-9ef6-a27e96caf5a3',
+  'Zen Spirit': 'Style-a6b55aaa-a37d-48a1-a3b0-2c9c4257ce37',
+  'Vibrant Whimsy': 'Style-4c00ed9a-8d89-4db7-a7bb-273d16a1a7e6',
+  'Whimsical Brushwork': 'Style-fb6d79e5-26be-4a4f-9e2d-77a07b42064e',
+  'Bedtime Story': 'Style-aa7bd2ec-fb1c-44a9-9b2b-2b911fc5608b',
+  
+  // Special Styles
+  'Line & Wash': 'Style-95c0fd14-a5e4-4328-9f27-37e9ec2ef7ab',
+  'Nouveau Classic': 'Style-28518c54-d404-4382-ac36-75e9efee7309',
+  'Innocent CUtie': 'Style-37a15e81-bd13-48fe-a1f9-a78d79c4cfd2',
+  'Glossy Elegance': 'Style-3c7c5af1-ce2d-4df2-b5e7-3db2cf73c2fd',
+  'Memphis Illustration': 'Style-eafdb3ff-fa6d-4dc9-82ca-c91a47a38d88',
+  'Minimalist Cutesy': 'Style-ce3fe5ad-9a03-468e-8ebd-9b5a31c00cfd',
+  'Watercolor Whimsy': 'Style-059a41c1-cd5f-4b1b-b3d3-14dc4b865b69',
+  'Sketchbook Sticker': 'Style-3d7d6b93-2e80-44e3-b8c4-abe96a44deb8',
+  'Vibrant Impasto': 'Style-6d668c26-b505-4a60-a4a9-81d6ee3a8764',
+  'Dreamy Spectrum': 'Style-ae18d4f7-0c7b-4094-8731-f45aebd6bf55',
+  'Enhanced Elegance': 'Style-1060b1e7-bba7-4e62-9ce8-12439b4d775e',
+  'Cheerful Storybook': 'Style-3f123b47-685b-4d9a-8bc3-d240a91ed7fa',
+  'Starlit Fantasy': 'Style-1bf9e01d-04f6-4e4c-9e8c-154df909a126',
+  'Delicate Aquarelle': 'Style-8d5aaa87-e576-424c-898d-7d2c16d9e9c1'
+};
+
+// Convert a style code to a friendly name for display
+export const getStyleNameFromCode = (styleCode) => {
+  if (!styleCode) return 'Not Selected';
+  if (styleCode === 'custom') return 'Custom Style';
+
+  // Look up the style name from our mapping
+  for (const [name, code] of Object.entries(STYLE_CODE_MAP)) {
+    if (code === styleCode) {
+      return name;
+    }
+  }
+  return 'Unknown Style';
+};
+
 // Modify fetchDzine to use rate limiting
 export const fetchDzine = async (endpoint, options = {}) => {
   try {

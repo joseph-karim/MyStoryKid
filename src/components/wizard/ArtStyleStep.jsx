@@ -1,69 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getKeywordsForDzineStyle } from '../../services/dzineService';
+import { getKeywordsForDzineStyle, STYLE_CODE_MAP } from '../../services/dzineService';
 import { motion } from 'framer-motion';
+
+// Style categories for UI organization
+const CATEGORIES = [
+  { id: 'whimsical', label: 'Whimsical & Fun', icon: '✨' },
+  { id: 'illustrated', label: 'Illustrated & Artistic', icon: '🎨' },
+  { id: 'stylized', label: 'Stylized & Modern', icon: '🌟' },
+  { id: 'portraits', label: 'Portraits & Characters', icon: '👤' },
+  { id: 'special', label: 'Special Styles', icon: '🔮' },
+];
+
+// Map styles to their categories
+const STYLE_CATEGORIES = {
+  'whimsical': [
+    'Storytime Whimsy', 'Fantasy Hero', 'Soft Radiance', 'Paper Cutout', 
+    'Joyful Clay', 'Playful Enamel', 'Ceramic Lifelike', 'Colourful Felt'
+  ],
+  'illustrated': [
+    'Sketch Elegance', 'Skyborn Realm', 'Aquarelle Life', 'Vivid Tableaux',
+    'Everything Kawaii', 'Dreamy 3D', 'Cutie 3D', 'Shimmering Glow'
+  ],
+  'stylized': [
+    'Surreal Iridescence', 'Golden Hour', 'Inked Realism', 'Magic Portrait',
+    'Warm Portrait', 'Retro Noir Chromatics', 'Vintage Engraving', 'Ancient China'
+  ],
+  'portraits': [
+    'Graffiti Splash', 'Pleasantly Warm', '80bit Arcade', 'Impressionist', 
+    'Zen Spirit', 'Vibrant Whimsy', 'Whimsical Brushwork', 'Bedtime Story'
+  ],
+  'special': [
+    'Line & Wash', 'Nouveau Classic', 'Innocent CUtie', 'Glossy Elegance',
+    'Memphis Illustration', 'Minimalist Cutesy', 'Watercolor Whimsy', 'Sketchbook Sticker',
+    'Vibrant Impasto', 'Dreamy Spectrum', 'Enhanced Elegance', 'Cheerful Storybook',
+    'Starlit Fantasy', 'Delicate Aquarelle'
+  ]
+};
 
 // We won't load individual images here, instead we'll use generic placeholders
 // and let the actual API preview images load when we call the API
-
-// Direct mapping of style names to API codes from the Dzine API
-const STYLE_CODE_MAP = {
-  // Whimsical & Fun
-  'Storytime Whimsy': 'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5',
-  'Fantasy Hero': 'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf',
-  'Soft Radiance': 'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41',
-  'Paper Cutout': 'Style-541a2afd-904a-4968-bc60-8ad0ede22a86',
-  'Joyful Clay': 'Style-7729f1f6-578b-4035-8514-edaa0637dd6d',
-  'Playful Enamel': 'Style-0cd971cb-1e19-4909-a389-9b0c4fc79fd8',
-  'Everything Kawaii': 'Style-455da805-d716-4bc8-a960-4ac505aa7875',
-  
-  // Illustrated & Artistic 
-  'Ceramic Lifelike': 'Style-3f616e35-6423-4c53-aa27-be28860a4a7d',
-  'Colorful Felt': 'Style-48f44663-b5cc-4f8d-ace8-d0a12bf0f4df',
-  'Sketch Elegance': 'Style-e9021405-1b37-4773-abb9-bd80485527b0',
-  'Skyborne Realm': 'Style-5ad47638-c430-4cda-8bae-681c7af4e59e',
-  'Aquarelle Life': 'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333',
-  'Vivid Tableaux': 'Style-589373f8-1283-4570-baf9-61d02eb13391',
-  'Line & Wash': 'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9',
-  
-  // Stylized & Modern
-  'Dreamy 3D': 'Style-ae3dc56b-33b6-4f29-bd76-7f6aa1a87e8d',
-  'Cutie 3D': 'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f',
-  'Shimmering Glow': 'Style-16dd4ac7-63e1-40ae-bb87-472e820c93f8',
-  'Surreal Iridescence': 'Style-43226b0-4b66-412c-a240-0a214019b895',
-  'Golden Hour': 'Style-90a8d36d-9a67-4619-a995-4036fda8474d',
-  'Vibrant Impasto': 'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a',
-  'Sketchbook Sticker': 'Style-4a3b38cd-a49d-4b69-81e8-69134ca9cdc0',
-  
-  // Portraits & Characters
-  'Inked Realism': 'Style-11ead7fd-0a37-4f3d-a1a2-66558f036f74',
-  'Magic Portrait': 'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4',
-  'Warm Portrait': 'Style-4ab783c7-2955-4092-878e-965162241bf7',
-  'Retro Noir Chromatics': 'Style-e54a8400-fb2c-47a5-9418-8895c01382ce',
-  
-  // Special Styles
-  'Vintage Engraving': 'Style-a8311e8a-ba8b-4cdf-84f9-4001f82cee83',
-  'Ancient China': 'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c',
-  'Graffiti Splash': 'Style-f9ba459d-addd-4e80-9a2e-67439fb50446',
-  'Pleasantly Warm': 'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c',
-  '8-Bit Arcade': 'Style-f22b0501-07a8-4f93-ac65-182c1cd5b4ca',
-  'Impressionist': 'Style-01b37b76-4f5b-421d-a6cc-759e8d7aba3f',
-  'Zen Spirit': 'Style-24b334a4-52eb-4f77-94fa-f37d7367d956',
-  'Vibrant Whimsy': 'Style-89c94c8f-9c94-4ef2-8fbd-e058648c92c7',
-  'Whimsical Brushwork': 'Style-e2f14b9b-819d-4389-980f-71b83f55271d',
-  'Bedtime Story': 'Style-8ee4b050-ef89-4058-8521-66223259bb30',
-  'Nouveau Classic': 'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70',
-  'Innocent Cutie': 'Style-c7e442ba-261c-450a-899b-5ae85c918b4b',
-  'Glossy Elegance': 'Style-04d8cbcf-6496-4d68-997e-516303502507',
-  'Memphis Illustration': 'Style-30dd5a41-c881-4281-a093-ab79f71e6479',
-  'Minimalist Cutesy': 'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7',
-  'Watercolor Whimsy': 'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de',
-  'Dreamy Spectrum': 'Style-e72b9767-6244-4d6f-b295-7a015de0e031',
-  'Enhanced Elegance': 'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c',
-  'Cheerful Storybook': 'Style-a941aee9-7964-4445-b76a-7c3ff912f926',
-  'Starlit Fantasy': 'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0',
-  'Delicate Aquarelle': 'Style-31bbb0d0-20e2-460b-9280-6835200a4b73',
-};
 
 // Updated Art Style Categories with verified API style codes
 export const ART_STYLE_CATEGORIES_STRUCTURE = [
