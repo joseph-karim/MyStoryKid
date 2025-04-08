@@ -13,7 +13,7 @@ import {
   getStyleNameFromCode,
   getTaskResult
 } from '../services/dzineService';
-import { uploadImageAndGetUrl } from '../../services/imageUploadService';
+import { uploadImageAndGetUrl } from '../services/imageUploadService';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
