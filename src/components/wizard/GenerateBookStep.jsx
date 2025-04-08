@@ -263,13 +263,26 @@ const GenerateBookStep = () => {
         return;
     }
     // **** CRITICAL VALIDATION: Ensure stylePreview is a URL ****
-    if (!mainCharacter.stylePreview || typeof mainCharacter.stylePreview !== 'string' || !mainCharacter.stylePreview.startsWith('http')) {
-        console.error("Main character's stylePreview is not a valid URL:", mainCharacter.stylePreview);
-        setError("Character style preview is missing or not a valid URL, which is required for image generation. Please go back and ensure the character style was generated.");
+    if (!mainCharacter.stylePreview || typeof mainCharacter.stylePreview !== 'string') {
+        console.error("Main character's stylePreview is missing or not a string:", mainCharacter.stylePreview);
+        setError("Character style preview is missing. Please go back and ensure the character style was generated.");
         setIsGenerating(false);
         return;
     }
-    const dzinePreviewUrl = mainCharacter.stylePreview;
+    
+    // Accept both HTTP URLs and Base64 data URLs
+    const stylePreview = mainCharacter.stylePreview;
+    const isValidUrl = stylePreview.startsWith('http') || stylePreview.startsWith('data:image');
+    
+    if (!isValidUrl) {
+        console.error("Main character's stylePreview is not a valid URL or Base64 data:", stylePreview.substring(0, 50) + '...');
+        setError("Character style preview is in an invalid format. Please go back and ensure the character style was properly generated.");
+        setIsGenerating(false);
+        return;
+    }
+    
+    // Use the stylePreview as is
+    const dzinePreviewUrl = stylePreview;
 
     try {
       // ---------- STEP 1: Generate story outline ----------

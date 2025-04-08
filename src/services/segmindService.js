@@ -260,15 +260,94 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
 };
 
 /**
+ * Uploads a Base64 image to ImgBB to get a temporary URL
+ * @param {string} base64Image - Base64 image data URL
+ * @returns {Promise<string>} - Temporary image URL
+ */
+const uploadBase64ToGetUrl = async (base64Image) => {
+    // If it's already a URL, just return it
+    if (base64Image.startsWith('http')) {
+        return base64Image;
+    }
+    
+    // Extract the base64 data without the prefix
+    const base64Data = base64Image.split(',')[1];
+    if (!base64Data) {
+        throw new Error('Invalid Base64 image format');
+    }
+    
+    // Try multiple services in case one fails
+    const services = [
+        // ImgBB - primary service
+        async () => {
+            const apiKey = import.meta.env.VITE_IMGBB_API_KEY || 'f9cae7aa8c1df07a54e5c8cf11febe35'; // Free key with limited usage
+            const formData = new FormData();
+            formData.append('image', base64Data);
+            
+            const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData);
+            
+            if (response.data && response.data.data && response.data.data.url) {
+                console.log('Base64 image uploaded to ImgBB, temporary URL:', response.data.data.url);
+                return response.data.data.url;
+            }
+            throw new Error('ImgBB did not return a valid URL');
+        },
+        // Free Image Host - fallback service
+        async () => {
+            const formData = new FormData();
+            formData.append('source', base64Data);
+            
+            const response = await axios.post('https://freeimage.host/api/1/upload', formData, {
+                params: {
+                    key: '6d207e02198a847aa98d0a2a901485a5' // Free API key
+                }
+            });
+            
+            if (response.data && response.data.image && response.data.image.url) {
+                console.log('Base64 image uploaded to FreeImageHost, temporary URL:', response.data.image.url);
+                return response.data.image.url;
+            }
+            throw new Error('FreeImageHost did not return a valid URL');
+        }
+    ];
+    
+    // Try each service in sequence until one succeeds
+    let lastError = null;
+    for (const service of services) {
+        try {
+            return await service();
+        } catch (error) {
+            console.warn('Image upload service failed, trying next service:', error.message);
+            lastError = error;
+        }
+    }
+    
+    // If all services fail, throw the last error
+    throw lastError || new Error('All image upload services failed');
+};
+
+/**
  * Generates an illustration using a deployed Segmind PixelFlow workflow.
  * Handles asynchronous polling. Returns BASE RESOLUTION image URL.
  */
 export const generateIllustrationWithWorkflow = async (referenceImageUrl, characterPrompt, scenePrompt) => {
     if (!SEGMIND_API_KEY) throw new Error('Segmind API key is missing.');
     
+    // Ensure we have a URL for the reference image - convert Base64 to URL if needed
+    let imageUrl = referenceImageUrl;
+    if (referenceImageUrl && typeof referenceImageUrl === 'string' && referenceImageUrl.startsWith('data:image')) {
+        console.log('Converting Base64 reference image to URL for PixelFlow workflow');
+        try {
+            imageUrl = await uploadBase64ToGetUrl(referenceImageUrl);
+        } catch (error) {
+            console.error('Failed to convert Base64 to URL:', error);
+            throw new Error('Cannot use Base64 image for PixelFlow: ' + error.message);
+        }
+    }
+    
     // API expects URL for 'image_rqcw4', ensure reference is a URL
-    if (!referenceImageUrl || typeof referenceImageUrl !== 'string' || !referenceImageUrl.startsWith('http')) {
-       console.error("PixelFlow workflow expects a URL for reference image ('image_rqcw4'), received:", typeof referenceImageUrl);
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+       console.error("PixelFlow workflow expects a URL for reference image ('image_rqcw4'), received:", typeof imageUrl);
        throw new Error('Invalid reference image format for this PixelFlow workflow (URL expected).');
     }
     if (!characterPrompt) throw new Error('Character prompt is required.');
@@ -277,7 +356,7 @@ export const generateIllustrationWithWorkflow = async (referenceImageUrl, charac
     const payload = {
         // Match exact input names from the API documentation
         character_prompt: characterPrompt,
-        image_rqcw4: referenceImageUrl, // Use the Dzine preview URL
+        image_rqcw4: imageUrl, // Use the URL (either original or converted from Base64)
         scene_prompt: scenePrompt,
         // Add other inputs if your specific workflow requires them (e.g., seed, negative_prompt)
         // "seed": 42, 
