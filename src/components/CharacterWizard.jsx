@@ -128,80 +128,52 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [characterData.type]); // Dependency remains characterData.type
   // --- END MOVED EFFECT --- 
   
-  // Reset the form state when the component mounts
+  // Effect specifically for handling forcedArtStyle
   useEffect(() => {
-    // Reset form to default values
-    setCharacterData(defaultCharacterData);
-    setPhotoPreview(null);
-    setError('');
-    setStep(1);
-    setIsGenerating(false);
-    setProgressMessage('');
-    setGenerationAttempted(false); // <-- Reset attempt tracker
-    
-    // Apply forced style if provided - This is the ONLY source now
     if (forcedArtStyle) {
-      console.log('[DEBUG] Applying forced art style (API style_code):', forcedArtStyle);
-      // Set it directly into the state used by generation logic
-      setCharacterData(prev => ({ 
-          ...defaultCharacterData, // Start fresh 
-          artStyle: forcedArtStyle // Store the forced style
+      console.log('[CharacterWizard] Applying forced art style:', forcedArtStyle);
+      
+      // Update character data with the forced style
+      setCharacterData(prev => ({
+        ...prev,
+        artStyle: forcedArtStyle
       }));
-    } else {
-        // If no forced style, reset and maybe show an error later?
-        console.warn('[DEBUG] CharacterWizard mounted without a forcedArtStyle prop!');
-        setCharacterData(defaultCharacterData);
+    }
+  }, [forcedArtStyle]);
+  
+  // Update the useEffect to store forcedArtStyle
+  useEffect(() => {
+    console.log('[CharacterWizard] Initializing with forcedArtStyle:', forcedArtStyle);
+    
+    // If a forced art style is provided, apply it to the character data
+    if (forcedArtStyle) {
+      setCharacterData(prevData => ({
+        ...prevData,
+        artStyle: forcedArtStyle
+      }));
+      
+      console.log('[CharacterWizard] Applied forced art style to character data:', forcedArtStyle);
     }
     
-    // Define the checkApiStatus function to check API connectivity
-    const checkApiStatus = async () => {
-      try {
-        console.log('Checking Dzine API connectivity...');
-        const status = await checkApiAccess();
-        console.log('API check result:', status);
-        
-        setApiStatus({
-          checked: true,
-          working: status.success,
-          message: status.message,
-          details: status.details || ''
-        });
-        
-        if (!status.success) {
-          console.warn('Dzine API check failed:', status.message);
-        }
-      } catch (error) {
-        console.error('Error checking API:', error);
-        setApiStatus({
-          checked: true,
-          working: false,
-          message: `API check error: ${error.message}`
-        });
-      }
-    };
+    // Set the initial role if provided
+    if (initialRole) {
+      setCharacterData(prevData => ({
+        ...prevData,
+        role: initialRole
+      }));
+    }
     
+    // If initial step is provided, set it
+    if (initialStep > 1) {
+      setStep(initialStep);
+      // Unlock all steps up to and including the initial step
+      const stepsToUnlock = Array.from({ length: initialStep }, (_, i) => i + 1);
+      setUnlockedSteps(stepsToUnlock);
+    }
+
     // Check API status
     checkApiStatus();
-    
-    // Clean up polling when component unmounts
-    return () => {
-      // Cleanup polling on unmount
-      Object.values(pollingSessionRef.current).forEach(session => {
-        if (typeof session === 'number') {
-          // It's a timeout ID
-          clearTimeout(session);
-        } else if (session && session.intervalId) {
-          // Legacy format
-          clearInterval(session.intervalId);
-        } else if (session && session.timeoutId) {
-          // Legacy format
-          clearTimeout(session.timeoutId);
-        }
-      });
-      pollingSessionRef.current = {};
-      console.log('Component unmounting, cleaning up generation state');
-    };
-  }, [forcedArtStyle]); // Add forcedArtStyle dependency
+  }, [forcedArtStyle, initialRole, initialStep]);
   
   // Character types
   const CHARACTER_TYPES = [
@@ -351,38 +323,51 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   };
   
   const handleNext = () => {
-    setError(''); 
-    let targetStep = step + 1;
+    console.log('[CharacterWizard] handleNext() called, current step:', step);
     
-    // Validation for Step 1 (Details)
+    // Validation for Step 1: Details
     if (step === 1) {
-      if (!characterData.name || !characterData.age) { // Removed gender check as it's optional
-        setError('Please fill in the character name and age.');
+      if (!characterData.name) {
+        setError('Please enter a name for your character.');
         return;
       }
-    }
     
-    // Validation for Step 2 (Photo/Description)
-    if (step === 2) {
-      // Check generation method requirements
-      if (!characterData.useTextToImage && !characterData.photoUrl) {
-         setError('Please upload a photo.');
-         return;
+      setUnlockedSteps(prev => [...new Set([...prev, 2])]);
+      setStep(2);
+    }
+    // Validation for Step 2: Photo & Style
+    else if (step === 2) {
+      // For photo, we also need a style choice
+      if (!characterData.photoUrl) {
+        setError('Please upload or select a photo for your character.');
+        return;
       }
-      if (characterData.useTextToImage && !characterData.generationPrompt) {
-           setError('Please provide a character description.');
-           return;
-       }
-    }
-    
-    // Unlock the next step and navigate (Max step is 3 now)
-    if (targetStep <= 3) { 
-      console.log(`[handleNext] Unlocking and setting step to: ${targetStep}`);
-      setUnlockedSteps(prev => [...new Set([...prev, targetStep])]);
-      setStep(targetStep);
-    } else if (step === 3) {
-      // If on step 3 (Confirm) and clicking Next -> Complete
-      handleComplete();
+      
+      // Check for forced art style or user selected style
+      if (forcedArtStyle) {
+        console.log('[CharacterWizard] Using forced art style:', forcedArtStyle);
+        // Update the character data with the forced art style
+        setCharacterData(prevData => ({
+          ...prevData,
+          artStyle: forcedArtStyle // Make sure this is set
+        }));
+      } else if (!characterData.artStyle) {
+        setError('Please select an art style for your character.');
+        return;
+      }
+      
+      console.log(`[CharacterWizard] Selected/Forced art style: ${characterData.artStyle || forcedArtStyle}`);
+      setError(''); // Clear any errors
+      setUnlockedSteps(prev => [...new Set([...prev, 3])]);
+      
+      // Generate preview image based on selected or forced style
+      const styleToUse = forcedArtStyle || characterData.artStyle;
+      const isHumanCharacter = !characterData.type || characterData.type === 'magical_child' || characterData.type === 'child';
+      
+      // Generate a preview with the photo and style
+      generateCharacterPreview(styleToUse, isHumanCharacter);
+      
+      setStep(3);
     }
   };
   
@@ -798,33 +783,43 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    
    // Update the generateCharacterPreview function signature
    const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
-     // Style code is now passed directly as an argument
-     if (!styleApiCode) {
-       setError('No art style specified. Cannot generate preview.');
-       console.error('generateCharacterPreview called without an art style.');
+     // Clear any previous errors
+     setError('');
+
+     // If we've already attempted generation, skip to avoid multiple attempts
+     if (generationAttempted) {
+       console.log('[GeneratePreview] Generation already attempted, skipping duplicate call');
+       setStep(3); // Just advance to confirm step
        return;
      }
+
+     // Use the forced art style if provided, otherwise use the selected style
+     const styleToUse = forcedArtStyle || styleApiCode;
+     console.log('[GeneratePreview] Using style code:', styleToUse);
      
-     console.log(`[PREVIEW] Generating preview with style code: ${styleApiCode}, isHuman: ${isHumanCharacter}`);
-     
-     // Determine generation type and prepare data
-     if (characterData.useTextToImage) {
-       // Text-to-Image
-       if (!characterData.generationPrompt) {
-         setError('Please provide a description for text-to-image generation.');
-         return;
-       }
-       console.log('[PREVIEW] Using Text-to-Image with style:', styleApiCode);
-       await generateCharacterImage(styleApiCode, characterData.generationPrompt, null, isHumanCharacter);
-     } else {
-       // Image-to-Image
-       if (!characterData.photoUrl) {
-         setError('Please upload a photo for image-to-image generation.');
-         return;
-       }
-       console.log('[PREVIEW] Using Image-to-Image with style:', styleApiCode);
-       await generateCharacterImage(styleApiCode, null, characterData.photoUrl, isHumanCharacter);
+     if (!styleToUse) {
+       console.error('[GeneratePreview] No style provided for character preview generation');
+       setError('Please select an art style for your character.');
+       return;
      }
+
+     // Use either the text description or generate a prompt from character data
+     let promptText = '';
+     if (characterData.useTextToImage && characterData.generationPrompt) {
+       promptText = characterData.generationPrompt;
+     } else {
+       // Build a prompt from character attributes
+       promptText = `Character portrait of ${characterData.name}, ${characterData.age} years old, ${characterData.gender || 'person'}, ${characterData.traits?.join(', ') || 'friendly'}`;
+     }
+
+     // Create a fallback image (placeholder) based on the character's name
+     const fallbackImageBase64 = createColorPlaceholder(
+       stringToColor(characterData.name || 'Character'), 
+       characterData.name || 'Character'
+     );
+     
+     setGenerationAttempted(true);
+     await generateCharacterImage(styleToUse, promptText, fallbackImageBase64, isHumanCharacter);
    };
    
    // Helper function to use fallback image
