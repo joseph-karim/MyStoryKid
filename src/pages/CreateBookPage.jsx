@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
 
 // Step components
-import IntroStep from '../components/wizard/IntroStep';
 import StoryDetailsStep from '../components/wizard/StoryDetailsStep';
 import CharactersStep from '../components/wizard/CharactersStep';
 import ArtStyleStep from '../components/wizard/ArtStyleStep';
 import SummaryStep from '../components/wizard/SummaryStep';
 import CategoryStep from '../components/wizard/CategoryStep';
-import CharacterWizard from '../components/CharacterWizard';
 
 function CreateBookPage() {
   const { isAuthenticated } = useAuthStore();
@@ -19,10 +17,9 @@ function CreateBookPage() {
   // Track which steps are unlocked (completed)
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
   
-  // Authentication check removed for testing
-  
   // Reset wizard state when component mounts
   useEffect(() => {
+    console.log("[CreateBookPage] Component mounted, resetting wizard");
     resetWizard();
     setUnlockedSteps([1]); // Only the first step is unlocked initially
   }, [resetWizard]);
@@ -30,12 +27,20 @@ function CreateBookPage() {
   // Update unlocked steps when wizard step changes
   useEffect(() => {
     // When a step is reached, it and all previous steps become unlocked
-    if (!unlockedSteps.includes(wizardState.step)) {
-      setUnlockedSteps(prev => [...prev, wizardState.step]);
+    if (wizardState.currentStep && !unlockedSteps.includes(wizardState.currentStep)) {
+      console.log(`[CreateBookPage] Unlocking step ${wizardState.currentStep}`);
+      
+      // Create an array of all steps up to and including the current one
+      const allPreviousSteps = Array.from(
+        { length: wizardState.currentStep }, 
+        (_, index) => index + 1
+      );
+      
+      setUnlockedSteps(allPreviousSteps);
     }
-  }, [wizardState.step, unlockedSteps]);
+  }, [wizardState.currentStep, unlockedSteps]);
   
-  // Define wizard steps (Updated 5-Step Flow)
+  // Define wizard steps (5-Step Flow)
   const steps = [
     { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
@@ -47,24 +52,25 @@ function CreateBookPage() {
   // Handle tab click to navigate between steps
   const handleTabClick = (stepId) => {
     if (unlockedSteps.includes(stepId)) {
+      console.log(`[CreateBookPage] Tab clicked, navigating to step ${stepId}`);
       setWizardStep(stepId);
     }
   };
   
-  // Render the current wizard step (Updated 5-Step Flow)
+  // Render the current wizard step
   const renderStep = () => {
-    console.log(`[Render] CreateBookPage - Rendering step: ${wizardState.currentStep}`); 
+    console.log(`[CreateBookPage] Rendering step: ${wizardState.currentStep}, artStyle: ${wizardState.storyData.artStyleCode}`);
+    
     switch (wizardState.currentStep) {
       case 1:
         return <CategoryStep />;
       case 2:
         return <ArtStyleStep />;
       case 3:
-        // Render CharactersStep for the main character
         return <CharactersStep />;
-      case 4: // Story Details
+      case 4:
         return <StoryDetailsStep />;
-      case 5: // Summary
+      case 5:
         return <SummaryStep />;
       default:
         console.warn(`Unknown wizard step: ${wizardState.currentStep}, returning to step 1.`);
@@ -79,8 +85,8 @@ function CreateBookPage() {
   const totalDisplaySteps = steps.length;
   
   const getStepName = (step) => {
-     // Find step name from the steps array
-     return steps.find(s => s.id === step)?.name || '';
+    // Find step name from the steps array
+    return steps.find(s => s.id === step)?.name || '';
   };
   
   return (
@@ -116,7 +122,7 @@ function CreateBookPage() {
         </ul>
       </div>
       
-      {/* Progress Bar - Updated for new total steps */}
+      {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">

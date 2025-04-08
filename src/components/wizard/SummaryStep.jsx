@@ -43,26 +43,22 @@ function SummaryStep() {
   }, [wizardState, storyData]);
   
   const handleBack = () => {
-    // Go back to the previous step (Story Details)
-    setWizardStep(4); // Story Details step number
+    // Go back to the previous step (e.g., Story Details or whichever is appropriate)
+    setWizardStep(5); // Story Details step number
   };
   
-  const handleGenerateClick = (e) => {
-    console.log("[SummaryStep] Generate button clicked. Navigating to generate-book step");
+  const handleGenerateClick = () => {
+    console.log("[SummaryStep] Generate button clicked. Navigating to generate-book");
     
-    // Prevent default behaviors
-    e.preventDefault();
-    e.stopPropagation();
-    
-    setError('');
-    
-    // Navigate directly using window.location with absolute URL
-    const baseUrl = window.location.origin; // e.g. https://mystorykid.com
-    const fullPath = `${baseUrl}/generate-book`;
-    console.log(`[SummaryStep] Navigating to full URL: ${fullPath}`);
-    window.location.href = fullPath;
-    
-    console.log("[SummaryStep] Navigation to /generate-book triggered with window.location");
+    // Use direct linking with React Router's navigate
+    try {
+      // Attempt to navigate to the generate-book route
+      navigate('/generate-book');
+      console.log("[SummaryStep] Navigation to /generate-book triggered successfully");
+    } catch (error) {
+      console.error("[SummaryStep] Navigation failed:", error);
+      setError("Failed to navigate to book generation. Please try again.");
+    }
   };
   
   // Helper function to get a friendly style name

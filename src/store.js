@@ -44,47 +44,68 @@ export const useCharacterStore = create((set) => ({
 }));
 
 // --- Book Store --- 
-export const useBookStore = create((set, get) => ({
-  wizardState: { currentStep: 1, isComplete: false, storyData: {} },
-  books: [], // Array to hold generated books
+export const useBookStore = create(
+  persist(
+    (set, get) => ({
+      wizardState: { currentStep: 1, isComplete: false, storyData: {} },
+      books: [], // Array to hold generated books
 
-  setWizardStep: (step) => set((state) => ({ wizardState: { ...state.wizardState, currentStep: step } })),
-  updateStoryData: (data) => set((state) => ({
-    wizardState: { ...state.wizardState, storyData: { ...state.wizardState.storyData, ...data } }
-  })),
-  resetWizard: () => set({ wizardState: { currentStep: 1, isComplete: false, storyData: {} } }),
+      setWizardStep: (step) => {
+        console.log(`[Store] Setting wizard step to: ${step}`);
+        set((state) => ({ wizardState: { ...state.wizardState, currentStep: step } }));
+      },
+      
+      updateStoryData: (data) => {
+        console.log(`[Store] Updating story data:`, data);
+        set((state) => ({
+          wizardState: { 
+            ...state.wizardState, 
+            storyData: { ...state.wizardState.storyData, ...data } 
+          }
+        }));
+      },
+      
+      resetWizard: () => {
+        console.log(`[Store] Resetting wizard state`);
+        set({ wizardState: { currentStep: 1, isComplete: false, storyData: {} } });
+      },
 
-  // Modified generateBook to return ID
-  generateBook: async () => {
-    const { wizardState } = get();
-    const storyData = wizardState.storyData;
-    console.log('Generating book with data:', storyData);
+      // Modified generateBook to return ID
+      generateBook: async () => {
+        const { wizardState } = get();
+        const storyData = wizardState.storyData;
+        console.log('Generating book with data:', storyData);
 
-    // MOCK GENERATION & ID
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
-    const newBookId = `book-${Date.now()}`;
-    const newBook = {
-      id: newBookId,
-      title: storyData.title || 'Untitled Story',
-      category: storyData.category,
-      scene: storyData.mainScene,
-      artStyleCode: storyData.artStyleCode,
-      artStyleName: getStyleNameFromCode(storyData.artStyleCode), 
-      characters: storyData.bookCharacters || [],
-      createdAt: new Date().toISOString(),
-    };
+        // MOCK GENERATION & ID
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+        const newBookId = `book-${Date.now()}`;
+        const newBook = {
+          id: newBookId,
+          title: storyData.title || 'Untitled Story',
+          category: storyData.category,
+          scene: storyData.mainScene,
+          artStyleCode: storyData.artStyleCode,
+          artStyleName: getStyleNameFromCode(storyData.artStyleCode), 
+          characters: storyData.bookCharacters || [],
+          createdAt: new Date().toISOString(),
+        };
 
-    set((state) => ({
-      books: [...state.books, newBook],
-      wizardState: { ...state.wizardState, isComplete: true }
-    }));
+        set((state) => ({
+          books: [...state.books, newBook],
+          wizardState: { ...state.wizardState, isComplete: true }
+        }));
 
-    console.log('Book added to store:', newBook);
-    return newBookId; // RETURN ID
-  },
+        console.log('Book added to store:', newBook);
+        return newBookId; // RETURN ID
+      },
 
-  // Add other book-related actions as needed (fetchBooks, getBookById, etc.)
-}));
+      // Add other book-related actions as needed (fetchBooks, getBookById, etc.)
+    }),
+    {
+      name: 'book-wizard-storage', // Persist the state in localStorage
+    }
+  )
+);
 
 // --- Helper Function (ensure it's available or imported) ---
 // (This might need to be moved or imported if not already globally available)

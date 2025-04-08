@@ -42,23 +42,30 @@ function CharactersStep() {
   };
   
   const handleEditCharacter = () => {
+    console.log('[CharactersStep] Editing character with art style:', artStyleCode);
     setShowCharacterWizard(true);
   };
   
   const handleCharacterComplete = (character) => {
     if (!character) {
+      console.log('[CharactersStep] Character creation canceled');
       setShowCharacterWizard(false);
       return;
     }
     
+    console.log('[CharactersStep] Character completed:', character);
+    
     // Set the role to 'main' explicitly
     const characterWithRole = {
       ...character,
-      role: 'main'
+      role: 'main',
+      // Ensure the art style is explicitly set
+      artStyle: character.artStyle || artStyleCode
     };
     
     // Update the store with the single character
     updateStoryData({ bookCharacters: [characterWithRole] });
+    console.log('[CharactersStep] Updated store with character:', characterWithRole);
     
     setShowCharacterWizard(false);
   };
