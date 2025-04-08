@@ -1057,25 +1057,6 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        }
    };
 
-   // ... (rest of the component, including onComplete which uses the store state) ...
-   const onComplete = () => {
-       console.log('[CharacterWizard] Invoking completion callback...');
-       // Get the potentially updated character data from the store
-       const currentStoreCharacter = useBookStore.getState().wizardState.storyData.bookCharacters.find(c => c.id === characterData.id);
-       if (currentStoreCharacter) {
-           console.log('[CharacterWizard] Character completed:', currentStoreCharacter);
-           completeCharacterCreation(currentStoreCharacter);
-       } else {
-           console.error('[CharacterWizard] Could not find updated character in store on completion');
-           // Fallback to local state or handle error
-           completeCharacterCreation({ 
-              ...characterData, 
-              stylePreview: previewUrl, // Use local previewUrl as fallback
-              // photoUrl is handled by the upload input 
-           });
-       }
-   };
-   
    return (
      <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
        <div className="flex justify-between items-center mb-6">
