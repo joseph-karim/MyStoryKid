@@ -1119,6 +1119,26 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    };
    // --- End generateCharacterPreview update ---
 
+   // --- Add back useFallbackImage function ---
+   const useFallbackImage = (fallbackImage) => {
+     // Update the main character data state
+     setCharacterData(prev => ({
+       ...prev,
+       stylePreview: fallbackImage // Use the provided fallback
+     }));
+     // Update the local preview state for immediate display
+     setPreviewUrl(fallbackImage); 
+     updateProgressInfo('Using placeholder image due to error.'); // Use consistent helper
+     // Update generation status state if it exists
+     if (typeof setGenerationStatus === 'function') { 
+        setGenerationStatus('fallback'); // Or 'error', depending on desired state
+     }
+     // Ensure isGenerating is false
+     setIsGenerating(false);
+     console.warn('[Fallback] Applied fallback image.');
+   };
+   // --- End useFallbackImage function ---
+
    // ... rest of component, including startPollingTask, renderConfirmStep, etc. ...
 
   // Define the ImagePreviewModal component locally
