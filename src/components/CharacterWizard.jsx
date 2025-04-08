@@ -141,6 +141,33 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   }, [forcedArtStyle]);
   
+  // Add the checkApiStatus function definition
+  const checkApiStatus = async () => {
+    try {
+      console.log('Checking Dzine API connectivity...');
+      const status = await checkApiAccess();
+      console.log('API check result:', status);
+      
+      setApiStatus({
+        checked: true,
+        working: status.success,
+        message: status.message,
+        details: status.details || ''
+      });
+      
+      if (!status.success) {
+        console.warn('Dzine API check failed:', status.message);
+      }
+    } catch (error) {
+      console.error('Error checking API:', error);
+      setApiStatus({
+        checked: true,
+        working: false,
+        message: `API check error: ${error.message}`
+      });
+    }
+  };
+  
   // Update the useEffect to store forcedArtStyle
   useEffect(() => {
     console.log('[CharacterWizard] Initializing with forcedArtStyle:', forcedArtStyle);

@@ -43,8 +43,8 @@ function SummaryStep() {
   }, [wizardState, storyData]);
   
   const handleBack = () => {
-    // Go back to the previous step (e.g., Story Details or whichever is appropriate)
-    setWizardStep(5); // Story Details step number
+    // Go back to the previous step (Story Details)
+    setWizardStep(4); // Story Details step number
   };
   
   const handleGenerateClick = () => {
