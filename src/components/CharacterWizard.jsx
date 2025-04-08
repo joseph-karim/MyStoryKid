@@ -187,8 +187,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     return () => {
       // Cleanup polling on unmount
       Object.values(pollingSessionRef.current).forEach(session => {
-        if (session.intervalId) clearInterval(session.intervalId);
-        if (session.timeoutId) clearTimeout(session.timeoutId);
+        if (typeof session === 'number') {
+          // It's a timeout ID
+          clearTimeout(session);
+        } else if (session && session.intervalId) {
+          // Legacy format
+          clearInterval(session.intervalId);
+        } else if (session && session.timeoutId) {
+          // Legacy format
+          clearTimeout(session.timeoutId);
+        }
       });
       pollingSessionRef.current = {};
       console.log('Component unmounting, cleaning up generation state');
@@ -881,8 +889,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      const maxConsecutiveErrors = 5; // Increased tolerance for errors
      const maxConsecutive404s = 10; // Increased tolerance for 404s
      
+     // Dynamic polling interval
+     let currentPollingInterval = 1000; // Start with 1s
+     const maxPollingInterval = 5000; // Max 5s between polls
+     const pollingIntervalIncrease = 1.5; // Increase by 50% each time
+     
      // Store the interval in a ref so we can clear it from anywhere
-     pollingSessionRef.current[pollingId] = setInterval(async () => {
+     const pollNextTime = async () => {
        pollCount++;
        console.log(`Polling attempt ${pollCount} for task ${taskId}`);
        
@@ -898,7 +911,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        if (pollCount >= maxPolls) {
          console.log(`Reached maximum polling time (${maxPolls}s), stopping`);
          setProgressMessage('Generation timeout - please try again');
-         clearInterval(pollingSessionRef.current[pollingId]);
+         clearTimeout(pollingSessionRef.current[pollingId]);
          setIsGenerating(false);
          delete pollingSessionRef.current[pollingId];
          
@@ -939,7 +952,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            if (consecutiveErrors >= maxConsecutiveErrors) {
              console.error(`Too many consecutive errors (${consecutiveErrors}), using fallback`);
              setProgressMessage('Network issues - using fallback image');
-             clearInterval(pollingSessionRef.current[pollingId]);
+             clearTimeout(pollingSessionRef.current[pollingId]);
              setIsGenerating(false);
              delete pollingSessionRef.current[pollingId];
              
@@ -947,7 +960,15 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              return;
            }
            
-           // Otherwise just continue polling
+           // Increase polling interval on errors
+           currentPollingInterval = Math.min(
+             currentPollingInterval * pollingIntervalIncrease,
+             maxPollingInterval
+           );
+           console.log(`Increased polling interval to ${currentPollingInterval}ms due to error`);
+           
+           // Schedule next poll with increased interval
+           pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
            return;
          }
          
@@ -1024,10 +1045,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            }
 
            // --- STOP POLLING (common for success/failure branches) --- 
-           clearInterval(pollingSessionRef.current[pollingId]);
+           clearTimeout(pollingSessionRef.current[pollingId]);
            setIsGenerating(false);
            delete pollingSessionRef.current[pollingId];
-           console.log(`Polling stopped for task ${taskId}.`);
+           console.log(`Success: Cleared polling interval ${pollingId}`);
            return; // Exit interval callback
            // --- END MODIFIED LOGIC ---
 
@@ -1038,18 +1059,36 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            setProgressMessage('Generation failed. Please try again.');
            setError('Image generation failed. Please check the style or try again.');
            // --- STOP POLLING --- 
-           clearInterval(pollingSessionRef.current[pollingId]);
+           clearTimeout(pollingSessionRef.current[pollingId]);
            setIsGenerating(false);
            delete pollingSessionRef.current[pollingId];
            console.log(`Failed: Cleared polling interval ${pollingId}`);
            return; // Exit interval callback
          }
+         // -- Rate Limit Path --
+         else if (progressData.message && progressData.message.toLowerCase().includes('rate limit')) {
+           console.warn(`Rate limit hit for task ${taskId}, backing off`);
+           // Increase polling interval substantially
+           currentPollingInterval = Math.min(currentPollingInterval * 2, maxPollingInterval);
+           console.log(`Increased polling interval to ${currentPollingInterval}ms due to rate limiting`);
+         }
          // -- Still Running Path --
          else {
            // Task is still running (running, pending_404, or unknown)
            console.log(`Task ${taskId} is still running (Status: ${normalizedStatus})`);
-           // Update progress message (handled outside the try block before)
+           
+           // Gradually increase polling interval for long-running tasks
+           if (pollCount > 10) {
+             currentPollingInterval = Math.min(
+               currentPollingInterval * 1.2, // Increase by 20%
+               maxPollingInterval
+             );
+             console.log(`Increased polling interval to ${currentPollingInterval}ms (attempt ${pollCount})`);
+           }
          }
+         
+         // Schedule next poll
+         pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
          
        } catch (error) {
          console.error(`Error in polling attempt ${pollCount}:`, error);
@@ -1059,16 +1098,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            setProgressMessage('Polling error or timeout - using placeholder image');
            setError('Could not retrieve image result due to polling errors or timeout.');
            // --- STOP POLLING --- 
-           clearInterval(pollingSessionRef.current[pollingId]);
+           clearTimeout(pollingSessionRef.current[pollingId]);
            setIsGenerating(false);
            delete pollingSessionRef.current[pollingId];
            useFallbackImage(fallbackImage); // Use fallback only on repeated errors/timeout
            console.log(`Error/Timeout: Cleared polling interval ${pollingId}`);
            return; // Exit interval callback
          }
-         // Continue polling if error limit not reached
+         
+         // Increase polling interval on errors
+         currentPollingInterval = Math.min(
+           currentPollingInterval * pollingIntervalIncrease,
+           maxPollingInterval
+         );
+         console.log(`Increased polling interval to ${currentPollingInterval}ms due to error`);
+         
+         // Schedule next poll with increased interval
+         pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, currentPollingInterval);
        }
-     }, 1000); // Poll every second
+     };
+     
+     // Start the first poll
+     pollingSessionRef.current[pollingId] = setTimeout(pollNextTime, 1000);
    };
    
    // Helper function to extract image URLs from response

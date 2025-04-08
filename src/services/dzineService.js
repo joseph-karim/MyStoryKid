@@ -2,6 +2,57 @@ const API_BASE_URL = 'https://papi.dzine.ai/openapi/v1';
 // Use environment variable first, fall back to the provided token if environment variable is not available
 const API_KEY = import.meta.env.VITE_DZINE_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJPcGVuQUlEIjo3MSwiT3BlblVJRCI6MTE0MDk5NDMxNzM1NSwiTUlEIjo5OTg0MzMxLCJDcmVhdGVUaW1lIjoxNzQzNDQwMzk3LCJpc3MiOiJkemluZSIsInN1YiI6Im9wZW4ifQ.NfiLkQNPIhTlc7aaT0l_2Fs7AHwFQBgI3U3RlN5fzV4';
 
+// Global rate limiting configuration
+const API_RATE_LIMIT = {
+  lastCallTime: 0,
+  minIntervalMs: 500, // Minimum 500ms between API calls
+  backoffFactor: 1.5, // Exponential backoff factor
+  maxBackoffMs: 5000, // Maximum backoff time
+  currentBackoff: 500, // Starting backoff time
+  retryCount: 0
+};
+
+// Add rate limiting helper function
+const respectRateLimit = async () => {
+  const now = Date.now();
+  const timeSinceLastCall = now - API_RATE_LIMIT.lastCallTime;
+  
+  // Apply exponential backoff if we've had retries
+  const currentWaitTime = API_RATE_LIMIT.retryCount > 0 
+    ? Math.min(API_RATE_LIMIT.currentBackoff, API_RATE_LIMIT.maxBackoffMs)
+    : API_RATE_LIMIT.minIntervalMs;
+  
+  if (timeSinceLastCall < currentWaitTime) {
+    // Need to wait before making another call
+    const waitTime = currentWaitTime - timeSinceLastCall;
+    console.log(`Rate limiting: Waiting ${waitTime}ms before next API call`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  // Update the last call time
+  API_RATE_LIMIT.lastCallTime = Date.now();
+  return true;
+};
+
+// Handle rate limit error and increase backoff
+const handleRateLimitError = () => {
+  API_RATE_LIMIT.retryCount++;
+  API_RATE_LIMIT.currentBackoff = Math.min(
+    API_RATE_LIMIT.currentBackoff * API_RATE_LIMIT.backoffFactor,
+    API_RATE_LIMIT.maxBackoffMs
+  );
+  console.log(`Rate limit hit. Increased backoff to ${API_RATE_LIMIT.currentBackoff}ms`);
+};
+
+// Reset backoff when a call succeeds
+const resetBackoff = () => {
+  if (API_RATE_LIMIT.retryCount > 0) {
+    console.log(`Resetting rate limit backoff after ${API_RATE_LIMIT.retryCount} retries`);
+    API_RATE_LIMIT.retryCount = 0;
+    API_RATE_LIMIT.currentBackoff = API_RATE_LIMIT.minIntervalMs;
+  }
+};
+
 // --- Start: Style Keyword Mapping for Segmind --- //
 
 // Map populated based on ArtStyleStep.jsx structure and descriptions
@@ -51,9 +102,12 @@ export const getKeywordsForDzineStyle = (dzineCode) => {
 
 // --- End: Style Keyword Mapping --- //
 
-// Generic fetch handler for Dzine API calls
+// Modify fetchDzine to use rate limiting
 export const fetchDzine = async (endpoint, options = {}) => {
   try {
+    // Apply rate limiting before making the call
+    await respectRateLimit();
+    
     const url = `${API_BASE_URL}${endpoint}`;
     
     // Create header with direct API key (per documentation)
@@ -94,6 +148,7 @@ export const fetchDzine = async (endpoint, options = {}) => {
       
       // If status is success but not JSON, return the raw text
       if (response.ok) {
+        resetBackoff(); // Reset backoff on success
         return { text: responseText, status: response.status };
       }
       
@@ -103,8 +158,18 @@ export const fetchDzine = async (endpoint, options = {}) => {
     // Check for error codes in response body
     if (data && data.code && data.code !== 200) {
       console.error('Dzine API error in response body:', data);
+      
+      // Check for rate limit errors (code 108009)
+      if (data.code === 108009 || (data.msg && data.msg.toLowerCase().includes('too many requests'))) {
+        handleRateLimitError();
+        throw new Error(`API rate limit exceeded (Code: ${data.code}): ${data.msg || 'Too many requests'}`);
+      }
+      
       throw new Error(`API error in response body (Code: ${data.code}): ${data.msg || 'Unknown error'}`);
     }
+    
+    // Success - reset backoff
+    resetBackoff();
     
     // Return data even if status is not 200, as some APIs return error details as JSON
     return data;
@@ -421,7 +486,7 @@ export const createTxt2ImgTask = async (promptText, styleCode, options = {}) => 
   }
 };
 
-// 7. Get Task Progress (Reverted to simpler polling handled by component)
+// Modify getTaskProgress to use rate limiting and more efficient polling
 export const getTaskProgress = async (taskId) => {
   if (!taskId) {
     console.error('No task ID provided to getTaskProgress');
@@ -430,6 +495,9 @@ export const getTaskProgress = async (taskId) => {
   
   try {
     console.log(`Checking progress for task: ${taskId}`);
+    
+    // Apply rate limiting before making the call
+    await respectRateLimit();
     
     // Construct the correct endpoint according to docs
     const endpoint = `/get_task_progress/${taskId}`;
@@ -453,10 +521,23 @@ export const getTaskProgress = async (taskId) => {
       return { status: 'pending', message: 'Task not found or initializing' };
     }
     
+    // Handle 429 (Too Many Requests) specifically
+    if (response.status === 429) {
+      handleRateLimitError();
+      console.warn(`Task ${taskId} returned 429 (Too Many Requests) - backing off`);
+      return { status: 'pending', message: 'Rate limit exceeded, backing off' };
+    }
+    
     // Handle other non-OK statuses
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Could not read error text');
       console.error(`Task ${taskId} API error: ${response.status} ${errorText}`);
+      
+      // Check if error contains rate limit message
+      if (errorText.toLowerCase().includes('too many requests')) {
+        handleRateLimitError();
+      }
+      
       // Return an error object compatible with the component's polling logic
       return { 
         status: 'error', 
@@ -489,6 +570,12 @@ export const getTaskProgress = async (taskId) => {
         : JSON.stringify(data);
       console.log(`Task ${taskId} progress data:`, logData);
       
+      // Check for rate limit errors in the response
+      if (data.code === 108009 || (data.msg && data.msg.toLowerCase().includes('too many requests'))) {
+        handleRateLimitError();
+        return { status: 'pending', message: 'Rate limit hit, backing off' };
+      }
+      
       // Handle API error codes within the JSON response
       if (data.code && data.code !== 200) {
         console.error(`Task ${taskId} returned error code in JSON:`, data.code, data.msg || 'Unknown error');
@@ -503,6 +590,11 @@ export const getTaskProgress = async (taskId) => {
       const statusData = data.data || data; // Look in 'data' field or root
       const normalizedStatus = normalizeStatus(statusData.status);
       
+      // If task completed successfully, reset backoff
+      if (normalizedStatus === 'success') {
+        resetBackoff();
+      }
+      
       return {
         ...statusData, // Return all fields from the data part
         status: normalizedStatus, // Ensure status is normalized
@@ -516,6 +608,12 @@ export const getTaskProgress = async (taskId) => {
     }
 
   } catch (error) {
+    // Check if it's a rate limit error
+    if (error.message && error.message.toLowerCase().includes('too many requests')) {
+      handleRateLimitError();
+      return { status: 'pending', message: 'Rate limit hit, backing off' };
+    }
+    
     // Catch network errors or other fetch-related issues
     console.error(`Error fetching progress for task ${taskId}:`, error);
     // Return a pending status to allow component to retry polling

@@ -588,23 +588,69 @@ function CharactersStep() {
 
   // --- NEW: Polling Logic ---
   const startPolling = (characterId, taskId) => {
-    const poll = async () => {
+    // Dynamic polling configuration
+    let pollCount = 0;
+    const maxPolls = 60; // Maximum number of polling attempts
+    let currentPollingInterval = 1500; // Start with 1.5 seconds
+    const maxPollingInterval = 8000; // Max 8 seconds between polls
+    const pollingIntervalIncrease = 1.25; // Increase by 25% each time
+    
+    // Create a recursive polling function that uses setTimeout
+    const pollTaskProgress = async () => {
+      pollCount++;
+      
       try {
+        // Check if component is still mounted or character exists
+        if (!generationStatus[characterId]) {
+          console.log(`Polling stopped for ${characterId} - status no longer exists`);
+          return; // Exit without scheduling another poll
+        }
+        
+        console.log(`Polling task ${taskId} for character ${characterId} (attempt ${pollCount})`);
+        
+        // Get the task progress
         const progressData = await getTaskProgress(taskId);
         
-        // Check if component might have unmounted or status changed
-         if (!generationStatus[characterId] || generationStatus[characterId].taskId !== taskId) {
-             console.log("Polling stopped for", characterId, "due to status change or removal.");
-             clearPollInterval(characterId); // Ensure interval is cleared if component state changed
-             return; 
-         }
-
+        // Check again if component is still mounted or character exists
+        if (!generationStatus[characterId] || generationStatus[characterId].taskId !== taskId) {
+          console.log(`Polling stopped for ${characterId} - status changed or removed`);
+          return;
+        }
+        
         // Handle different status formats and nested data structures
         const status = progressData.status || 
                       (progressData.data && progressData.data.status) || 
                       'unknown';
         
         console.log(`Task status: ${status} for character ${characterId}`);
+        
+        // Check if we've hit a rate limit or need to back off
+        if (progressData.message && progressData.message.toLowerCase().includes('rate limit')) {
+          console.warn(`Rate limit hit for task ${taskId}, backing off`);
+          // Increase polling interval substantially on rate limits
+          currentPollingInterval = Math.min(currentPollingInterval * 2, maxPollingInterval);
+          console.log(`Increased polling interval to ${currentPollingInterval}ms due to rate limiting`);
+          
+          // Update status to show we're backing off
+          updateGenStatus(characterId, { 
+            status: 'polling',
+            message: 'Rate limit hit, waiting longer between checks...'
+          });
+          
+          // Schedule next poll with increased interval
+          if (pollCount < maxPolls) {
+            const timeoutId = setTimeout(pollTaskProgress, currentPollingInterval);
+            updateGenStatus(characterId, { pollIntervalId: timeoutId });
+          } else {
+            console.log(`Reached maximum polling attempts (${maxPolls}) for task ${taskId}`);
+            updateGenStatus(characterId, { 
+              status: 'error', 
+              errorMessage: 'Polling timeout - too many attempts',
+              pollIntervalId: null
+            });
+          }
+          return;
+        }
 
         if (status === 'succeed' || status === 'succeeded') {
           // Look for image URL in generate_result_slots
@@ -628,7 +674,7 @@ function CharactersStep() {
               previewUrl: imageUrl,
               pollIntervalId: null 
             });
-            clearPollInterval(characterId); // Stop polling on success
+            // No need to schedule another poll - we're done
           } else {
             console.error("No valid image URL found in response:", progressData);
             updateGenStatus(characterId, { 
@@ -636,7 +682,6 @@ function CharactersStep() {
               errorMessage: 'Generation succeeded but no image URL found.', 
               pollIntervalId: null 
             });
-            clearPollInterval(characterId);
           }
         } else if (status === 'failed' || status === 'error') {
           const errorReason = progressData.error_reason || progressData.data?.error_reason || progressData.message || 'Unknown error';
@@ -646,49 +691,99 @@ function CharactersStep() {
             errorMessage: errorReason || 'Image generation failed.', 
             pollIntervalId: null 
           });
-          clearPollInterval(characterId); // Stop polling on failure
+          // No need to schedule another poll - we're done
         } else {
           // Still processing ('waiting', 'in_queue', 'processing', 'pending')
-          updateGenStatus(characterId, { status: 'polling' }); 
+          updateGenStatus(characterId, { 
+            status: 'polling',
+            message: `Processing (attempt ${pollCount})...`
+          });
+          
+          // Gradually increase polling interval for long-running tasks
+          if (pollCount > 5) {
+            currentPollingInterval = Math.min(
+              currentPollingInterval * pollingIntervalIncrease, 
+              maxPollingInterval
+            );
+            console.log(`Increased polling interval to ${currentPollingInterval}ms (attempt ${pollCount})`);
+          }
+          
+          // Schedule next poll with dynamic interval if we haven't reached the max
+          if (pollCount < maxPolls) {
+            const timeoutId = setTimeout(pollTaskProgress, currentPollingInterval);
+            updateGenStatus(characterId, { pollIntervalId: timeoutId });
+          } else {
+            console.log(`Reached maximum polling attempts (${maxPolls}) for task ${taskId}`);
+            updateGenStatus(characterId, { 
+              status: 'error', 
+              errorMessage: 'Polling timeout - too many attempts',
+              pollIntervalId: null
+            });
+          }
         }
       } catch (error) {
         console.error(`Error polling task ${taskId}:`, error);
-        updateGenStatus(characterId, { 
-          status: 'error', 
-          errorMessage: error.message || 'Failed to check progress.', 
-          pollIntervalId: null 
-        });
-        clearPollInterval(characterId);
+        
+        // Check if we can continue polling
+        if (pollCount < maxPolls) {
+          // Increase interval on errors
+          currentPollingInterval = Math.min(currentPollingInterval * pollingIntervalIncrease, maxPollingInterval);
+          console.log(`Error during polling. Increased interval to ${currentPollingInterval}ms`);
+          
+          updateGenStatus(characterId, { 
+            status: 'polling',
+            message: `Error checking progress, retrying in ${currentPollingInterval/1000}s...`
+          });
+          
+          // Schedule another poll despite the error
+          const timeoutId = setTimeout(pollTaskProgress, currentPollingInterval);
+          updateGenStatus(characterId, { pollIntervalId: timeoutId });
+        } else {
+          // Too many attempts, give up
+          updateGenStatus(characterId, { 
+            status: 'error', 
+            errorMessage: error.message || 'Failed to check progress after multiple attempts.', 
+            pollIntervalId: null 
+          });
+        }
       }
     };
 
-    // Clear existing interval just in case
+    // Clear existing interval/timeout just in case
     clearPollInterval(characterId); 
     
     // Store task ID before starting the poll
-    updateGenStatus(characterId, { taskId: taskId, status: 'polling', errorMessage: null, previewUrl: null });
+    updateGenStatus(characterId, { 
+      taskId: taskId, 
+      status: 'polling', 
+      message: 'Starting generation...',
+      errorMessage: null, 
+      previewUrl: null,
+      pollCount: 0
+    });
 
-    // Poll immediately, then set interval
-    poll(); 
-    const intervalId = setInterval(poll, 3000); // Poll every 3 seconds (adjust interval as needed)
-    updateGenStatus(characterId, { pollIntervalId: intervalId }); 
+    // Start polling immediately
+    pollTaskProgress();
   };
 
-  // --- NEW: Helper to clear poll interval ---
+  // --- Update: Helper to clear poll interval to handle both setTimeout and setInterval ---
   const clearPollInterval = (characterId) => {
-       const currentStatus = generationStatus[characterId];
-       if (currentStatus?.pollIntervalId) {
-           clearInterval(currentStatus.pollIntervalId);
-           // Update status only to remove the interval ID, keep other fields
-            setGenerationStatus(prev => ({
-              ...prev,
-              [characterId]: {
-                ...(prev[characterId]), 
-                pollIntervalId: null 
-              }
-            }));
-       }
-   };
+    const currentStatus = generationStatus[characterId];
+    if (currentStatus?.pollIntervalId) {
+      // Clear both setTimeout and setInterval to be safe
+      clearTimeout(currentStatus.pollIntervalId);
+      clearInterval(currentStatus.pollIntervalId);
+      
+      // Update status to remove the interval ID, keep other fields
+      setGenerationStatus(prev => ({
+        ...prev,
+        [characterId]: {
+          ...(prev[characterId]), 
+          pollIntervalId: null 
+        }
+      }));
+    }
+  };
 
   // --- NEW: Confirm Character Style ---
   const handleConfirmStyle = (characterId) => {
