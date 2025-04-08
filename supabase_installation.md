@@ -8,6 +8,25 @@ npm install @supabase/supabase-js
 
 ## Supabase Setup
 
+### Option 1: Using the Setup Script (Recommended)
+
+We've created a setup script to help you configure Supabase storage:
+
+1. Make sure you have a `.env` file with your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+2. Run the setup script:
+   ```bash
+   npm run setup-storage
+   ```
+
+3. Follow any additional instructions provided by the script.
+
+### Option 2: Manual Setup
+
 1. **Create a Supabase Project** (if you haven't already):
    - Go to [https://supabase.com](https://supabase.com)
    - Sign up or log in
