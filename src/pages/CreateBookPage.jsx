@@ -35,14 +35,13 @@ function CreateBookPage() {
     }
   }, [wizardState.step, unlockedSteps]);
   
-  // Define wizard steps (Updated 6-Step Flow)
+  // Define wizard steps (Updated 5-Step Flow - removed Other Characters step)
   const steps = [
     { id: 1, name: 'Category & Scene' },
     { id: 2, name: 'Art Style' },
-    { id: 3, name: 'Main Character' },
-    { id: 4, name: 'Other Characters' },
-    { id: 5, name: 'Story Details' },
-    { id: 6, name: 'Summary' }
+    { id: 3, name: 'Character' },
+    { id: 4, name: 'Story Details' },
+    { id: 5, name: 'Summary' }
   ];
   
   // Handle tab click to navigate between steps
@@ -52,7 +51,7 @@ function CreateBookPage() {
     }
   };
   
-  // Render the current wizard step (Updated 6-Step Flow)
+  // Render the current wizard step (Updated 5-Step Flow)
   const renderStep = () => {
     console.log(`[Render] CreateBookPage - Rendering step: ${wizardState.currentStep}`); 
     switch (wizardState.currentStep) {
@@ -76,7 +75,7 @@ function CreateBookPage() {
                 };
                 // Update store with main character (including role) and move to next step
                 updateStoryData({ bookCharacters: [mainCharacterWithRole] }); 
-                setWizardStep(4); // Go to Other Characters step
+                setWizardStep(4); // Go to Story Details step (was 4 - Other Characters)
               } else {
                 // Handle cancellation: Go back to Art Style
                 setWizardStep(2); 
@@ -84,12 +83,9 @@ function CreateBookPage() {
             }}
           />
         );
-      case 4:
-        // Render CharactersStep to manage additional characters
-        return <CharactersStep />;
-      case 5:
+      case 4: // Story Details (was 5)
         return <StoryDetailsStep />;
-      case 6:
+      case 5: // Summary (was 6)
         return <SummaryStep />;
       default:
         console.warn(`Unknown wizard step: ${wizardState.currentStep}, returning to step 1.`);
