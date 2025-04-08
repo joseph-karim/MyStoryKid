@@ -1057,42 +1057,83 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        }
    };
 
-   return (
-     <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
-       <div className="flex justify-between items-center mb-6">
-         <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-         {/* Optional: Keep Cancel button if needed, depends on usage context */}
-         {/* <button ... onClick={handleCancel} ... /> */}
-       </div>
-               
-       {/* REMOVE Internal Tabs Navigation */}
-       {/* <div className="flex border-b mb-4"> ... stepsConfig.map ... </div> */}
-       
-       {error && (
-         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-           {error}
+  // Define the ImagePreviewModal component locally
+  const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <div 
+             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-75" // Increased z-index
+             onClick={onClose} // Close on overlay click
+           >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="relative max-w-3xl max-h-[85vh] bg-white rounded-lg shadow-xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal content
+            >
+              <button
+                onClick={onClose}
+                className="absolute top-2 right-2 z-10 p-1 bg-white bg-opacity-70 rounded-full text-gray-600 hover:bg-opacity-100 hover:text-gray-900"
+                aria-label="Close image preview"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="p-2 flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt="Character Preview"
+                  className="block max-w-full max-h-[80vh] object-contain rounded"
+                 />
+               </div>
+            </motion.div>
           </div>
         )}
-       
-       {/* Render active step content */}
-       <AnimatePresence mode="wait">
-         <motion.div
-           key={step} // Ensures animation runs on step change
-           initial={{ opacity: 0, x: step > (step - 1) ? 50 : -50 }} // Slide direction based on nav
-           animate={{ opacity: 1, x: 0 }}
-           exit={{ opacity: 0, x: step > (step - 1) ? -50 : 50 }}
-           transition={{ duration: 0.3 }}
-         >
-           {renderStep()}
-         </motion.div>
-       </AnimatePresence>
-       
-       {/* Render Image Preview Modal */}
-       <ImagePreviewModal 
-         isOpen={showImagePreview} 
-         imageUrl={previewImageUrl}
-         onClose={closeImagePreview} 
-       />
+      </AnimatePresence>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
+        {/* Optional: Keep Cancel button if needed, depends on usage context */}
+        {/* <button ... onClick={handleCancel} ... /> */}
+      </div>
+              
+      {/* REMOVE Internal Tabs Navigation */}
+      {/* <div className="flex border-b mb-4"> ... stepsConfig.map ... </div> */}
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+         </div>
+      )}
+      
+      {/* Render active step content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step} // Ensures animation runs on step change
+          initial={{ opacity: 0, x: step > (step - 1) ? 50 : -50 }} // Slide direction based on nav
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: step > (step - 1) ? -50 : 50 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
+      
+      {/* Render Image Preview Modal */}
+      <ImagePreviewModal 
+        isOpen={showImagePreview} 
+        imageUrl={previewImageUrl}
+        onClose={closeImagePreview} 
+      />
     </div>
   );
 }
