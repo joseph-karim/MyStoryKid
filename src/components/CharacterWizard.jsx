@@ -259,8 +259,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
-    // Reset the active generation ID
-    activeGenerationIdRef.current = null;
+    // Don't reset the active generation ID here, as it should be managed by the generation functions
+    // This was causing the polling to stop prematurely
+    // activeGenerationIdRef.current = null;
   };
   // --- END helper functions ---
   
@@ -1215,8 +1216,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    const startPollingTask = (taskId, fallbackImage, generationId) => {
      console.log(`[Polling] Starting to poll task ${taskId}, generation ID: ${generationId}`);
      
-     // Use the centralized cleanup helper
-     clearActiveTasks();
+     // Only clear the interval, don't reset the active generation ID
+     if (pollIntervalRef.current) {
+       clearInterval(pollIntervalRef.current);
+       pollIntervalRef.current = null;
+     }
+     
+     // Explicitly set the active generation ID to the current one to avoid race conditions
+     activeGenerationIdRef.current = generationId;
      
      let pollingCount = 0;
      const MAX_POLLS = 60; // Maximum polling attempts (5 minutes at 5s interval)
@@ -1257,40 +1264,46 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            clearInterval(pollIntervalRef.current);
            pollIntervalRef.current = null;
            
-           // Fetch the result
-           const resultData = await getTaskResult(taskId);
-           console.log(`[Polling] Task result:`, resultData);
-           
-           if (!resultData || !resultData.images || resultData.images.length === 0) {
-             throw new Error('Task completed but no images were returned');
-           }
-           
-           // Get the image URL/data from the result
-           const generatedImageUrl = resultData.images[0]; // Assuming first image is what we want
-           
-           // If image is a URL, we need to convert to Base64 for storage
-           if (typeof generatedImageUrl === 'string' && generatedImageUrl.startsWith('http')) {
-             try {
-               // Use the utility function to convert remote URL to Base64
-               const base64Image = await fetchAndConvertToBase64(generatedImageUrl);
-               
-               if (!base64Image) {
-                 throw new Error('Failed to convert image URL to Base64');
-               }
-               
-               // Use centralized image update helper
-               updatePreviewImage(base64Image);
-             } catch (fetchError) {
-               console.error('[Polling] Error fetching/converting image:', fetchError);
-               handleGenerationError(fetchError, fallbackImage);
+           try {
+             // Fetch the result
+             const resultData = await getTaskResult(taskId);
+             console.log(`[Polling] Task result:`, resultData);
+             
+             if (!resultData || !resultData.images || resultData.images.length === 0) {
+               throw new Error('Task completed but no images were returned');
              }
-           } else {
-             // Image is already Base64 or in a format we can use directly
-             updatePreviewImage(generatedImageUrl);
+             
+             // Get the image URL/data from the result
+             const generatedImageUrl = resultData.images[0]; // Assuming first image is what we want
+             
+             // If image is a URL, we need to convert to Base64 for storage
+             if (typeof generatedImageUrl === 'string' && generatedImageUrl.startsWith('http')) {
+               try {
+                 // Use the utility function to convert remote URL to Base64
+                 const base64Image = await fetchAndConvertToBase64(generatedImageUrl);
+                 
+                 if (!base64Image) {
+                   throw new Error('Failed to convert image URL to Base64');
+                 }
+                 
+                 // Use centralized image update helper
+                 updatePreviewImage(base64Image);
+               } catch (fetchError) {
+                 console.error('[Polling] Error fetching/converting image:', fetchError);
+                 handleGenerationError(fetchError, fallbackImage);
+               }
+             } else {
+               // Image is already Base64 or in a format we can use directly
+               updatePreviewImage(generatedImageUrl);
+             }
+             
+             // Update UI state
+             updateGenerationState('complete', 'Character generation complete!');
+           } catch (resultError) {
+             // More specific error for result fetch issues
+             console.error(`[Polling] Failed to fetch task result:`, resultError);
+             handleGenerationError('Could not retrieve the generated image. Please try again.', fallbackImage);
            }
-           
-           // Update UI state
-           updateGenerationState('complete', 'Character generation complete!');
          } else if (status === 'failed' || status === 'error') {
            throw new Error(`Task failed: ${progressResult.error || 'Unknown error'}`);
          }
@@ -1302,6 +1315,17 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          
        } catch (error) {
          console.error(`[Polling] Error polling task ${taskId}:`, error);
+         
+         // Special handling for 404 errors which might be temporary
+         const is404Error = error.message && (error.message.includes('404') || error.message.includes('not found'));
+         
+         // For 404 errors early in polling, don't terminate - the task might not be ready yet
+         if (is404Error && pollingCount < 5) {
+           console.log(`[Polling] Got 404 for task ${taskId} on attempt ${pollingCount} - continuing to poll`);
+           updateProgressInfo(`Generation in progress... waiting for task to start`);
+           return; // Continue polling
+         }
+         
          clearInterval(pollIntervalRef.current);
          pollIntervalRef.current = null;
          

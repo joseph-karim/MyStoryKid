@@ -616,7 +616,13 @@ export const getTaskProgress = async (taskId) => {
     // Handle 404 specifically
     if (response.status === 404) {
       console.warn(`Task ${taskId} returned 404 - treating as pending`);
-      return { status: 'pending', message: 'Task not found or initializing' };
+      // For new tasks, 404 likely means the task is still initializing
+      // Return a 'pending' status so polling continues
+      return { 
+        status: 'pending', 
+        message: 'Task not found or initializing',
+        progress: 0.05 // Provide small progress value to indicate activity
+      };
     }
     
     // Handle 429 (Too Many Requests) specifically
