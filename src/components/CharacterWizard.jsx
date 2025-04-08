@@ -200,6 +200,70 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const [generationStatus, setGenerationStatus] = useState('idle'); 
   // -----------------------------------------------
   
+  // --- ADD updateProgressInfo function ---
+  const updateProgressInfo = (message) => {
+    console.log(`[Progress] ${message}`);
+    setProgressMessage(message);
+  };
+  // --- END updateProgressInfo function ---
+  
+  // --- ADD helper functions for consistent state management ---
+  // Centralize generation state updates for consistency
+  const updateGenerationState = (status, message = null) => {
+    console.log(`[State] Updating generation state to: ${status}, message: ${message || 'none'}`);
+    setGenerationStatus(status);
+    if (message) updateProgressInfo(message);
+    
+    // Update isGenerating based on status
+    setIsGenerating(status === 'processing');
+    
+    // Clear error when starting, but don't clear during other state changes
+    if (status === 'processing' && error) setError('');
+  };
+  
+  // Handle setting both image preview locations consistently
+  const updatePreviewImage = (imageData) => {
+    if (!imageData) {
+      console.warn('[Preview] Attempted to set null/undefined image data');
+      return;
+    }
+    
+    console.log(`[Preview] Setting preview image: ${imageData.substring(0, 50)}...`);
+    // Update both state variables that track the preview
+    setPreviewUrl(imageData);
+    setCharacterData(prev => ({
+      ...prev,
+      stylePreview: imageData
+    }));
+  };
+  
+  // Consistent error handling
+  const handleGenerationError = (errorMessage, fallbackImage = null) => {
+    const message = typeof errorMessage === 'string' ? errorMessage : 
+                   (errorMessage?.message || 'Unknown error');
+    
+    console.error(`[Error] Generation error: ${message}`);
+    setError(`Generation failed: ${message}. Please try again.`);
+    updateGenerationState('error', `Error occurred: ${message}`);
+    
+    // Use fallback image if provided
+    if (fallbackImage) {
+      useFallbackImage(fallbackImage);
+    }
+  };
+  
+  // Standardized task management
+  const clearActiveTasks = () => {
+    if (pollIntervalRef.current) {
+      console.log('[Tasks] Clearing active polling interval');
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    // Reset the active generation ID
+    activeGenerationIdRef.current = null;
+  };
+  // --- END helper functions ---
+  
   // --- MOVED EFFECT: Update isHuman based on type --- 
   useEffect(() => {
     // Determine default isHuman value based on type
@@ -891,8 +955,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    // Add back renderConfirmStep function ---
    const renderConfirmStep = () => {
      console.log('[Render] renderConfirmStep');
-     // Use previewUrl which should now hold the URL from the upload service
-     const displayPreviewUrl = previewUrl || characterData.stylePreview; 
+     // Use a consistent approach to get the display URL
+     const displayPreviewUrl = characterData.stylePreview || previewUrl;
 
      return (
        <div className="space-y-6 animate-fadeIn">
@@ -912,7 +976,10 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                      src={displayPreviewUrl} 
                      alt={characterData.name}
                      className="w-full h-full object-contain bg-gray-100" // Added bg for potential transparency
-                     onError={(e) => { e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error'); }} // Basic error fallback
+                     onError={(e) => {
+                        console.log('[Image] Error loading image, using placeholder');
+                        e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error');
+                     }} 
                    />
                </div>
                
@@ -934,7 +1001,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          ) : (
            <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300">
              <p className="text-gray-600">Preview not available.</p>
-             {/* Optionally add a button to retry generation if applicable */}
+             {/* Add a retry button for better UX */}
+             {generationAttempted && (
+               <button 
+                 onClick={() => {
+                   console.log('[Retry] User requested retry');
+                   const styleToUse = forcedArtStyle || characterData.artStyle;
+                   const isHumanCharacter = characterData.isHuman !== false; // Default to true if undefined
+                   generateCharacterPreview(styleToUse, isHumanCharacter);
+                 }}
+                 className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+               >
+                 Retry Generation
+               </button>
+             )}
            </div>
          )}
          
@@ -947,7 +1027,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              Back
            </button>
            <button
-             onClick={handleComplete} // Use the handleComplete function passed via props or defined
+             onClick={handleComplete}
              className={`px-6 py-2 bg-blue-600 text-white rounded ${!displayPreviewUrl || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
              disabled={!displayPreviewUrl || isGenerating}
            >
@@ -957,7 +1037,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        </div>
      );
    };
-   // --- End renderConfirmStep --- 
+   // --- End renderConfirmStep ---
 
    // Update renderStep to call renderConfirmStep ---
    const renderStep = () => {
@@ -977,11 +1057,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      // Style validation
      if (!styleApiCode || !styleApiCode.startsWith('Style-')) {
        console.error('Invalid or missing style API code passed to generateCharacterImage:', styleApiCode);
-       setError('An invalid art style was specified.');
-       setIsGenerating(false);
-       setGenerationStatus('error'); 
-       updateProgressInfo('Error: Invalid style.');
-       useFallbackImage(fallbackImage); // Use fallback on error
+       handleGenerationError('An invalid art style was specified.', fallbackImage);
        return; 
      }
      
@@ -990,9 +1066,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      let operationType = ''; 
      
      try {
-       setIsGenerating(true);
-       setGenerationStatus('processing'); 
-       updateProgressInfo('Starting generation task...');
+       // Use centralized state update
+       updateGenerationState('processing', 'Starting generation task...');
        
        let taskResponse;
        
@@ -1008,7 +1083,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          // Enhance prompt slightly if needed
          let enhancedPrompt = prompt;
          if (characterData.name && !enhancedPrompt.includes(characterData.name)) {
-             enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
+           enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
          }
          enhancedPrompt += ", high quality illustration"; // Add quality modifier
          
@@ -1078,13 +1153,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        
      } catch (error) {
        console.error(`API error during ${operationType || 'generation'} process:`, error);
-       // Ensure state is updated correctly on error
+       // Use centralized error handling
        if(activeGenerationIdRef.current === generationId) { // Only update if it's the current task
-          setIsGenerating(false);
-          setGenerationStatus('error');
-          setError(`Generation failed: ${error.message}. Please try again or contact support.`);
-          updateProgressInfo('Error occurred during generation');
-          useFallbackImage(fallbackImage); // Use fallback on error
+         handleGenerationError(error, fallbackImage);
        }
      }
    };
@@ -1098,7 +1169,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
 
      const styleToUse = forcedArtStyle || styleApiCode;
      if (!styleToUse) {
-       setError('Error: No art style provided for preview generation.');
+       handleGenerationError('No art style provided for preview generation.');
        return;
      }
 
@@ -1109,43 +1180,146 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        // Prompt for img2img can be simpler
        promptText = `Character portrait of ${characterData.name || 'person'} in the selected style`;
      } else {
-       setError('Error: Need either a photo or a description to generate preview.');
+       handleGenerationError('Need either a photo or a description to generate preview.');
        return;
      }
+
+     // Set this flag to track that we've attempted generation
+     setGenerationAttempted(true);
 
      // Fallback image for img2img should be the original photo itself
      // Fallback for txt2img is generated by generateCharacterImage
      const fallback = characterData.photoUrl; 
-
-     // Reset generationAttempted for this specific call? Or manage elsewhere?
-     // setGenerationAttempted(true); // This is likely set in the useEffect hook already
 
      // CALL the reinstated function
      await generateCharacterImage(styleToUse, promptText, fallback, isHumanCharacter);
    };
    // --- End generateCharacterPreview update ---
 
-   // --- Add back useFallbackImage function ---
+   // --- Update useFallbackImage function to use centralized helpers ---
    const useFallbackImage = (fallbackImage) => {
-     // Update the main character data state
-     setCharacterData(prev => ({
-       ...prev,
-       stylePreview: fallbackImage // Use the provided fallback
-     }));
-     // Update the local preview state for immediate display
-     setPreviewUrl(fallbackImage); 
-     updateProgressInfo('Using placeholder image due to error.'); // Use consistent helper
-     // Update generation status state if it exists
-     if (typeof setGenerationStatus === 'function') { 
-        setGenerationStatus('fallback'); // Or 'error', depending on desired state
+     if (!fallbackImage) {
+       console.warn('[Fallback] No fallback image provided');
+       return;
      }
-     // Ensure isGenerating is false
-     setIsGenerating(false);
-     console.warn('[Fallback] Applied fallback image.');
+     
+     console.log('[Fallback] Applying fallback image');
+     // Use the central image update function
+     updatePreviewImage(fallbackImage);
+     updateProgressInfo('Using placeholder image due to error.');
+     updateGenerationState('fallback');
    };
    // --- End useFallbackImage function ---
 
-   // ... rest of component, including startPollingTask, renderConfirmStep, etc. ...
+   // Enhance startPollingTask with improved error handling and cleanup
+   const startPollingTask = (taskId, fallbackImage, generationId) => {
+     console.log(`[Polling] Starting to poll task ${taskId}, generation ID: ${generationId}`);
+     
+     // Use the centralized cleanup helper
+     clearActiveTasks();
+     
+     let pollingCount = 0;
+     const MAX_POLLS = 60; // Maximum polling attempts (5 minutes at 5s interval)
+     const POLL_INTERVAL = 5000; // Poll every 5 seconds
+     
+     updateProgressInfo('Waiting for generation to start...');
+     
+     // Create a new interval
+     pollIntervalRef.current = setInterval(async () => {
+       // Safety check - if this is no longer the active generation, stop polling
+       if (activeGenerationIdRef.current !== generationId) {
+         console.log(`[Polling] Stopping poll for ${taskId} as it's no longer the active generation`);
+         clearInterval(pollIntervalRef.current);
+         pollIntervalRef.current = null;
+         return;
+       }
+       
+       pollingCount++;
+       console.log(`[Polling] Poll attempt ${pollingCount} for task ${taskId}`);
+       
+       try {
+         // Get the current progress of the task
+         const progressResult = await getTaskProgress(taskId);
+         console.log(`[Polling] Progress data:`, progressResult);
+         
+         if (!progressResult) {
+           throw new Error('Failed to get task progress information');
+         }
+         
+         // Update progress message based on status
+         const status = progressResult.status?.toLowerCase();
+         const progress = progressResult.progress || 0;
+         
+         if (status === 'pending' || status === 'running') {
+           updateProgressInfo(`Generation in progress... ${Math.round(progress * 100)}%`);
+         } else if (status === 'succeeded' || status === 'completed') {
+           console.log(`[Polling] Task ${taskId} completed successfully!`);
+           clearInterval(pollIntervalRef.current);
+           pollIntervalRef.current = null;
+           
+           // Fetch the result
+           const resultData = await getTaskResult(taskId);
+           console.log(`[Polling] Task result:`, resultData);
+           
+           if (!resultData || !resultData.images || resultData.images.length === 0) {
+             throw new Error('Task completed but no images were returned');
+           }
+           
+           // Get the image URL/data from the result
+           const generatedImageUrl = resultData.images[0]; // Assuming first image is what we want
+           
+           // If image is a URL, we need to convert to Base64 for storage
+           if (typeof generatedImageUrl === 'string' && generatedImageUrl.startsWith('http')) {
+             try {
+               // Use the utility function to convert remote URL to Base64
+               const base64Image = await fetchAndConvertToBase64(generatedImageUrl);
+               
+               if (!base64Image) {
+                 throw new Error('Failed to convert image URL to Base64');
+               }
+               
+               // Use centralized image update helper
+               updatePreviewImage(base64Image);
+             } catch (fetchError) {
+               console.error('[Polling] Error fetching/converting image:', fetchError);
+               handleGenerationError(fetchError, fallbackImage);
+             }
+           } else {
+             // Image is already Base64 or in a format we can use directly
+             updatePreviewImage(generatedImageUrl);
+           }
+           
+           // Update UI state
+           updateGenerationState('complete', 'Character generation complete!');
+         } else if (status === 'failed' || status === 'error') {
+           throw new Error(`Task failed: ${progressResult.error || 'Unknown error'}`);
+         }
+         
+         // Check if we've exceeded the maximum number of polling attempts
+         if (pollingCount >= MAX_POLLS) {
+           throw new Error('Generation timed out. Please try again.');
+         }
+         
+       } catch (error) {
+         console.error(`[Polling] Error polling task ${taskId}:`, error);
+         clearInterval(pollIntervalRef.current);
+         pollIntervalRef.current = null;
+         
+         // Only update UI if this is still the active generation
+         if (activeGenerationIdRef.current === generationId) {
+           handleGenerationError(error, fallbackImage);
+         }
+       }
+     }, POLL_INTERVAL);
+   };
+
+   // Enhance cleanup on component unmount
+   useEffect(() => {
+     return () => {
+       console.log('[Cleanup] Component unmounting, clearing all tasks and intervals');
+       clearActiveTasks();
+     };
+   }, []);
 
   // Define the ImagePreviewModal component locally
   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {

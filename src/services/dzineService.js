@@ -1127,39 +1127,80 @@ export const fetchDzineStyles = async () => {
 export const getTaskResult = async (taskId) => {
   if (!taskId) {
     console.error('Missing taskId for getTaskResult');
-    throw new Error('Task ID is required to query results.');
+    throw new Error('Task ID is required for getTaskResult');
   }
-  
-  // Use the correct endpoint from the documentation
-  const endpoint = '/query_task_result';
-  console.log(`Calling documented endpoint: POST ${endpoint}`);
-  
+
   try {
-    const response = await fetchDzine(endpoint, {
-      method: 'POST',
-      body: JSON.stringify({ task_id: taskId }),
+    console.log(`Fetching results for task: ${taskId}`);
+    
+    // Apply rate limiting before making the call
+    await respectRateLimit();
+    
+    // Use the documented endpoint for fetching task results
+    const endpoint = `/get_task_result/${taskId}`;
+    console.log(`Getting task result using endpoint: GET ${API_BASE_URL}${endpoint}`);
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY,
+        'User-Agent': 'MyStoryKid/1.0',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
     });
     
-    // Log the raw response for debugging
-    console.log('Raw response from query_task_result API:', JSON.stringify(response));
-
-    // Check the expected success structure based on docs (code 200, data.status)
-    if (response && response.code === 200 && response.data) {
-       console.log(`Task ${taskId} result query successful. Status: ${response.data.status}`);
-      return response; // Return the full response object which includes the 'data' field
-    } else if (response && response.code !== 200) {
-        // Handle API-level errors reported in the response body
-        console.error(`API error in query_task_result response (Code: ${response.code}): ${response.msg}`);
-         throw new Error(`API error querying task result (Code: ${response.code}): ${response.msg || 'Unknown API error'}`);
-    } else {
-      // Handle unexpected structure
-      console.error('Invalid or unexpected response structure from query_task_result API:', response);
-      throw new Error('Unexpected response structure when querying task result.');
+    // Handle HTTP errors
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Could not read error text');
+      console.error(`Task ${taskId} result API error: ${response.status} ${errorText}`);
+      throw new Error(`Failed to fetch result: ${response.status} ${response.statusText}`);
     }
+    
+    // Parse the response
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      throw new Error('Empty response from server');
+    }
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`Task ${taskId} result JSON parse error:`, parseError);
+      console.error(`Raw response: "${responseText}"`);
+      throw new Error('Invalid JSON response format');
+    }
+    
+    console.log(`Task ${taskId} result data (summary):`, {
+      status: data.status || 'Unknown status',
+      hasImages: !!(data.images || data.data?.images || []).length,
+      responseType: typeof data
+    });
+    
+    // Handle different response structures
+    if (data.code && data.code !== 200) {
+      throw new Error(`API error: ${data.code} - ${data.msg || 'Unknown error'}`);
+    }
+    
+    // Extract the images from the response
+    const images = data.images || data.data?.images || [];
+    
+    if (!images || images.length === 0) {
+      console.warn(`No images found in result for task ${taskId}`);
+      return { images: [] };
+    }
+    
+    // Return the successful result
+    return { 
+      images, 
+      status: 'completed',
+      task_id: taskId
+    };
+    
   } catch (error) {
-     // Catch fetchDzine errors or other exceptions
-     console.error(`Error fetching task result for ${taskId}:`, error);
-     // Re-throw the error for the caller (polling logic) to handle
-     throw error; 
+    console.error(`Error in getTaskResult for task ${taskId}:`, error);
+    throw error;
   }
 };
