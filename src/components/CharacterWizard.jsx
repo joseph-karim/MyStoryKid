@@ -1061,42 +1061,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
        <div className="flex justify-between items-center mb-6">
          <h2 className="text-2xl font-bold text-gray-800">Create Character</h2>
-                <button
-           onClick={handleCancel}
-           className="text-gray-400 hover:text-gray-600"
-                >
-           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-           </svg>
-                </button>
-             </div>
+         {/* Optional: Keep Cancel button if needed, depends on usage context */}
+         {/* <button ... onClick={handleCancel} ... /> */}
+       </div>
                
-       {/* Tabs Navigation Example */}
-       <div className="flex border-b mb-4">
-         {stepsConfig.map(({ index, title }) => {
-           // --- Conditionally disable Step 2 if needed (though maybe not necessary now?) ---
-           // Keeping the logic simple for now
-           const isDisabled = !unlockedSteps.includes(index);
-           const isActive = step === index;
-           
-           return (
-              <button
-               key={index}
-               onClick={() => !isDisabled && handleTabClick(index)}
-               disabled={isDisabled}
-               className={`py-2 px-4 text-sm font-medium ${
-                 isActive
-                   ? 'border-b-2 border-blue-500 text-blue-600'
-                   : isDisabled
-                   ? 'text-gray-400 cursor-not-allowed'
-                   : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-               }`}
-             >
-               {title}
-              </button>
-           );
-         })}
-            </div>
+       {/* REMOVE Internal Tabs Navigation */}
+       {/* <div className="flex border-b mb-4"> ... stepsConfig.map ... </div> */}
        
        {error && (
          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
