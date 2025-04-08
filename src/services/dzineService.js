@@ -1101,3 +1101,24 @@ export const analyzeAllStyles = async () => {
 };
 
 // --- Potentially add other functions like face detect/swap later if needed ---
+
+// Function to fetch styles from the Dzine API
+export const fetchDzineStyles = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/style/list?page_no=0&page_size=200`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch styles: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.data.list;
+  } catch (error) {
+    console.error('Error fetching styles:', error);
+    throw error;
+  }
+};
