@@ -331,6 +331,21 @@ export const generateStoryPages = async (storyData, numPages = 8) => {
      }));
   }
 };
+// Helper function to remove markdown code blocks around JSON
+const cleanMarkdownCodeBlocks = (rawString) => {
+  if (!rawString || typeof rawString !== 'string') {
+    return rawString;
+  }
+  // Regex to find ```json ... ``` or ``` ... ``` blocks
+  const regex = /^```(?:json)?\s*([\s\S]*?)\s*```$/;
+  const match = rawString.trim().match(regex);
+  if (match && match[1]) {
+    console.log("[CleanJSON] Removed markdown code blocks.");
+    return match[1].trim(); // Return the content inside the blocks
+  }
+  return rawString.trim(); // Return the original string (trimmed) if no blocks found
+};
+
 
 /**
  * Generates a story outline using OpenAI based on a detailed prompt.
@@ -361,10 +376,13 @@ export const generateOutlineFromPrompt = async (prompt) => {
     // Attempt to parse the JSON response
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(responseJsonString);
+      // Clean potential markdown blocks before parsing
+      const cleanedJsonString = cleanMarkdownCodeBlocks(responseJsonString);
+      parsedResponse = JSON.parse(cleanedJsonString);
     } catch (parseError) {
       console.error("[openaiService] Failed to parse outline JSON:", parseError);
-      console.error("[openaiService] Raw string was:", responseJsonString);
+      console.error("[openaiService] Cleaned string was:", cleanedJsonString);
+      console.error("[openaiService] Original raw string was:", responseJsonString);
       throw new Error(`AI returned invalid JSON format for outline: ${parseError.message}`);
     }
 
@@ -432,10 +450,13 @@ export const generateSpreadContentFromPrompt = async (prompt) => {
     // Attempt to parse the JSON response
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(responseJsonString);
+      // Clean potential markdown blocks before parsing
+      const cleanedJsonString = cleanMarkdownCodeBlocks(responseJsonString);
+      parsedResponse = JSON.parse(cleanedJsonString);
     } catch (parseError) {
       console.error("[openaiService] Failed to parse spread content JSON:", parseError);
-      console.error("[openaiService] Raw string was:", responseJsonString);
+      console.error("[openaiService] Cleaned string was:", cleanedJsonString);
+      console.error("[openaiService] Original raw string was:", responseJsonString);
       throw new Error(`AI returned invalid JSON format for spread content: ${parseError.message}`);
     }
 
@@ -501,7 +522,10 @@ export const generateContent = async (options) => {
       throw new Error('No content received from OpenAI.');
     }
     
-    return response;
+    // Clean potential markdown blocks before returning
+    const cleanedResponse = cleanMarkdownCodeBlocks(response);
+    console.log("[generateContent] Returning cleaned response.");
+    return cleanedResponse;
   } catch (error) {
     console.error("Error calling OpenAI API:", error);
     throw new Error(`Failed to generate content: ${error.message}`);

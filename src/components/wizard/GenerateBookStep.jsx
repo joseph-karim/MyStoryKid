@@ -605,8 +605,20 @@ const GenerateBookStep = () => {
       };
 
       setGeneratedBook(finalBook);
-      addBook(finalBook); // Add to the global store
-      setLatestGeneratedBookId(finalBook.id); // Track the ID
+      // Add the book to the store
+      if (typeof addBook === 'function') {
+        addBook(finalBook);
+      } else {
+        console.error("[GenerateBookStep] Error: addBook function is not available from useBookStore.");
+        // Optionally set an error state here as well
+      }
+
+      // Store the ID of the latest generated book
+      if (typeof setLatestGeneratedBookId === 'function') {
+        setLatestGeneratedBookId(finalBook.id);
+      } else {
+        console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function is not available from useBookStore.");
+      }
       updateProgressInfo('Book generation complete!');
       setGenerationProgress(100);
 

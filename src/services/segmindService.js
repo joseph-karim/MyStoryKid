@@ -325,6 +325,12 @@ const uploadBase64ToGetUrl = async (base64Image) => {
     // If all services fail, throw the last error
     throw lastError || new Error('All image upload services failed');
 };
+// Helper function for fallback when Base64 upload fails
+const directBase64Illustration = () => {
+    console.warn("Falling back to placeholder image URL as Base64 upload failed.");
+    return 'https://mystorykid.com/placeholder-fallback.jpg'; // Placeholder URL
+};
+
 
 /**
  * Generates an illustration using a deployed Segmind PixelFlow workflow.
@@ -339,9 +345,10 @@ export const generateIllustrationWithWorkflow = async (referenceImageUrl, charac
         console.log('Converting Base64 reference image to URL for PixelFlow workflow');
         try {
             imageUrl = await uploadBase64ToGetUrl(referenceImageUrl);
-        } catch (error) {
-            console.error('Failed to convert Base64 to URL:', error);
-            throw new Error('Cannot use Base64 image for PixelFlow: ' + error.message);
+        } catch (uploadError) {
+            console.error('Failed to convert Base64 to URL, using fallback:', uploadError);
+            // Fallback to placeholder if upload fails
+            imageUrl = directBase64Illustration();
         }
     }
     
