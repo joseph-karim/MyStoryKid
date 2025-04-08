@@ -43,25 +43,23 @@ function SummaryStep() {
   }, [wizardState, storyData]);
   
   const handleBack = () => {
-    // Go back to the previous step (e.g., Story Details or whichever is appropriate)
-    setWizardStep(5); // Story Details step number
+    // Go back to the previous step (Story Details)
+    setWizardStep(4); // Story Details step number
   };
   
   const handleGenerateClick = (e) => {
-    console.log("[SummaryStep] Generate button clicked. Navigating to /generate-book");
+    console.log("[SummaryStep] Generate button clicked. Navigating to generate-book step");
     
-    // Add direct logging to debug if we actually get here
-    console.log("[SummaryStep] About to navigate...");
-    
-    // Prevent potential store-based generation from taking over
+    // Prevent default behaviors
     e.preventDefault();
     e.stopPropagation();
     
     setError('');
-    navigate('/generate-book'); // Navigate to the new generation step
     
-    // More debugging to see if we get here
-    console.log("[SummaryStep] Navigation to /generate-book should have happened!");
+    // Navigate directly using window.location to ensure a clean transition
+    window.location.href = '/generate-book';
+    
+    console.log("[SummaryStep] Navigation to /generate-book triggered with window.location");
   };
   
   // Helper function to get a friendly style name
