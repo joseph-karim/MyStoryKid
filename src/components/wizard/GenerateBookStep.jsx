@@ -133,10 +133,10 @@ ${outline.map((item, i) => `${item}`).join('\n')}
     * DO NOT include the page text.
 
 **Output Format:**
-Return a JSON object with two properties:
+Return ONLY a JSON object with two properties:
 {
   "text": "The story text that will appear on this spread...",
-  "imagePrompt": "Detailed visual prompt for image generation..."
+  "visualPrompt": "Detailed visual prompt for image generation, including placeholder description..." // Changed key to visualPrompt
 }
 `;
 };
