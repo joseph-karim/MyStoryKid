@@ -218,6 +218,7 @@ const validateOutlineResponse = (response) => {
  * @param {Object} storyData - The story data from the wizard state
  * @returns {Promise<Array>} - Array of page objects with text and illustration prompts
  */
+// NOTE: This function is no longer used directly by generateBook, but kept for reference or potential future use
 const generateStoryPages = async (storyData) => {
   console.log('[generateStoryPages] Generating story with data:', storyData);
   
@@ -328,13 +329,14 @@ const generateStoryPages = async (storyData) => {
       
       // Removed duplicate declaration of visualPromptFromAI
 
+      // Return the final page object with ONLY the required fields
       return {
         id: `page-${index + 1}`,
         type: 'content',
         text: spreadContent.text || `Spread ${index + 1}`,
-        visualPrompt: visualPromptFromAI, // Assign the visual prompt here
-        // Remove old characterPrompt and scenePrompt keys
+        visualPrompt: visualPromptFromAI, // Use the variable holding the correct prompt
         spreadIndex: index
+        // Ensure characterPrompt and scenePrompt are NOT included
       };
     });
     
@@ -443,10 +445,13 @@ const GenerateBookStep = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState('');
-  const [imageUrls, setImageUrls] = useState({}); // Store generated image URLs by page index
+  // const [imageUrls, setImageUrls] = useState({}); // No longer needed for final assembly
   const [generatedBook, setGeneratedBook] = useState(null);
   const [error, setError] = useState(null);
+  const [generatedCoverUrl, setGeneratedCoverUrl] = useState(null); // State for cover image URL
+  const [generatedPagesData, setGeneratedPagesData] = useState([]); // State for progressively generated pages
   const navigate = useNavigate();
+  
   useEffect(() => {
     // Ensure we have an anonymous session before starting generation
     const initializeAndGenerate = async () => {
@@ -475,286 +480,243 @@ const GenerateBookStep = () => {
     setProgressInfo(info);
   };
 
+  // --- REFACTORED generateBook Function ---
   const generateBook = async () => {
     setIsGenerating(true);
     setGenerationProgress(0);
     updateProgressInfo('Starting book generation...');
     setError(null);
-    setImageUrls({});
-    setGeneratedBook(null);
-    
+    // Reset progressive states
+    setGeneratedCoverUrl(null);
+    setGeneratedPagesData([]);
+    setGeneratedBook(null); // Clear final book object
+
     const { storyData } = wizardState;
-    
-    // Basic validation
-    if (!storyData.bookCharacters || storyData.bookCharacters.length === 0) {
-        setError("Main character information is missing.");
-        setIsGenerating(false);
-        return;
-    }
-    const mainCharacter = storyData.bookCharacters.find(c => c.role === 'main') || storyData.bookCharacters[0];
+    const characters = storyData.bookCharacters || [];
+    const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
+
+    // --- Validations (Keep these) ---
     if (!mainCharacter) {
-        setError("Could not determine the main character.");
-        setIsGenerating(false);
-        return;
+      setError("Could not determine the main character.");
+      setIsGenerating(false); return;
     }
-    // **** CRITICAL VALIDATION: Ensure stylePreview is a URL ****
     if (!mainCharacter.stylePreview || typeof mainCharacter.stylePreview !== 'string') {
-        console.error("Main character's stylePreview is missing or not a string:", mainCharacter.stylePreview);
-        setError("Character style preview is missing. Please go back and ensure the character style was generated.");
-        setIsGenerating(false);
-        return;
+      setError("Character style preview is missing.");
+      setIsGenerating(false); return;
     }
-    
-    // Accept both HTTP URLs and Base64 data URLs
     const stylePreview = mainCharacter.stylePreview;
+    // Accept both HTTP URLs and Base64 data URLs for stylePreview
     const isValidUrl = stylePreview.startsWith('http') || stylePreview.startsWith('data:image');
-    
     if (!isValidUrl) {
-        console.error("Main character's stylePreview is not a valid URL or Base64 data:", stylePreview.substring(0, 50) + '...');
-        setError("Character style preview is in an invalid format. Please go back and ensure the character style was properly generated.");
-        setIsGenerating(false);
-        return;
+      setError("Character style preview is in an invalid format.");
+      setIsGenerating(false); return;
     }
-    
-    // Use the stylePreview as is
-    const dzinePreviewUrl = stylePreview;
+    const dzinePreviewUrl = stylePreview; // Use validated URL/DataURL
 
+    // --- Generation Start ---
+    let storyOutline = []; // Define outline variable outside try block
     try {
-      // ---------- STEP 1: Generate story outline ----------
-      updateProgressInfo('Generating story text and prompts...');
-      const storyPages = await generateStoryPages(storyData);
-      setGenerationProgress(30);
-      updateProgressInfo('Story text and prompts generated.');
+      const coverProgressAllocation = 15; // % for cover
+      const outlineProgressAllocation = 5; // % for outline
+      const pagesBaseProgress = coverProgressAllocation + outlineProgressAllocation;
 
-      // ---------- STEP 2: Generate Illustrations (Dzine Scene + Segmind Swap) ----------
-      updateProgressInfo(`Preparing to generate ${storyPages.length} illustrations using Dzine+Segmind...`);
-      const totalPagesToGenerate = storyPages.length;
-      const generatedImageUrls = {}; // Use this instead of direct state update in loop
-      const baseProgress = 30; // Story generation is 30%
+      // ---------- STEP 1: Generate Story Outline ----------
+      updateProgressInfo('Generating story outline...');
+      setGenerationProgress(outlineProgressAllocation / 2);
+      const outlinePrompt = createOutlinePrompt(storyData, characters);
+      const outlineResponse = await openaiService.generateContent({ prompt: outlinePrompt, temperature: 0.7, max_tokens: 1000 });
+      
+      // let storyOutline; // Moved definition outside
+      try {
+        const parsedOutline = JSON.parse(outlineResponse);
+        storyOutline = Array.isArray(parsedOutline) ? parsedOutline : Object.values(parsedOutline).find(Array.isArray);
+        if (!storyOutline) throw new Error('Outline not in expected array format.');
+      } catch (e) {
+         console.warn('Failed to parse outline JSON, trying manual extraction:', e);
+         const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
+         if (arrayMatch) storyOutline = JSON.parse(arrayMatch[0]);
+         else throw new Error('Could not parse story outline from AI response.');
+      }
+      if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
+        throw new Error('Failed to generate a valid story outline');
+      }
+      updateProgressInfo('Story outline generated.');
+      setGenerationProgress(outlineProgressAllocation);
 
-      for (let index = 0; index < storyPages.length; index++) {
-        const spread = storyPages[index]; // Use 'spread' based on current code
-        // Calculate progress more granularly for the two steps per page
-        const progressPerPage = 60 / totalPagesToGenerate; // 60% allocated for image gen
-        const currentBaseProgress = baseProgress + (index * progressPerPage);
-
-        // --- Stage 1: Dzine Scene Generation ---
-        setGenerationProgress(Math.round(currentBaseProgress));
-        updateProgressInfo(`Generating scene for page ${index + 1}/${totalPagesToGenerate} (Dzine)...`);
-
-        let dzineSceneImageUrl = null;
-        try {
-          // Use the single visualPrompt (ensure openaiService was updated)
-          // Check if spread object has visualPrompt, otherwise log error and skip
-          if (!spread.visualPrompt) {
-              console.error(`Missing visualPrompt for spread ${index}. Spread data:`, spread);
-              throw new Error("Missing visual prompt for page.");
-          }
-          if (!storyData.artStyleCode) throw new Error("Missing art style code.");
-
-          const dzineTaskId = await createTxt2ImgTask( // Use correct function name
-            spread.visualPrompt, // Use the combined visual prompt from the spread object
-            storyData.artStyleCode,
-            { target_w: 1024, target_h: 768 } // Example dimensions
-          );
-
-          if (!dzineTaskId || !dzineTaskId.task_id) throw new Error("Failed to initiate Dzine scene task.");
-
-          // Poll Dzine
-          let dzineResult = null;
-          let pollingAttempts = 0;
-          const maxPollingAttempts = 30; // Approx 2 minutes max polling (30 * 4s)
-
-          while (pollingAttempts < maxPollingAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds
-            dzineResult = await getTaskProgress(dzineTaskId.task_id);
-            pollingAttempts++;
-            updateProgressInfo(`Polling Dzine scene task for page ${index + 1}... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
-
-            if (dzineResult.status === 'succeeded') {
-              dzineSceneImageUrl = dzineResult.imageUrl;
-              if (!dzineSceneImageUrl) throw new Error("Dzine task succeeded but image URL is missing.");
-              updateProgressInfo(`Dzine scene for page ${index + 1} generated.`);
-              break; // Exit polling loop
-            } else if (dzineResult.status === 'failed') {
-              throw new Error(`Dzine scene task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
-            }
-            // Continue polling if 'processing' or 'queued'
-          }
-
-          if (!dzineSceneImageUrl) {
-            throw new Error("Dzine scene generation timed out or failed to produce URL.");
-          }
-
-        } catch (dzineError) {
-          console.error(`Error generating Dzine scene for page ${index + 1}:`, dzineError);
-          generatedImageUrls[index] = 'error_dzine';
-          updateProgressInfo(`Error generating Dzine scene for page ${index + 1}: ${dzineError.message}`);
-          continue; // Skip Segmind step for this page
-        }
-
-        // --- Stage 2: Segmind Character Swap ---
-        setGenerationProgress(Math.round(currentBaseProgress + progressPerPage / 2)); // Halfway through this page's image progress
-        updateProgressInfo(`Swapping character for page ${index + 1}/${totalPagesToGenerate} (Segmind)...`);
-
-        try {
-          const referenceCharacterUrl = dzinePreviewUrl; // Use the validated URL from start of function
-          if (!referenceCharacterUrl || !referenceCharacterUrl.startsWith('http')) {
-             // This check should ideally not fail due to earlier validation, but keep for safety
-             throw new Error(`Invalid reference character URL: ${referenceCharacterUrl ? referenceCharacterUrl.substring(0,30)+'...' : 'null'}`);
-          }
-          if (!dzineSceneImageUrl) {
-             throw new Error("Cannot perform swap, Dzine scene URL is missing.");
-          }
-
-          // Define selector text - NEEDS TESTING/REFINEMENT
-          const selectCharacterText = `the ${mainCharacter.gender || 'child'} character`; // Example
-
-          const finalImageUrl = await swapCharacterInImage(
-            dzineSceneImageUrl,
-            referenceCharacterUrl,
-            selectCharacterText
-          );
-
-          generatedImageUrls[index] = finalImageUrl; // Store in temporary object
-          updateProgressInfo(`Character swap for page ${index + 1} completed.`);
-
-        } catch (segmindError) {
-          console.error(`Error swapping character (Segmind) for page ${index + 1}:`, segmindError);
-          generatedImageUrls[index] = 'error_segmind';
-          updateProgressInfo(`Error swapping character for page ${index + 1}: ${segmindError.message}`);
-          // Mark page as error
-        }
-      } // End loop through pages
-
-      // Update state with all generated URLs at once after the loop
-      setImageUrls(generatedImageUrls);
-      updateProgressInfo('All illustration generation processes finished.');
-      setGenerationProgress(90); // Progress after illustration generation attempts
-
-      // ---------- STEP 3: Generate Cover (Dzine + Segmind) ----------
-      updateProgressInfo('Generating cover image (Dzine + Segmind)...');
+      // ---------- STEP 2: Generate Cover Image ----------
+      updateProgressInfo('Generating cover image...');
       let coverImageUrl = 'PLACEHOLDER_COVER_URL'; // Default placeholder
       try {
-          // Generate the single visual prompt for the cover using the updated function
-          const { coverVisualPrompt } = await generateCoverPrompt(storyData);
-          if (!coverVisualPrompt) {
-              throw new Error("Failed to generate cover visual prompt.");
+        const { coverVisualPrompt } = await generateCoverPrompt(storyData);
+        if (!coverVisualPrompt) throw new Error("Failed to generate cover visual prompt.");
+
+        // --- Dzine Cover Scene ---
+        updateProgressInfo('Generating cover scene (Dzine)...');
+        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.2); // Progress update
+        const dzineCoverTaskId = await createTxt2ImgTask(coverVisualPrompt, storyData.artStyleCode, { target_w: 800, target_h: 1000 });
+        if (!dzineCoverTaskId || !dzineCoverTaskId.task_id) throw new Error("Failed to initiate Dzine cover task.");
+
+        let dzineCoverSceneUrl = null;
+        let pollingAttempts = 0;
+        const maxPollingAttempts = 30;
+        while (pollingAttempts < maxPollingAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 4000));
+          const dzineResult = await getTaskProgress(dzineCoverTaskId.task_id);
+          pollingAttempts++;
+          updateProgressInfo(`Polling Dzine cover... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
+          if (dzineResult.status === 'success') { // Check against normalized 'success'
+            dzineCoverSceneUrl = dzineResult.imageUrl;
+            if (!dzineCoverSceneUrl) throw new Error("Dzine cover task succeeded but URL missing.");
+            break;
+          } else if (dzineResult.status === 'failed') {
+            throw new Error(`Dzine cover task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
           }
+        }
+        if (!dzineCoverSceneUrl) throw new Error("Dzine cover generation timed out.");
+        updateProgressInfo('Dzine cover scene generated.');
+        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.6); // Progress update
 
-          // --- Dzine Cover Scene ---
-          updateProgressInfo('Generating cover scene (Dzine)...');
-          const dzineCoverTaskId = await createTxt2ImgTask( // Use correct function name
-              coverVisualPrompt, // Use the single visual prompt
-              storyData.artStyleCode,
-              { target_w: 800, target_h: 1000 } // Example cover dimensions
-          );
-          if (!dzineCoverTaskId || !dzineCoverTaskId.task_id) throw new Error("Failed to initiate Dzine cover task.");
+        // --- Segmind Cover Swap ---
+        updateProgressInfo('Swapping character for cover (Segmind)...');
+        const selectCoverCharacterText = `the ${mainCharacter.gender || 'child'} character`;
+        coverImageUrl = await swapCharacterInImage(dzineCoverSceneUrl, dzinePreviewUrl, selectCoverCharacterText);
+        updateProgressInfo('Cover image generated.');
+        setGeneratedCoverUrl(coverImageUrl); // Update state immediately
 
-          let dzineCoverResult = null;
-          let coverPollingAttempts = 0;
-          let dzineCoverSceneUrl = null;
-          const maxCoverPollingAttempts = 30;
-          while (coverPollingAttempts < maxCoverPollingAttempts) {
+      } catch (coverError) {
+        console.error("Error generating cover illustration:", coverError);
+        updateProgressInfo(`Error generating cover: ${coverError.message}. Using placeholder.`);
+        setGeneratedCoverUrl(coverImageUrl); // Set placeholder on error
+      }
+      setGenerationProgress(pagesBaseProgress); // Update progress after cover attempt
+
+      // ---------- STEP 3: Generate Pages Sequentially ----------
+      const totalPagesToGenerate = storyOutline.length;
+      const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
+      
+      for (let index = 0; index < totalPagesToGenerate; index++) {
+        const currentSpreadOutline = storyOutline[index];
+        const currentPageProgressBase = pagesBaseProgress + (index * progressPerPage);
+        
+        let spreadText = `Error generating text for page ${index + 1}`;
+        let spreadVisualPrompt = `Error generating prompt for page ${index + 1}`;
+        let finalImageUrl = 'ERROR_MISSING'; // Default for page image
+
+        try {
+          // --- Generate Text & Visual Prompt for Current Spread ---
+          updateProgressInfo(`Generating text/prompt for page ${index + 1}/${totalPagesToGenerate}...`);
+          setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.1));
+          const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
+          const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
+          
+          let spreadContent;
+          try {
+            spreadContent = JSON.parse(contentResponse);
+          } catch (e) {
+             console.warn(`Failed to parse content JSON for spread ${index + 1}, trying manual extraction:`, e);
+             const jsonMatch = contentResponse.match(/\{[\s\S]*\}/);
+             if (jsonMatch) spreadContent = JSON.parse(jsonMatch[0]);
+             else throw new Error('Could not parse spread content from AI response.');
+          }
+          spreadText = spreadContent.text || spreadText;
+          spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt; 
+          updateProgressInfo(`Text/prompt for page ${index + 1} generated.`);
+
+          // --- Generate Image for Current Spread (Dzine + Segmind) ---
+          let dzineSceneImageUrl = null;
+          try {
+            // Dzine Scene
+            updateProgressInfo(`Generating scene for page ${index + 1} (Dzine)...`);
+            setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.4));
+            if (!spreadVisualPrompt || spreadVisualPrompt.startsWith('Error:')) throw new Error("Visual prompt is missing or invalid.");
+            if (!storyData.artStyleCode) throw new Error("Missing art style code.");
+
+            const dzineTaskId = await createTxt2ImgTask(spreadVisualPrompt, storyData.artStyleCode, { target_w: 1024, target_h: 768 });
+            if (!dzineTaskId || !dzineTaskId.task_id) throw new Error("Failed to initiate Dzine scene task.");
+
+            let dzineResult = null;
+            let pollingAttempts = 0;
+            const maxPollingAttempts = 30;
+            while (pollingAttempts < maxPollingAttempts) {
               await new Promise(resolve => setTimeout(resolve, 4000));
-              dzineCoverResult = await getTaskProgress(dzineCoverTaskId.task_id);
-              coverPollingAttempts++;
-              updateProgressInfo(`Polling Dzine cover task... Status: ${dzineCoverResult.status} (${coverPollingAttempts}/${maxCoverPollingAttempts})`);
-              if (dzineCoverResult.status === 'succeeded') {
-                  dzineCoverSceneUrl = dzineCoverResult.imageUrl;
-                  if (!dzineCoverSceneUrl) throw new Error("Dzine cover task succeeded but URL missing.");
-                  updateProgressInfo('Dzine cover scene generated.');
-                  break;
-              } else if (dzineCoverResult.status === 'failed') {
-                  throw new Error(`Dzine cover task failed: ${dzineCoverResult.error || 'Unknown Dzine error'}`);
+              dzineResult = await getTaskProgress(dzineTaskId.task_id);
+              pollingAttempts++;
+              updateProgressInfo(`Polling Dzine page ${index + 1}... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
+              if (dzineResult.status === 'success') {
+                dzineSceneImageUrl = dzineResult.imageUrl;
+                if (!dzineSceneImageUrl) throw new Error("Dzine task succeeded but image URL missing.");
+                break;
+              } else if (dzineResult.status === 'failed') {
+                throw new Error(`Dzine scene task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
               }
+            }
+            if (!dzineSceneImageUrl) throw new Error("Dzine scene generation timed out.");
+            updateProgressInfo(`Dzine scene for page ${index + 1} generated.`);
+
+            // Segmind Swap
+            updateProgressInfo(`Swapping character for page ${index + 1} (Segmind)...`);
+            setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.8));
+            const selectCharacterText = `the ${mainCharacter.gender || 'child'} character`;
+            finalImageUrl = await swapCharacterInImage(dzineSceneImageUrl, dzinePreviewUrl, selectCharacterText);
+            updateProgressInfo(`Image for page ${index + 1} completed.`);
+
+          } catch (imageGenError) {
+            console.error(`Error generating image for page ${index + 1}:`, imageGenError);
+            updateProgressInfo(`Error generating image for page ${index + 1}: ${imageGenError.message}`);
+            finalImageUrl = 'ERROR_IMAGE_GEN'; // Mark image as error
           }
-          if (!dzineCoverSceneUrl) throw new Error("Dzine cover generation timed out.");
+        } catch (pageGenError) {
+           console.error(`Error processing page ${index + 1}:`, pageGenError);
+           updateProgressInfo(`Error processing page ${index + 1}: ${pageGenError.message}`);
+           // Keep default error values for text/image
+        }
 
-          // --- Segmind Cover Swap ---
-          updateProgressInfo('Swapping character for cover (Segmind)...');
-          const referenceCharacterUrl = dzinePreviewUrl; // Use validated URL from start of generateBook
-          if (!referenceCharacterUrl || !referenceCharacterUrl.startsWith('http')) {
-             // This check should ideally not fail due to earlier validation
-             throw new Error(`Invalid reference character URL for cover.`);
-          }
-          const selectCoverCharacterText = `the ${mainCharacter.gender || 'child'} character`; // Example selector
+        // --- Update State with Completed Page ---
+        const newPageObject = {
+          id: `page-${index + 1}`,
+          type: 'content',
+          text: spreadText,
+          // visualPrompt: spreadVisualPrompt, // Optional: Keep prompt for debugging/regen?
+          imageUrl: finalImageUrl,
+          spreadIndex: index
+        };
+        // Update state progressively
+        setGeneratedPagesData(prev => [...prev, newPageObject]); 
+        setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage)); // Mark page as fully done
 
-          coverImageUrl = await swapCharacterInImage(
-              dzineCoverSceneUrl,
-              referenceCharacterUrl,
-              selectCoverCharacterText
-          );
-          updateProgressInfo('Cover image generated.');
+      } // End loop through pages
 
-       } catch(coverError) {
-          console.error("Error generating cover illustration:", coverError);
-          updateProgressInfo(`Error generating cover: ${coverError.message}. Using placeholder.`);
-          // Keep placeholder URL on error (already default)
-       }
-
-      // ---------- STEP 4: Assemble Book Object ----------
+      // ---------- STEP 4: Assemble Final Book Object ----------
       updateProgressInfo('Assembling final book...');
-      const finalBook = {
+      // Use the state variables populated during the sequential generation
+      const finalBookData = {
         id: uuidv4(),
         title: storyData.title || 'My Custom Story',
         status: 'draft',
         childName: mainCharacter.name,
         category: storyData.category,
-        artStyleCode: storyData.artStyleCode, // Keep the original Dzine code for reference
+        artStyleCode: storyData.artStyleCode,
         characters: storyData.bookCharacters,
         pages: [
-          {
-            id: 'page-cover',
-            type: 'cover',
-            text: storyData.title,
-            imageUrl: coverImageUrl, // Use generated or placeholder cover URL
-          },
-          {
-            id: 'page-title',
-            type: 'title',
-            text: `${storyData.title}\n\nA story about ${mainCharacter.name}`,
-            imageUrl: '', // Usually no image on title page
-          },
-          ...storyPages.map((page, index) => ({
-            ...page,
-            imageUrl: imageUrls[index] || 'ERROR_MISSING' // Use generated URL or error marker
-          })),
-          {
-            id: 'page-back',
-            type: 'back-cover',
-            text: `The End\n\nCreated with love for ${mainCharacter.name}`,
-            imageUrl: '', // Usually no image on back cover
-          }
+          { id: 'page-cover', type: 'cover', text: storyData.title, imageUrl: generatedCoverUrl || 'PLACEHOLDER_COVER_URL' },
+          { id: 'page-title', type: 'title', text: `${storyData.title}\n\nA story about ${mainCharacter.name}`, imageUrl: '' },
+          ...generatedPagesData, // Use the progressively generated pages array from state
+          { id: 'page-back', type: 'back-cover', text: `The End\n\nCreated with love for ${mainCharacter.name}`, imageUrl: '' }
         ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        // Add other relevant details from storyData if needed
         setting: storyData.setting,
         ageRange: storyData.ageRange,
-        // ... etc
       };
 
-      setGeneratedBook(finalBook);
-      
-      // Store the book ID in localStorage for claiming after login
-      storeCurrentBookId(finalBook.id);
-      console.log(`[GenerateBookStep] Stored book ID ${finalBook.id} for potential claiming after login`);
-      
-      // Add the book to the store
-      if (typeof addBook === 'function') {
-        addBook(finalBook);
-      } else {
-        console.error("[GenerateBookStep] Error: addBook function is not available from useBookStore.");
-        // Optionally set an error state here as well
-      }
+      setGeneratedBook(finalBookData); // Set the final book object
+      storeCurrentBookId(finalBookData.id);
+      console.log(`[GenerateBookStep] Stored book ID ${finalBookData.id} for potential claiming`);
+      if (typeof addBook === 'function') addBook(finalBookData);
+      else console.error("[GenerateBookStep] Error: addBook function not available");
+      if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(finalBookData.id);
+      else console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function not available");
 
-      // Store the ID of the latest generated book
-      if (typeof setLatestGeneratedBookId === 'function') {
-        setLatestGeneratedBookId(finalBook.id);
-      } else {
-        console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function is not available from useBookStore.");
-      }
       updateProgressInfo('Book generation complete!');
       setGenerationProgress(100);
 
@@ -762,10 +724,13 @@ const GenerateBookStep = () => {
       console.error('Book generation failed:', error);
       setError(`Generation failed: ${error.message}`);
       updateProgressInfo(`Error: ${error.message}`);
+      setGenerationProgress(100); // End progress on error
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false); // Set generating to false now that all steps are done or failed
+      console.log("Full book generation process finished."); 
     }
   };
+  // --- End of REFACTORED generateBook Function ---
 
   const handleBack = () => {
     console.log("[GenerateBookStep] Navigating back to summary (previous wizard step)...");
@@ -808,43 +773,84 @@ const GenerateBookStep = () => {
         </div>
       )}
 
-      {!isGenerating && generatedBook && (
-        <div className="text-center space-y-4 my-8">
-          <svg className="mx-auto h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h2 className="text-2xl font-semibold text-green-700">Generation Complete!</h2>
-          <p className="text-gray-600">Your book "{generatedBook.title}" has been successfully created.</p>
-          <button 
-            onClick={handleViewBook}
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out shadow-md"
-          >
-            View Your Book
-          </button>
+      {/* --- Display Generated Content Progressively --- */}
+      <div className="mt-8 space-y-6"> {/* Increased spacing */}
+        {/* Display Cover */}
+        {generatedCoverUrl && (
+          <div className="border p-4 rounded shadow bg-gray-50"> {/* Added subtle background */}
+            <h2 className="text-xl font-semibold mb-3 text-center text-gray-700">Cover</h2> {/* Centered title */}
+            <img 
+              src={generatedCoverUrl === 'PLACEHOLDER_COVER_URL' ? '/placeholder-image.png' : generatedCoverUrl} 
+              alt="Generated Book Cover" 
+              className="w-full max-w-xs mx-auto rounded shadow-md border" // Added border
+              onError={(e) => { e.target.onerror = null; e.target.src='/placeholder-image.png'; }} // Fallback image
+            />
+            {generatedCoverUrl === 'PLACEHOLDER_COVER_URL' && <p className="text-center text-sm text-red-500 mt-2">(Placeholder - Generation Error)</p>}
+          </div>
+        )}
+
+        {/* Display Pages */}
+        {generatedPagesData.length > 0 && (
+          <div className="border p-4 rounded shadow bg-gray-50">
+            <h2 className="text-xl font-semibold mb-4 text-center text-gray-700">Pages</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Grid layout for pages */}
+              {generatedPagesData.map((page, index) => (
+                <div key={page.id} className="border p-3 rounded shadow-sm bg-white">
+                  <h3 className="text-lg font-medium mb-2 text-gray-600">Page {index + 1}</h3>
+                  <img 
+                    src={page.imageUrl === 'ERROR_MISSING' || page.imageUrl === 'ERROR_IMAGE_GEN' ? '/placeholder-image.png' : page.imageUrl} 
+                    alt={`Illustration for page ${index + 1}`} 
+                    className="w-full h-48 object-cover rounded border mb-2" // Fixed height, object-cover
+                    onError={(e) => { e.target.onerror = null; e.target.src='/placeholder-image.png'; }}
+                  />
+                  {(page.imageUrl === 'ERROR_MISSING' || page.imageUrl === 'ERROR_IMAGE_GEN') && <p className="text-center text-xs text-red-500 mb-2">(Image Generation Error)</p>}
+                  <p className="text-sm text-gray-700">{page.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* --- End Display Generated Content --- */}
+
+
+      {!isGenerating && generatedBook && generationProgress === 100 && !error && ( // Added checks for completion and no error
+        <div className="mt-8 text-center">
+          <h2 className="text-2xl font-semibold text-green-600 mb-4">Book Generation Complete!</h2>
+          <p className="mb-6">Your book "{generatedBook.title}" has been created.</p>
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={handleViewBook}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+            >
+              View Book
+            </button>
+            <button
+              onClick={() => {
+                resetWizard();
+                navigate('/'); // Navigate to home or dashboard
+              }}
+              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+            >
+              Create Another Book
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Buttons - Show back button always, show view button only when complete */} 
-      <div className="flex justify-between mt-8">
-        <button 
-          onClick={handleBack}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out disabled:opacity-50"
-          disabled={isGenerating} // Disable back while generating
-        >
-          &larr; Back to Summary
-        </button>
-        
-        {!isGenerating && generatedBook && (
-          <button 
-            onClick={handleViewBook} // Reuse the view book handler
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out shadow-md"
-          >
-            View Book Again
-          </button>
-        )}
-      </div>
+      {!isGenerating && error && (
+         <div className="mt-8 text-center">
+           <p className="text-red-600 mb-4">Generation failed. Please check the error message above.</p>
+           <button
+             onClick={handleBack} // Allow user to go back and potentially fix input
+             className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+           >
+             Go Back
+           </button>
+         </div>
+      )}
     </div>
   );
 };
 
-export default GenerateBookStep; 
+export default GenerateBookStep;

@@ -663,7 +663,7 @@ function normalizeStatus(status) {
   const statusStr = String(status).toLowerCase();
   
   // Map various status values to standard ones
-  if (['success', 'completed', 'done', 'finish', 'finished'].includes(statusStr)) {
+  if (['success', 'succeed', 'completed', 'done', 'finish', 'finished'].includes(statusStr)) { // Added 'succeed'
     return 'success';
   }
   
