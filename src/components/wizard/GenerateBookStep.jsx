@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
-import { getStyleNameFromCode, createDzineSceneTask, getTaskProgress } from '../../services/dzineService'; // Removed getKeywordsForDzineStyle, added Dzine scene functions
+import { getStyleNameFromCode, createTxt2ImgTask, getTaskProgress } from '../../services/dzineService'; // Use correct function name createTxt2ImgTask
 import { swapCharacterInImage } from '../../services/segmindService'; // Removed generateIllustrationWithWorkflow, added swapCharacterInImage
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
@@ -547,7 +547,7 @@ const GenerateBookStep = () => {
           }
           if (!storyData.artStyleCode) throw new Error("Missing art style code.");
 
-          const dzineTaskId = await createDzineSceneTask(
+          const dzineTaskId = await createTxt2ImgTask( // Use correct function name
             spread.visualPrompt, // Use the combined visual prompt from the spread object
             storyData.artStyleCode,
             { target_w: 1024, target_h: 768 } // Example dimensions
@@ -639,7 +639,7 @@ const GenerateBookStep = () => {
 
           // --- Dzine Cover Scene ---
           updateProgressInfo('Generating cover scene (Dzine)...');
-          const dzineCoverTaskId = await createDzineSceneTask(
+          const dzineCoverTaskId = await createTxt2ImgTask( // Use correct function name
               coverVisualPrompt, // Use the single visual prompt
               storyData.artStyleCode,
               { target_w: 800, target_h: 1000 } // Example cover dimensions
