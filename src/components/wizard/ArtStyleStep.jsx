@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getKeywordsForDzineStyle, fetchDzineStyles, STYLE_CODE_MAP } from '../../services/dzineService';
+import { fetchDzineStyles, STYLE_CODE_MAP } from '../../services/dzineService'; // Removed getKeywordsForDzineStyle
 import { motion } from 'framer-motion';
 
 // Style categories for UI organization
@@ -314,8 +314,8 @@ function ArtStyleStep() {
   
   const handleSelectStyle = (styleCode) => {
     setSelectedStyle(styleCode);
-    const keywords = getKeywordsForDzineStyle(styleCode);
-    updateStoryData({ artStyleCode: styleCode, selectedStyleKeywords: keywords }); 
+    // Removed keyword generation: const keywords = getKeywordsForDzineStyle(styleCode);
+    updateStoryData({ artStyleCode: styleCode }); // Only update artStyleCode
   };
   
   const handleNext = () => {

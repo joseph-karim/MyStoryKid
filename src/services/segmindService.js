@@ -6,8 +6,8 @@ const SEGMIND_API_KEY = import.meta.env.VITE_SEGMIND_API_KEY;
 const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid'; 
 const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
 // Define the specific workflow URL
-const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1"; 
-
+const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1";
+const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/678aa4026426baad7e5392fb-v6"; // Added for Character Swap workflow
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
   // Handle missing key appropriately in production (e.g., disable feature)
@@ -231,11 +231,11 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
                  }
 
                 if (response.data.status === "SUCCEEDED") {
-                    // Extract image URL from the specific output field name ('image_c2wja')
-                    const imageUrl = response.data.output?.image_c2wja || response.data.image_c2wja;
+                    // Extract image URL from the specific output field name ('character_swap_image') for Character Swap workflow
+                    const imageUrl = response.data.output?.character_swap_image || response.data.character_swap_image;
                     if (!imageUrl) {
-                        console.error("Polling Succeeded but output image URL ('image_c2wja') not found:", response.data);
-                        throw new Error("Workflow succeeded but image URL is missing in response.");
+                        console.error("Polling Succeeded but output image URL ('character_swap_image') not found:", response.data);
+                        throw new Error("Workflow succeeded but 'character_swap_image' URL is missing in response.");
                     }
                     console.log("Segmind Polling Succeeded:", imageUrl);
                     return imageUrl;
@@ -258,6 +258,71 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
         await new Promise(resolve => setTimeout(resolve, interval)); // Wait before next poll
     }
     throw new Error("Segmind Workflow polling timed out.");
+};
+
+/**
+ * Swaps a character in an image using Segmind's Character Swap workflow.
+ * Handles asynchronous polling. Returns the final image URL.
+ * @param {string} sceneImageUrl - URL of the base scene image (from Dzine).
+ * @param {string} referenceCharacterUrl - URL of the reference character image (Dzine preview).
+ * @param {string} characterSelector - Text description to help identify the character to swap (e.g., "the girl", "the robot").
+ * @returns {Promise<string>} - The URL of the image with the character swapped.
+ */
+export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl, characterSelector) => {
+    if (!SEGMIND_API_KEY) throw new Error('Segmind API key missing.');
+    if (!sceneImageUrl || !referenceCharacterUrl) throw new Error('Both scene image URL and reference character URL are required.');
+    if (!characterSelector) throw new Error('Character selector text is required.');
+
+    // Payload structure from the Character Swap API docs
+    const payload = {
+        character_image: sceneImageUrl,          // Dzine scene URL
+        reference_character_image: referenceCharacterUrl, // Dzine preview URL
+        select_character: characterSelector      // Text to guide swap
+    };
+
+    console.log("Sending payload to Segmind Character Swap:", payload);
+
+    try {
+        const initialResponse = await axios.post(CHARACTER_SWAP_URL, payload, {
+            headers: { 'x-api-key': SEGMIND_API_KEY, 'Content-Type': 'application/json' },
+            timeout: 30000 // 30 second timeout for initial request
+        });
+
+        if (initialResponse.data && initialResponse.data.poll_url) {
+            console.log(`Swap workflow started. Polling: ${initialResponse.data.poll_url}`);
+            // Use the modified pollForResult which looks for 'character_swap_image'
+            const finalImageUrl = await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
+            console.log("Segmind Character Swap successful. Final image URL:", finalImageUrl);
+            return finalImageUrl;
+        } else {
+            console.error("Unexpected initial response from Segmind Character Swap:", initialResponse.data);
+            throw new Error('Failed to start Segmind Character Swap workflow. Response missing poll_url.');
+        }
+    } catch (error) {
+         let errorMessage = error.message;
+         if (axios.isAxiosError(error)) {
+             console.error('Axios error details (Character Swap):', {
+                 message: error.message,
+                 code: error.code,
+                 status: error.response?.status,
+                 data: error.response?.data,
+                 config: error.config
+            });
+            if (error.response) {
+                 const apiError = error.response.data?.detail || error.response.data?.error || error.response.data;
+                 errorMessage = `Segmind Character Swap API Error (${error.response.status}): ${apiError || error.message}`;
+             } else if (error.request) {
+                 errorMessage = 'Segmind Character Swap API Error: No response received from server.';
+             } else {
+                 errorMessage = `Segmind Character Swap API Error: ${error.message}`;
+             }
+             if (error.code === 'ECONNABORTED') {
+                 errorMessage = 'Segmind Character Swap API request timed out.';
+             }
+         }
+         console.error('Error calling Segmind Character Swap API:', errorMessage);
+         throw new Error(errorMessage); // Re-throw a cleaner error message
+    }
 };
 
 /**

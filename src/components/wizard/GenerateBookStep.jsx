@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
-import { getKeywordsForDzineStyle, getStyleNameFromCode } from '../../services/dzineService';
-import { generateIllustrationWithWorkflow } from '../../services/segmindService';
+import { getStyleNameFromCode, createDzineSceneTask, getTaskProgress } from '../../services/dzineService'; // Removed getKeywordsForDzineStyle, added Dzine scene functions
+import { swapCharacterInImage } from '../../services/segmindService'; // Removed generateIllustrationWithWorkflow, added swapCharacterInImage
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -365,16 +365,18 @@ const generateCoverPrompt = async (storyData) => {
     
     // Build a basic prompt for the cover
     const coverPrompt = `
-    Generate a cover image prompt for a children's book titled "${title}".
+    Generate a single visual prompt suitable for Dzine Text-to-Image for the cover of a children's book titled "${title}".
     The main character is ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}.
     The book is about ${category}.
     
-    The prompt should describe an appealing cover image showing the main character in an engaging pose or scene that represents the theme of the book.
+    The prompt should describe an appealing cover image, including:
+    1. The overall scene, setting, mood, and composition.
+    2. A description of a placeholder character (e.g., 'a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'} placeholder') in an engaging pose or action representing the book's theme.
+    3. Include relevant style keywords (e.g., "${getStyleNameFromCode(storyData.artStyleCode)} style").
     
-    Return a JSON object with:
+    Return ONLY a JSON object with a single key "coverVisualPrompt":
     {
-      "characterPrompt": "How the character should appear on the cover",
-      "scenePrompt": "The background/scene setting for the cover"
+      "coverVisualPrompt": "Detailed visual prompt for the cover image..."
     }
     `;
     
@@ -412,9 +414,11 @@ const generateCoverPrompt = async (storyData) => {
       }
     }
     
+    // Ensure the response structure matches the requested "coverVisualPrompt"
+    const visualPrompt = coverContent.coverVisualPrompt || `Placeholder cover scene featuring ${mainCharacter.name}. ${getStyleNameFromCode(storyData.artStyleCode)} style.`;
+    
     return {
-      characterPrompt: coverContent.characterPrompt || `${mainCharacter.name}, the main character of the story`,
-      scenePrompt: coverContent.scenePrompt || `Colorful and engaging cover for a children's book about ${category}`
+      coverVisualPrompt: visualPrompt
     };
   } catch (error) {
     console.error('Error generating cover prompt:', error);
@@ -517,67 +521,172 @@ const GenerateBookStep = () => {
       setGenerationProgress(30);
       updateProgressInfo('Story text and prompts generated.');
 
-      // ---------- STEP 2: Generate Illustrations via PixelFlow ----------
-      updateProgressInfo(`Preparing to generate ${storyPages.length} illustrations...`);
-      const illustrationPromises = storyPages.map(async (spread, index) => {
-        updateProgressInfo(`Requesting illustration ${index + 1}/${storyPages.length}...`);
-        
-        // Extract prompts from the generated story pages
-        const characterPrompt = spread.characterPrompt;
-        const scenePrompt = spread.scenePrompt;
-        
-        if (!characterPrompt || !scenePrompt) {
-            console.error(`Missing prompts for spread ${index}:`, spread);
-            setImageUrls(prev => ({ ...prev, [index]: 'ERROR_MISSING_PROMPTS' }));
-            return; // Skip this illustration
+      // ---------- STEP 2: Generate Illustrations (Dzine Scene + Segmind Swap) ----------
+      updateProgressInfo(`Preparing to generate ${storyPages.length} illustrations using Dzine+Segmind...`);
+      const totalPagesToGenerate = storyPages.length;
+      const generatedImageUrls = {}; // Use this instead of direct state update in loop
+      const baseProgress = 30; // Story generation is 30%
+
+      for (let index = 0; index < storyPages.length; index++) {
+        const spread = storyPages[index]; // Use 'spread' based on current code
+        // Calculate progress more granularly for the two steps per page
+        const progressPerPage = 60 / totalPagesToGenerate; // 60% allocated for image gen
+        const currentBaseProgress = baseProgress + (index * progressPerPage);
+
+        // --- Stage 1: Dzine Scene Generation ---
+        setGenerationProgress(Math.round(currentBaseProgress));
+        updateProgressInfo(`Generating scene for page ${index + 1}/${totalPagesToGenerate} (Dzine)...`);
+
+        let dzineSceneImageUrl = null;
+        try {
+          // Use the single visualPrompt (ensure openaiService was updated)
+          // Check if spread object has visualPrompt, otherwise log error and skip
+          if (!spread.visualPrompt) {
+              console.error(`Missing visualPrompt for spread ${index}. Spread data:`, spread);
+              throw new Error("Missing visual prompt for page.");
+          }
+          if (!storyData.artStyleCode) throw new Error("Missing art style code.");
+
+          const dzineTaskId = await createDzineSceneTask(
+            spread.visualPrompt, // Use the combined visual prompt from the spread object
+            storyData.artStyleCode,
+            { target_w: 1024, target_h: 768 } // Example dimensions
+          );
+
+          if (!dzineTaskId || !dzineTaskId.task_id) throw new Error("Failed to initiate Dzine scene task.");
+
+          // Poll Dzine
+          let dzineResult = null;
+          let pollingAttempts = 0;
+          const maxPollingAttempts = 30; // Approx 2 minutes max polling (30 * 4s)
+
+          while (pollingAttempts < maxPollingAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds
+            dzineResult = await getTaskProgress(dzineTaskId.task_id);
+            pollingAttempts++;
+            updateProgressInfo(`Polling Dzine scene task for page ${index + 1}... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
+
+            if (dzineResult.status === 'succeeded') {
+              dzineSceneImageUrl = dzineResult.imageUrl;
+              if (!dzineSceneImageUrl) throw new Error("Dzine task succeeded but image URL is missing.");
+              updateProgressInfo(`Dzine scene for page ${index + 1} generated.`);
+              break; // Exit polling loop
+            } else if (dzineResult.status === 'failed') {
+              throw new Error(`Dzine scene task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
+            }
+            // Continue polling if 'processing' or 'queued'
+          }
+
+          if (!dzineSceneImageUrl) {
+            throw new Error("Dzine scene generation timed out or failed to produce URL.");
+          }
+
+        } catch (dzineError) {
+          console.error(`Error generating Dzine scene for page ${index + 1}:`, dzineError);
+          generatedImageUrls[index] = 'error_dzine';
+          updateProgressInfo(`Error generating Dzine scene for page ${index + 1}: ${dzineError.message}`);
+          continue; // Skip Segmind step for this page
         }
 
+        // --- Stage 2: Segmind Character Swap ---
+        setGenerationProgress(Math.round(currentBaseProgress + progressPerPage / 2)); // Halfway through this page's image progress
+        updateProgressInfo(`Swapping character for page ${index + 1}/${totalPagesToGenerate} (Segmind)...`);
+
         try {
-            // Call the new workflow function (handles polling internally)
-            const finalImageUrl = await generateIllustrationWithWorkflow(
-                dzinePreviewUrl, 
-                characterPrompt, 
-                scenePrompt
-            );
-            setImageUrls(prev => ({ ...prev, [index]: finalImageUrl }));
-            updateProgressInfo(`Illustration ${index + 1}/${storyPages.length} completed.`);
+          const referenceCharacterUrl = dzinePreviewUrl; // Use the validated URL from start of function
+          if (!referenceCharacterUrl || !referenceCharacterUrl.startsWith('http')) {
+             // This check should ideally not fail due to earlier validation, but keep for safety
+             throw new Error(`Invalid reference character URL: ${referenceCharacterUrl ? referenceCharacterUrl.substring(0,30)+'...' : 'null'}`);
+          }
+          if (!dzineSceneImageUrl) {
+             throw new Error("Cannot perform swap, Dzine scene URL is missing.");
+          }
+
+          // Define selector text - NEEDS TESTING/REFINEMENT
+          const selectCharacterText = `the ${mainCharacter.gender || 'child'} character`; // Example
+
+          const finalImageUrl = await swapCharacterInImage(
+            dzineSceneImageUrl,
+            referenceCharacterUrl,
+            selectCharacterText
+          );
+
+          generatedImageUrls[index] = finalImageUrl; // Store in temporary object
+          updateProgressInfo(`Character swap for page ${index + 1} completed.`);
+
         } catch (segmindError) {
-            console.error(`Segmind PixelFlow error for spread ${index}:`, segmindError);
-            setImageUrls(prev => ({ ...prev, [index]: 'ERROR_PIXELFLOW' }));
-            updateProgressInfo(`Error generating illustration ${index + 1}: ${segmindError.message}`);
-            // Optionally re-throw or handle specific errors if needed
+          console.error(`Error swapping character (Segmind) for page ${index + 1}:`, segmindError);
+          generatedImageUrls[index] = 'error_segmind';
+          updateProgressInfo(`Error swapping character for page ${index + 1}: ${segmindError.message}`);
+          // Mark page as error
         }
-        // Update progress incrementally
-        if (storyPages.length > 0) {
-           setGenerationProgress(prev => prev + (60 / storyPages.length)); 
-        }
-      });
-      
-      // Wait for all illustration requests (including polling) to complete
-      await Promise.all(illustrationPromises);
+      } // End loop through pages
+
+      // Update state with all generated URLs at once after the loop
+      setImageUrls(generatedImageUrls);
       updateProgressInfo('All illustration generation processes finished.');
       setGenerationProgress(90); // Progress after illustration generation attempts
 
-      // ---------- STEP 3: Generate Cover ----------
-      updateProgressInfo('Generating cover image...');
+      // ---------- STEP 3: Generate Cover (Dzine + Segmind) ----------
+      updateProgressInfo('Generating cover image (Dzine + Segmind)...');
       let coverImageUrl = 'PLACEHOLDER_COVER_URL'; // Default placeholder
       try {
-          const { characterPrompt: coverCharPrompt, scenePrompt: coverScenePrompt } = await generateCoverPrompt(storyData);
-          if (coverCharPrompt && coverScenePrompt) {
-             coverImageUrl = await generateIllustrationWithWorkflow(
-                dzinePreviewUrl, 
-                coverCharPrompt, 
-                coverScenePrompt
-             );
-          } else {
-             console.warn("Could not generate specific cover prompts, using placeholder.");
+          // Generate the single visual prompt for the cover using the updated function
+          const { coverVisualPrompt } = await generateCoverPrompt(storyData);
+          if (!coverVisualPrompt) {
+              throw new Error("Failed to generate cover visual prompt.");
           }
+
+          // --- Dzine Cover Scene ---
+          updateProgressInfo('Generating cover scene (Dzine)...');
+          const dzineCoverTaskId = await createDzineSceneTask(
+              coverVisualPrompt, // Use the single visual prompt
+              storyData.artStyleCode,
+              { target_w: 800, target_h: 1000 } // Example cover dimensions
+          );
+          if (!dzineCoverTaskId || !dzineCoverTaskId.task_id) throw new Error("Failed to initiate Dzine cover task.");
+
+          let dzineCoverResult = null;
+          let coverPollingAttempts = 0;
+          let dzineCoverSceneUrl = null;
+          const maxCoverPollingAttempts = 30;
+          while (coverPollingAttempts < maxCoverPollingAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 4000));
+              dzineCoverResult = await getTaskProgress(dzineCoverTaskId.task_id);
+              coverPollingAttempts++;
+              updateProgressInfo(`Polling Dzine cover task... Status: ${dzineCoverResult.status} (${coverPollingAttempts}/${maxCoverPollingAttempts})`);
+              if (dzineCoverResult.status === 'succeeded') {
+                  dzineCoverSceneUrl = dzineCoverResult.imageUrl;
+                  if (!dzineCoverSceneUrl) throw new Error("Dzine cover task succeeded but URL missing.");
+                  updateProgressInfo('Dzine cover scene generated.');
+                  break;
+              } else if (dzineCoverResult.status === 'failed') {
+                  throw new Error(`Dzine cover task failed: ${dzineCoverResult.error || 'Unknown Dzine error'}`);
+              }
+          }
+          if (!dzineCoverSceneUrl) throw new Error("Dzine cover generation timed out.");
+
+          // --- Segmind Cover Swap ---
+          updateProgressInfo('Swapping character for cover (Segmind)...');
+          const referenceCharacterUrl = dzinePreviewUrl; // Use validated URL from start of generateBook
+          if (!referenceCharacterUrl || !referenceCharacterUrl.startsWith('http')) {
+             // This check should ideally not fail due to earlier validation
+             throw new Error(`Invalid reference character URL for cover.`);
+          }
+          const selectCoverCharacterText = `the ${mainCharacter.gender || 'child'} character`; // Example selector
+
+          coverImageUrl = await swapCharacterInImage(
+              dzineCoverSceneUrl,
+              referenceCharacterUrl,
+              selectCoverCharacterText
+          );
+          updateProgressInfo('Cover image generated.');
+
        } catch(coverError) {
           console.error("Error generating cover illustration:", coverError);
-          updateProgressInfo(`Error generating cover: ${coverError.message}`);
-          // Keep placeholder URL on error
+          updateProgressInfo(`Error generating cover: ${coverError.message}. Using placeholder.`);
+          // Keep placeholder URL on error (already default)
        }
-       updateProgressInfo('Cover image generated.');
 
       // ---------- STEP 4: Assemble Book Object ----------
       updateProgressInfo('Assembling final book...');

@@ -50,11 +50,10 @@ const constructPrompts = (storyData, numPages) => {
 Output the result STRICTLY as a JSON array of objects. Each object represents a page/spread and MUST have these exact keys:
 
 "text": (string) The story text for the page/spread.
-"characterPrompt": (string) A description focusing on the **main character (${mainCharacter.name || 'the character'}) only**, detailing their specific ACTION, POSE, EXPRESSION, and any specific CLOTHING details relevant to this scene.
-"scenePrompt": (string) A description of the **background, setting elements (${setting.description}), lighting, mood, and overall composition** for this scene. Do NOT describe the main character's appearance or specific action here, but you can mention their placement (e.g., "with space on the left for the character"). Include desired art style keywords (e.g., "watercolor storybook style").
+"visualPrompt": (string) A detailed description for Dzine Text-to-Image, including the full scene (background, setting elements like '${setting.description}', lighting, mood, composition) AND a description of a placeholder character (e.g., 'a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'} placeholder') with specific pose, action, and expression instructions relevant to this scene. Include desired art style keywords (e.g., "${styleDesc}").
 "mainCharacterId": (string or null) The ID of the main character ("${mainCharacter.id || 'null'}").
 
-Ensure the entire output is a single valid JSON array. Example page object: { "text": "${mainCharacter.name || 'The character'} skipped through the forest.", "characterPrompt": "${mainCharacter.name || 'The character'} skipping happily, looking amazed, wearing a red jacket.", "scenePrompt": "Wide angle shot of an enchanted forest path at dusk, large softly glowing blue mushrooms line the path. Magical twilight lighting, wondrous mood. Watercolor storybook style.", "mainCharacterId": "${mainCharacter.id || 'null'}" }`;
+Ensure the entire output is a single valid JSON array. Example page object: { "text": "${mainCharacter.name || 'The character'} skipped through the forest.", "visualPrompt": "Wide angle shot of an enchanted forest path at dusk, large softly glowing blue mushrooms line the path. A ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'} placeholder is skipping happily, looking amazed, wearing a red jacket. Magical twilight lighting, wondrous mood. ${styleDesc}.", "mainCharacterId": "${mainCharacter.id || 'null'}" }`;
 
   // Common Story Flow Instructions
   const storyFlowInstructions = `

@@ -55,77 +55,7 @@ const resetBackoff = () => {
 
 // --- Start: Style Keyword Mapping for Segmind --- //
 
-// Map populated based on ArtStyleStep.jsx structure and descriptions
-const dzineToSegmindKeywordsMap = {
-  // Whimsical & Fun
-  'Style-05c3d679-f8e9-4883-b9c9-adfe0988d1a5': "Storytime Whimsy, whimsical storybook-style illustrations, classic feel, children's book illustration",
-  'Style-caa14e89-823b-4f8e-8d84-7368f9cec7cf': "Fantasy Hero, bold heroic character illustrations, fantasy adventure feel, children's book illustration",
-  'Style-7c3af5f6-4945-4eb2-b00b-34f77b0b8d41': "Soft Radiance, gentle glowing artwork, soft lighting, delicate details, children's book illustration",
-  'Style-541a2afd-904a-4968-bc60-8ad0ede22a86': "Paper Cutout, layered paper cutouts, clean edges, children's book illustration",
-  'Style-7729f1f6-578b-4035-8514-edaa0637dd6d': "Joyful Clay, cheerful characters, colorful clay look, children's book illustration",
-  'Style-0cd971cb-1e19-4909-a389-9b0c4fc79fd8': "Playful Enamel, bright, glossy illustrations with an enamel-like finish, children's book illustration",
-  'Style-455da805-d716-4bc8-a960-4ac505aa7875': "Everything Kawaii, ultra-cute Japanese-inspired style, adorable characters, children's book illustration",
-  
-  // Illustrated & Artistic
-  'Style-3f616e35-6423-4c53-aa27-be28860a4a7d': "Ceramic Lifelike, 3D ceramic quality, smooth textures, children's book illustration",
-  'Style-48f44663-b5cc-4f8d-ace8-d0a12bf0f4df': "Colorful Felt, textured felt craft look, children's book illustration",
-  'Style-e9021405-1b37-4773-abb9-bd80485527b0': "Sketch Elegance, beautiful detailed pencil sketches, subtle shading, children's book illustration",
-  'Style-5ad47638-c430-4cda-8bae-681c7af4e59e': "Skyborne Realm, majestic airy illustrations, sense of height and wonder, children's book illustration",
-  'Style-ada3a8d4-0e66-4bb0-aab3-e04a0ade4333': "Aquarelle Life, vibrant watercolor style, flowing colors, rich textures, children's book illustration",
-  'Style-589373f8-1283-4570-baf9-61d02eb13391': "Vivid Tableaux, rich textured scenes, vibrant colors, detailed compositions, children's book illustration",
-  'Style-bc151055-fd2b-4650-acd7-52e8e8818eb9': "Line & Wash, delicate line drawings, light watercolor washes, children's book illustration",
-  
-  // Stylized & Modern
-  'Style-ae3dc56b-33b6-4f29-bd76-7f6aa1a87e8d': "Dreamy 3D, soft 3D rendered illustrations, dreamy quality, children's book illustration",
-  'Style-f45b720c-656d-4ef0-bd86-f9f5afa63f0f': "Cutie 3D, adorable 3D characters, expressive features, children's book illustration",
-  'Style-16dd4ac7-63e1-40ae-bb87-472e820c93f8': "Shimmering Glow, magical luminous quality, children's book illustration",
-  'Style-43226b0-4b66-412c-a240-0a214019b895': "Surreal Iridescence, dreamlike scenes, shimmering rainbow-like colors, children's book illustration",
-  'Style-90a8d36d-9a67-4619-a995-4036fda8474d': "Golden Hour, warm sunset-toned illustrations, nostalgic feel, children's book illustration",
-  'Style-b7c0d088-e046-4e9b-a0fb-a329d2b9a36a': "Vibrant Impasto, bold paintings, thick textured brush strokes, children's book illustration",
-  'Style-4a3b38cd-a49d-4b69-81e8-69134ca9cdc0': "Sketchbook Sticker, fun casual illustrations, sticker-like appearance, children's book illustration",
-  
-  // Portraits & Characters
-  'Style-11ead7fd-0a37-4f3d-a1a2-66558f036f74': "Inked Realism, detailed ink-drawn portraits, children's book illustration",
-  'Style-8d281dba-698e-41d0-98d1-6227e4f3c6c4': "Magic Portrait, semi-stylized portrait, magical fantasy quality, children's book illustration",
-  'Style-4ab783c7-2955-4092-878e-965162241bf7': "Warm Portrait, realistic portrait, warm lighting, preserved facial features, children's book illustration",
-  'Style-e54a8400-fb2c-47a5-9418-8895c01382ce': "Retro Noir Chromatics, stylish noir-inspired portraits, bold colors, children's book illustration",
-  'Style-9cde0ca9-78f0-4be5-a6a1-44dd74cfbaa0': "Starlit Fantasy, dreamy ethereal style, magical starlit quality, characters with dreamy quality, children's book illustration",
-  'Style-a941aee9-7964-4445-b76a-7c3ff912f926': "Cheerful Storybook, bright cheerful character illustrations, classic storybook style, children's book illustration",
-  
-  // Special Styles
-  'Style-a8311e8a-ba8b-4cdf-84f9-4001f82cee83': "Vintage Engraving, old-fashioned engraved look, fine lines and details, children's book illustration",
-  'Style-666d19e1-2e33-4e64-95e8-588c8e20b02c': "Ancient China, traditional Chinese painting style, elegant brushwork, children's book illustration",
-  'Style-f9ba459d-addd-4e80-9a2e-67439fb50446': "Graffiti Splash, urban street art style, bold colors, spray paint effects, children's book illustration",
-  'Style-f8ee0e8d-62ea-48b6-8323-15c5a6c62e2c': "Pleasantly Warm, cozy warm-toned illustrations, comfortable feeling, children's book illustration",
-  'Style-f22b0501-07a8-4f93-ac65-182c1cd5b4ca': "8-Bit Arcade, retro pixel art style, classic video games, children's book illustration",
-  'Style-01b37b76-4f5b-421d-a6cc-759e8d7aba3f': "Impressionist, artistic style, visible brushstrokes, light effects, children's book illustration",
-  'Style-24b334a4-52eb-4f77-94fa-f37d7367d956': "Zen Spirit, tranquil mindful illustrations, Eastern artistic influences, children's book illustration",
-  'Style-89c94c8f-9c94-4ef2-8fbd-e058648c92c7': "Vibrant Whimsy, bright colorful whimsical style, children's book illustration",
-  'Style-e2f14b9b-819d-4389-980f-71b83f55271d': "Whimsical Brushwork, playful brush style, flowing artistic strokes, children's book illustration",
-  'Style-8ee4b050-ef89-4058-8521-66223259bb30': "Bedtime Story, cozy nighttime illustrations, dreamlike quality, children's book illustration",
-  'Style-7b57d4ef-98ea-4101-b048-db2b4fd28c70': "Nouveau Classic, art nouveau inspired style, elegant flowing lines, children's book illustration",
-  'Style-c7e442ba-261c-450a-899b-5ae85c918b4b': "Innocent Cutie, sweet innocent style, adorable character design, children's book illustration",
-  'Style-04d8cbcf-6496-4d68-997e-516303502507': "Glossy Elegance, clean sleek modern illustration, glossy finish, children's book illustration",
-  'Style-30dd5a41-c881-4281-a093-ab79f71e6479': "Memphis Illustration, colorful geometric patterns, 80s-90s inspired, children's book illustration", 
-  'Style-2bdfdfec-0ddb-4bca-aa2a-cca1abbc48f7': "Minimalist Cutesy, simple cute design, minimal details, soft colors, children's book illustration",
-  'Style-7f3f81ad-1c2d-4a15-944d-66bf549641de': "Watercolor Whimsy, gentle watercolor style, soft colors, children's book illustration",
-  'Style-e72b9767-6244-4d6f-b295-7a015de0e031': "Dreamy Spectrum, colorful dreamlike illustrations, fantasy atmosphere, children's book illustration",
-  'Style-e9a4495e-2f15-4ab7-909d-473af6fb6c9c': "Enhanced Elegance, refined detailed illustrations, sophisticated look, children's book illustration",
-  'Style-31bbb0d0-20e2-460b-9280-6835200a4b73': "Delicate Aquarelle, gentle watercolor style, delicate appearance, children's book illustration"
-};
-
-/**
- * Gets descriptive keywords for Segmind based on a Dzine style code.
- * @param {string} dzineCode - The Dzine style code (e.g., 'Style-7a23...').
- * @returns {string} - A string of descriptive keywords for Segmind prompt, or a default.
- */
-export const getKeywordsForDzineStyle = (dzineCode) => {
-  if (!dzineCode) return "children's book illustration style"; // Default if no code provided
-  // Updated fallback to be more generic if code not found in map
-  return dzineToSegmindKeywordsMap[dzineCode] || "children's book illustration, colorful, illustrated style"; 
-};
-
-// --- End: Style Keyword Mapping --- //
+// --- Style Keyword Mapping Removed as per image_generation_plan.md --- //
 
 // Direct mapping of style names to API codes from the Dzine API
 export const STYLE_CODE_MAP = {
@@ -523,7 +453,7 @@ export const createTxt2ImgTask = async (promptText, styleCode, options = {}) => 
       style_intensity: options.style_intensity !== undefined ? options.style_intensity : 0.8,
       quality_mode: options.quality_mode !== undefined ? options.quality_mode : 1, // Default to high quality
       seed: options.seed || Math.floor(Math.random() * 2147483647) + 1, // Random seed if not provided
-      generate_slots: options.generate_slots || [1, 1, 0, 0], // Default configuration
+      generate_slots: options.generate_slots || [1, 0, 0, 0], // Default: Generate only one image
       output_format: options.output_format || 'webp'
     };
     
