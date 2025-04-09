@@ -322,13 +322,18 @@ const generateStoryPages = async (storyData) => {
         }
       }
       
-      // Add necessary fields for the page
+      // Add necessary fields for the page, using the single visualPrompt
+      // Ensure spreadContent.imagePrompt corresponds to the visual prompt requested from OpenAI
+      const visualPromptFromAI = spreadContent.imagePrompt || spreadContent.visualPrompt || `Error: Visual prompt missing from AI response for spread ${index + 1}`;
+      
+      // Removed duplicate declaration of visualPromptFromAI
+
       return {
         id: `page-${index + 1}`,
         type: 'content',
         text: spreadContent.text || `Spread ${index + 1}`,
-        characterPrompt: mainCharacter.name, // Add character name to prompt
-        scenePrompt: spreadContent.imagePrompt || `Child character in a scene, spread ${index + 1}`,
+        visualPrompt: visualPromptFromAI, // Assign the visual prompt here
+        // Remove old characterPrompt and scenePrompt keys
         spreadIndex: index
       };
     });
