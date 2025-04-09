@@ -527,7 +527,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       // Check for forced art style or user selected style
       if (forcedArtStyle) {
         console.log('[CharacterWizard] Using forced art style:', forcedArtStyle);
-        console.log('[CharacterWizard] Style keywords:', getKeywordsForDzineStyle(forcedArtStyle));
+        // console.log('[CharacterWizard] Style keywords:', getKeywordsForDzineStyle(forcedArtStyle)); // Removed call to deleted function
         // Update the character data with the forced art style
         setCharacterData(prevData => ({
           ...prevData,
