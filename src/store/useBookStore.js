@@ -282,6 +282,9 @@ const useBookStore = create((set, get) => ({
     currentBook: state.currentBook?.id === bookId ? null : state.currentBook,
   })),
   
+  // Action to set the ID of the most recently generated book
+  setLatestGeneratedBookId: (bookId) => set({ latestGeneratedBookId: bookId }),
+  
   // Load books from API (mocked for now)
   fetchBooks: async () => {
     set({ isLoading: true });
