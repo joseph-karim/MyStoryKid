@@ -11,7 +11,7 @@ import {
   getStyleCode,
   // getKeywordsForDzineStyle, // Removed as it's no longer exported/used
   getStyleNameFromCode,
-  getTaskResult // Keep this if used, otherwise remove
+  getTaskResult
 } from '../services/dzineService';
 import { uploadImageAndGetUrl } from '../services/imageUploadService';
 
@@ -494,19 +494,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const handleBack = () => {
     setError(''); // Clear errors on navigation
     let targetStep = step - 1;
-    // --- Skip Step 3 (Appearance) if art style is forced ---
-    if (targetStep === 3 && forcedArtStyle) {
-      console.log('[NAV] Skipping Step 3 (Appearance) backwards because style is forced');
-      targetStep = 2; // Go back to Step 2 (Details) instead
+    // --- Skip Step 2 (Appearance) if art style is forced ---
+    if (step === 3 && forcedArtStyle) { // Check if going back FROM step 3
+      console.log('[NAV] Skipping Step 2 (Appearance) backwards because style is forced');
+      targetStep = 1; // Go back to Step 1 (Details) instead
     }
-    setStep(targetStep);
+    setStep(prev => Math.max(1, targetStep)); // Use Math.max to prevent going below 1
   };
   
   const handleNext = () => {
+    console.log('[CharacterWizard] handleNext() called, current step:', step);
     setError(''); // Clear errors on navigation
     
-    // Validation before proceeding
-    if (step === 1) { // Details Step
+    // Validation for Step 1: Details
+    if (step === 1) {
       if (!characterData.name) {
         setError('Please enter a name for your character.');
         return;
@@ -515,7 +516,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please select a character type.');
         return;
       }
-      if (!characterData.age) {
+       if (!characterData.age) {
         setError('Please select an age for your character.');
         return;
       }
@@ -523,185 +524,191 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please select a gender for your character.');
         return;
       }
-    } else if (step === 2) { // Appearance Step
-      if (!characterData.useTextToImage && !characterData.photoUrl) {
+    
+      // --- Skip Step 2 (Appearance) if art style is forced ---
+      if (forcedArtStyle) {
+        console.log('[NAV] Skipping Step 2 (Appearance) forwards because style is forced');
+        // Update the character data with the forced art style before skipping
+        setCharacterData(prevData => ({
+          ...prevData,
+          artStyle: forcedArtStyle // Make sure this is set
+        }));
+        // Generate preview immediately since we skip the step where it normally happens
+        generateCharacterPreview(forcedArtStyle, characterData.isHuman); 
+        setUnlockedSteps(prev => [...new Set([...prev, 2, 3])]); // Unlock 2 and 3
+        setStep(3); // Go directly to Step 3 (Confirm)
+      } else {
+        setUnlockedSteps(prev => [...new Set([...prev, 2])]);
+        setStep(2);
+      }
+    }
+    // Validation for Step 2: Photo & Style
+    else if (step === 2) {
+      // For photo, we also need a style choice
+      if (!characterData.photoUrl && !characterData.useTextToImage) { // Check both photo and text toggle
         setError('Please upload a photo or describe the character.');
         return;
       }
-      if (characterData.useTextToImage && !characterData.generationPrompt) {
+      if (characterData.useTextToImage && !characterData.generationPrompt) { // Check prompt if text is used
         setError('Please provide a description for image generation.');
         return;
       }
-      // If art style is NOT forced, require selection
+      
+      // Check for forced art style or user selected style (shouldn't happen if skipped)
       if (!forcedArtStyle && !characterData.artStyle) {
-        setError('Please select an art style.');
+        setError('Please select an art style for your character.');
         return;
       }
-    } else if (step === 3) { // Confirm Step
-      // Ensure style preview exists before allowing completion
-      if (!characterData.stylePreview) {
-        setError('Please generate the character style preview before completing.');
-        return;
-      }
+      
+      console.log(`[CharacterWizard] Selected/Forced art style: ${characterData.artStyle || forcedArtStyle}`);
+      setUnlockedSteps(prev => [...new Set([...prev, 3])]);
+      
+      // Generate preview image based on selected or forced style
+      const styleToUse = forcedArtStyle || characterData.artStyle;
+      // Use isHuman state which is now managed by useEffect
+      const isHumanCharacter = characterData.isHuman; 
+      
+      // Generate a preview with the photo and style
+      generateCharacterPreview(styleToUse, isHumanCharacter);
+      
+      setStep(3);
     }
-    
-    let targetStep = step + 1;
-    // --- Skip Step 3 (Appearance) if art style is forced ---
-    if (step === 2 && forcedArtStyle) {
-      console.log('[NAV] Skipping Step 3 (Appearance) forwards because style is forced');
-      targetStep = 4; // Go directly to Step 4 (Confirm)
-    }
-    
-    // Unlock the next step(s)
-    const newUnlockedSteps = [...unlockedSteps];
-    for (let i = step + 1; i <= targetStep; i++) {
-      if (!newUnlockedSteps.includes(i)) {
-        newUnlockedSteps.push(i);
-      }
-    }
-    setUnlockedSteps(newUnlockedSteps);
-    
-    setStep(targetStep);
+    // Step 3: Confirm - The "Next" action is handled by the "Complete Character" button inside renderConfirmStep
+    // No explicit setStep(4) needed here.
   };
   
-  // Function to handle tab clicks
+  // --- ADDED: Handle clicking tabs ---
   const handleTabClick = (tabStep) => {
     if (unlockedSteps.includes(tabStep)) {
       setStep(tabStep);
-      setError(''); // Clear errors when switching tabs
     } else {
-      console.log(`Step ${tabStep} is locked.`);
-      // Optionally provide feedback that the step is locked
+      console.log(`Step ${tabStep} is not unlocked yet.`);
     }
   };
-  
+  // --- END ADDED ---
+
+  // --- ADDED: Handle selecting existing character ---
   const handleSelectExistingCharacter = (character) => {
-    // Logic to load existing character data into the wizard
-    // This might involve setting characterData state and potentially the step
+    // This function might need more logic depending on how existing characters are handled
     console.log('Selected existing character:', character);
-    // Example:
+    // Potentially pre-fill data and move to confirm step?
     // setCharacterData(character);
-    // setStep(4); // Go to confirm step?
-    // setUnlockedSteps([1, 2, 3, 4]);
+    // setUnlockedSteps([1, 2, 3]);
+    // setStep(3);
   };
-  
-  const handlePhotoUpload = (e) => {
+  // --- END ADDED ---
+
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        console.log('UPLOAD DEBUG:', {
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          base64Prefix: base64String ? base64String.substring(0, 30) : 'N/A'
-        });
-        
-        setPhotoPreview(base64String); // Show preview immediately
-        
-        // Update characterData with the Base64 string for potential direct use
-        // or before uploading if needed elsewhere
-        setCharacterData(prev => ({
-          ...prev,
-          photoUrl: base64String // Store Base64 directly for now
-        }));
-        
-        // Optionally, upload immediately and store URL (if backend requires URL)
-        // This depends on whether Dzine needs Base64 or a URL
-        /*
-        setIsUploading(true); // Add upload state if needed
-        uploadImageAndGetUrl(file)
-          .then(url => {
-            console.log('UPLOAD COMPLETE:', { url });
-            setCharacterData(prev => ({ ...prev, photoUrl: url }));
-            setIsUploading(false);
-          })
-          .catch(err => {
-            console.error('Upload failed:', err);
-            setError('Failed to upload photo.');
-            setIsUploading(false);
-            setPhotoPreview(null); // Clear preview on error
-          });
-        */
-      };
-      reader.onerror = (error) => {
-        console.error("FileReader error:", error);
-        setError("Failed to read the selected file.");
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    console.log('UPLOAD DEBUG:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
+
+    // Basic validation (optional)
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file.');
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setError('Image file size should not exceed 5MB.');
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      console.log('IMAGE DATA DEBUG:', {
+        resultLength: reader.result?.length,
+        resultType: typeof reader.result,
+        resultPrefix: reader.result?.substring(0, 30),
+      });
+      setPhotoPreview(reader.result); // For UI preview
+      // Store Base64 directly in characterData
+      setCharacterData(prev => ({
+        ...prev,
+        photoUrl: reader.result, // Store Base64
+        useTextToImage: false, // Ensure text-to-image is off
+      }));
+    };
+    reader.onerror = (err) => {
+      console.error("FileReader error:", err);
+      setError("Failed to read the image file.");
+    };
+    reader.readAsDataURL(file);
+
+    // Clear the input value so the same file can be selected again if needed
+    e.target.value = null; 
+
+    console.log('UPLOAD COMPLETE:', {
+      photoUrlSet: !!characterData.photoUrl, // Check if photoUrl was set in state update
+      useTextToImage: characterData.useTextToImage,
+    });
   };
-  
-  // Function to open the image preview modal
+
+  // --- ADDED: Image Preview Modal Handlers ---
   const openImagePreview = (imageUrl) => {
+    console.log('[Preview Modal] Opening with URL:', imageUrl);
     setPreviewImageUrl(imageUrl);
     setShowImagePreview(true);
   };
-  
-  // Function to close the image preview modal
+
   const closeImagePreview = () => {
+    console.log('[Preview Modal] Closing');
     setShowImagePreview(false);
-    setPreviewImageUrl('');
+    setPreviewImageUrl(''); // Clear URL when closing
   };
-  
-  // --- RENDER FUNCTIONS ---
-  
+  // --- END ADDED ---
+
+  // --- RENDER FUNCTIONS (Based on ca071b9 structure) ---
+
   const renderDetailsStep = () => (
     <div className="space-y-4">
-      {/* Name Input */}
       <div>
-        <label htmlFor="characterName" className="block text-sm font-medium text-gray-700">Character Name</label>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Character Name</label>
         <input
           type="text"
-          id="characterName"
+          id="name"
           value={characterData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          placeholder="e.g., Lily, Tom"
+          placeholder="e.g., Lily"
         />
       </div>
-      
-      {/* Type Selection (Simplified) */}
       <div>
-        <label htmlFor="characterType" className="block text-sm font-medium text-gray-700">Character Type</label>
+        <label htmlFor="type" className="block text-sm font-medium text-gray-700">Character Type</label>
         <select
-          id="characterType"
+          id="type"
           value={characterData.type}
           onChange={(e) => handleChange('type', e.target.value)}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           <option value="" disabled>Select type...</option>
           <option value="child">Child</option>
-          <option value="pet">Pet / Animal</option>
+          <option value="pet">Pet</option>
           <option value="magical">Magical Creature</option>
+          <option value="animal">Animal</option>
           {/* Add other types as needed */}
         </select>
       </div>
-      
-      {/* Age Selection */}
       <div>
-        <label htmlFor="characterAge" className="block text-sm font-medium text-gray-700">Age</label>
-        <select
-          id="characterAge"
+        <label htmlFor="age" className="block text-sm font-medium text-gray-700">Age</label>
+        <input
+          type="number"
+          id="age"
           value={characterData.age}
           onChange={(e) => handleChange('age', e.target.value)}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-        >
-          <option value="" disabled>Select age...</option>
-          <option value="toddler">Toddler (1-3)</option>
-          <option value="preschooler">Preschooler (3-5)</option>
-          <option value="child">Child (6-8)</option>
-          <option value="tween">Tween (9-12)</option>
-          {/* Add other relevant age groups */}
-        </select>
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          placeholder="e.g., 5"
+        />
       </div>
-      
-      {/* Gender Selection */}
       <div>
-        <label htmlFor="characterGender" className="block text-sm font-medium text-gray-700">Gender</label>
+        <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender</label>
         <select
-          id="characterGender"
+          id="gender"
           value={characterData.gender}
           onChange={(e) => handleChange('gender', e.target.value)}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
@@ -709,88 +716,70 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <option value="" disabled>Select gender...</option>
           <option value="girl">Girl</option>
           <option value="boy">Boy</option>
-          <option value="non-binary">Non-binary</option>
-          <option value="unspecified">Unspecified / Not Applicable</option>
+          <option value="other">Other/Unspecified</option>
         </select>
       </div>
-      
-      {/* Role Selection (Simplified - Default to Main) */}
-      <input type="hidden" value={characterData.role || 'main'} />
-      
+      {/* Add fields for traits, interests etc. if needed */}
     </div>
   );
-  
-  // Helper to get step title
+
+  // --- ADDED: Get Step Title Helper ---
   const getStepTitle = (stepNumber) => {
     switch (stepNumber) {
-      case 1: return 'Character Details';
+      case 1: return 'Details';
       case 2: return 'Appearance';
-      case 3: return 'Style Preview'; // Renamed from Appearance
-      case 4: return 'Confirm Character';
+      case 3: return 'Confirm';
       default: return `Step ${stepNumber}`;
     }
   };
-  
+  // --- END ADDED ---
+
   const renderAppearanceStep = () => (
     <div className="space-y-6">
       {/* Toggle between Photo Upload and Text Description */}
-      <div className="flex items-center space-x-4">
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="radio"
-            name="appearanceSource"
-            checked={!characterData.useTextToImage}
-            onChange={() => handleChange('useTextToImage', false)}
-            className="form-radio h-4 w-4 text-indigo-600 transition duration-150 ease-in-out"
-          />
-          <span className="ml-2 text-sm text-gray-700">Upload Photo</span>
-        </label>
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="radio"
-            name="appearanceSource"
-            checked={characterData.useTextToImage}
-            onChange={() => handleChange('useTextToImage', true)}
-            className="form-radio h-4 w-4 text-indigo-600 transition duration-150 ease-in-out"
-          />
-          <span className="ml-2 text-sm text-gray-700">Describe Character</span>
-        </label>
+      <div className="flex items-center justify-center space-x-4 mb-4">
+        <button
+          onClick={() => handleChange('useTextToImage', false)}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${!characterData.useTextToImage ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+        >
+          Upload Photo
+        </button>
+        <button
+          onClick={() => handleChange('useTextToImage', true)}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${characterData.useTextToImage ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+        >
+          Describe Character
+        </button>
       </div>
-      
-      {/* Conditional Rendering based on Toggle */}
+
       {!characterData.useTextToImage ? (
         // Photo Upload Section
         <div>
-          <label htmlFor="photoUpload" className="block text-sm font-medium text-gray-700 mb-2">
-            Upload a Photo (Optional)
-          </label>
-          <div className="mt-1 flex items-center space-x-4">
-            <span className="inline-block h-20 w-20 rounded-full overflow-hidden bg-gray-100 border">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Upload Character Photo</label>
+          <div className="flex items-center space-x-4">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border">
               {photoPreview ? (
-                <img src={photoPreview} alt="Character Preview" className="h-full w-full object-cover" />
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
               ) : (
-                <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
+                <span className="text-gray-400 text-xs">Preview</span>
               )}
-            </span>
+            </div>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="ml-5 bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
-              Choose Photo
+              Choose File
             </button>
             <input
-              ref={fileInputRef}
               type="file"
-              id="photoUpload"
-              accept="image/*"
+              ref={fileInputRef}
               onChange={handlePhotoUpload}
+              accept="image/png, image/jpeg, image/webp"
               className="hidden"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">A clear photo helps create a consistent character style.</p>
+          <p className="text-xs text-gray-500 mt-1">A clear photo helps create a consistent character style. (Max 5MB)</p>
         </div>
       ) : (
         // Text Description Section
@@ -824,6 +813,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             <option value="" disabled>Select style...</option>
             {/* Populate with styles from Dzine */}
             {/* Example: <option value="dz_style_code_1">Watercolor Whimsy</option> */}
+            {/* TODO: Fetch and map styles */}
           </select>
           <p className="text-xs text-gray-500 mt-1">Choose the visual style for your character.</p>
         </div>
@@ -832,199 +822,317 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     </div>
   );
   
-   const renderConfirmStep = () => (
-     <div className="space-y-4 text-center">
-       <h3 className="text-lg font-medium text-gray-900">Confirm Your Character</h3>
-       <p className="text-sm text-gray-600">Review the details and the generated style preview.</p>
-       
-       {/* Display Character Details */}
-       <div className="text-left bg-gray-50 p-4 rounded border max-w-md mx-auto">
-         <p><strong>Name:</strong> {characterData.name}</p>
-         <p><strong>Type:</strong> {characterData.type}</p>
-         <p><strong>Age:</strong> {characterData.age}</p>
-         <p><strong>Gender:</strong> {characterData.gender}</p>
-         <p><strong>Art Style:</strong> {getStyleNameFromCode(characterData.artStyle || forcedArtStyle)}</p>
-         {characterData.useTextToImage && <p><strong>Description:</strong> {characterData.generationPrompt}</p>}
-       </div>
-       
-       {/* Display Generated Preview */}
-       <div className="mt-4">
-         <h4 className="text-md font-medium text-gray-800 mb-2">Style Preview</h4>
+   const renderConfirmStep = () => {
+     // Use previewUrl for display, fallback to stylePreview if needed
+     const displayPreviewUrl = previewUrl || characterData.stylePreview;
+     
+     return (
+       <div className="space-y-6">
+         <h3 className="text-2xl font-semibold text-center text-gray-800">Confirm Character</h3>
+         <p className="text-center text-gray-600">Review your character details and the generated style preview.</p>
+         
+         {/* Generation Status/Error Display */}
          {generationStatus === 'processing' && (
-           <div className="flex justify-center items-center flex-col">
+           <div className="flex justify-center items-center flex-col my-4">
              <div className="w-8 h-8 border-t-2 border-blue-500 border-solid rounded-full animate-spin mb-2"></div>
              <p className="text-sm text-gray-500">{progressMessage || 'Generating preview...'}</p>
            </div>
          )}
-         {generationStatus === 'error' && error && (
-           <p className="text-sm text-red-600">{error}</p>
+         {/* Display specific generation error if present */}
+         {generationStatus === 'error' && error && error.startsWith('Generation failed:') && (
+           <p className="text-sm text-red-600 my-4 text-center">{error}</p> // Centered error
          )}
-         {previewUrl && generationStatus !== 'processing' && (
-           <img 
-             src={previewUrl} 
-             alt="Character Style Preview" 
-             className="w-48 h-48 object-cover rounded border shadow-md mx-auto cursor-pointer"
-             onClick={() => openImagePreview(previewUrl)} // Open modal on click
-           />
+         {/* End Generation Status */}
+
+         {displayPreviewUrl && generationStatus !== 'processing' ? ( // Hide preview while processing
+           <div className="flex flex-col items-center space-y-4">
+             <div 
+               className="w-48 h-48 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
+               onClick={() => openImagePreview(displayPreviewUrl)}
+             >
+               <img 
+                  src={displayPreviewUrl} 
+                  alt="Character Style Preview" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => { 
+                       console.log('[Image] Error loading image, using placeholder');
+                       e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error');
+                    }} 
+                 />
+               </div>
+               
+              <h3 className="text-xl font-bold">{characterData.name}</h3>
+              <p className="text-gray-600 text-sm">
+                {characterData.age && `${characterData.age} years old • `}
+                {characterData.gender && `${characterData.gender} • `}
+                {characterData.type}
+              </p>
+              
+              {/* Optionally show description if used */}
+              {characterData.useTextToImage && characterData.generationPrompt && (
+                <div className="mt-4 w-full p-3 bg-gray-50 rounded-md border border-gray-200 max-w-md">
+                  <p className="text-xs italic text-gray-500">Based on: "{characterData.generationPrompt.substring(0, 100)}{characterData.generationPrompt.length > 100 ? '...' : ''}"</p>
+           </div>
+              )}
+            </div>
+          ) : (
+             // Only show placeholder if NOT processing and no preview exists
+             generationStatus !== 'processing' && ( 
+                <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300 my-4 max-w-md mx-auto">
+                  <p className="text-gray-600">Style preview will appear here after generation.</p>
+                </div>
+             )
+          )}
+             
+        {/* Regenerate Button */}
+        {/* Show button only if generation isn't processing */}
+        {generationStatus !== 'processing' && (
+           <div className="text-center"> {/* Center the button */}
+             <button
+               onClick={() => {
+                 console.log('[Retry/Regen] User requested generation');
+                 const styleToUse = forcedArtStyle || characterData.artStyle;
+                 const isHumanCharacter = characterData.isHuman; 
+                 generateCharacterPreview(styleToUse, isHumanCharacter);
+               }}
+               // Disable if generating, API not working, OR if required inputs are missing
+               disabled={isGenerating || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)} 
+               className={`mt-3 px-4 py-2 text-sm rounded ${
+                 (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isGenerating // Combined disabled condition
+                   ? 'bg-gray-400 text-white cursor-not-allowed'
+                   : 'bg-blue-600 text-white hover:bg-blue-700'
+               }`}
+             >
+               {displayPreviewUrl ? 'Regenerate Preview' : 'Generate Preview'}
+             </button>
+             {!apiStatus.working && apiStatus.checked && (
+                <p className="text-xs text-red-500 mt-1">API Error: {apiStatus.message}. Preview generation disabled.</p>
+             )}
+             {/* Updated condition to check useTextToImage flag */}
+             {(!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) && ( 
+                <p className="text-xs text-orange-500 mt-1">Please upload a photo or provide a description in Step 2 to enable preview generation.</p>
+             )}
+           </div>
          )}
-         {/* Show button only if generation hasn't started, failed, or completed */}
-         {(generationStatus === 'idle' || generationStatus === 'error' || !previewUrl) && (
+        {/* End Regenerate Button */}
+
+        {/* Original Buttons */}
+        <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+             <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+            disabled={isGenerating} // Use isGenerating
+          >
+            Back
+          </button>
            <button
-             onClick={() => generateCharacterPreview(characterData.artStyle || forcedArtStyle, characterData.isHuman)}
-             disabled={isGenerating || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt)}
-             className={`mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-               (!characterData.photoUrl && !characterData.generationPrompt) || !apiStatus.working
-                 ? 'bg-gray-400 cursor-not-allowed'
-                 : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-             } ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+            onClick={handleComplete}
+            // Allow complete if preview exists OR if generation wasn't attempted yet
+            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`} 
+            disabled={(!displayPreviewUrl && generationAttempted) || isGenerating} // Use isGenerating and allow complete if not attempted
            >
-             {isGenerating ? 'Generating...' : (previewUrl ? 'Regenerate Preview' : 'Generate Style Preview')}
-           </button>
-         )}
-         {!apiStatus.working && apiStatus.checked && (
-            <p className="text-xs text-red-500 mt-1">API Error: {apiStatus.message}. Preview generation disabled.</p>
-         )}
-         {(!characterData.photoUrl && !characterData.generationPrompt) && (
-            <p className="text-xs text-orange-500 mt-1">Please upload a photo or provide a description in Step 2 to enable preview generation.</p>
-         )}
+            Complete Character
+             </button>
+           </div>
        </div>
-     </div>
-   );
-   
-   // Main render logic for steps
+     );
+   };
+   // --- End renderConfirmStep ---
+
+   // Update renderStep to call renderConfirmStep ---
    const renderStep = () => {
      switch (step) {
-       case 1:
-         return renderDetailsStep();
-       case 2:
-         return renderAppearanceStep();
-       case 3: // This step is now the Preview Generation step
-         return renderConfirmStep(); // Use the confirm step layout for preview generation
-       case 4: // Final Confirmation
-         return renderConfirmStep(); // Reuse the same layout, but the "Next" button becomes "Complete"
-       default:
-         return <div>Unknown step</div>;
+       case 1: return renderDetailsStep();
+       case 2: return renderAppearanceStep();
+       case 3: return renderConfirmStep(); // Step 3 is Confirm
+       default: 
+         console.warn("Unknown step in renderStep, defaulting to 1");
+         setStep(1);
+         return renderDetailsStep(); 
      }
    };
    
-   // --- GENERATION AND POLLING LOGIC ---
-   
-   // Combined function to handle both Txt2Img and Img2Img based on state
+   // --- generateCharacterImage function (Updated in previous step) --- 
    const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
-     clearActiveTasks(); // Clear previous polling
-     const generationId = uuidv4(); // Unique ID for this specific generation attempt
-     activeGenerationIdRef.current = generationId; // Track this attempt
-     
      setGenerationAttempted(true); // Mark that we've tried to generate
      updateGenerationState('processing', 'Starting character image generation...');
      
+     // Validate style code early
+     if (!styleApiCode) {
+       handleGenerationError('An invalid art style was specified.', fallbackImage);
+       return; 
+     }
+     
+     const generationId = uuidv4(); // Unique ID for this specific generation attempt
+     activeGenerationIdRef.current = generationId; // Track this attempt
+     let operationType = ''; 
+     
      try {
-       let taskId;
-       let taskType; // To know which result structure to expect potentially
+       let taskResponse;
        
-       // Determine if using Text-to-Image or Image-to-Image
-       if (characterData.useTextToImage && prompt) {
-         // --- Text-to-Image ---
-         taskType = 'txt2img';
-         updateProgressInfo('Creating Text-to-Image task...');
-         console.log(`[Dzine ${taskType}] Using prompt: ${prompt}, Style: ${styleApiCode}`);
+       if (characterData.useTextToImage) {
+         // --- Text-to-Image Logic ---
+         operationType = 'Txt2Img';
+         console.log('[Generate] Using Text-to-Image');
          
-         const payload = {
-           prompt: prompt.substring(0, 800), // Max 800 chars
-           style_code: styleApiCode,
-           target_h: 512, // Adjust dimensions as needed
-           target_w: 512,
-           quality_mode: 1, // High quality
-           generate_slots: [1, 0, 0, 0], // Generate one image
-           // seed: Date.now(), // Optional: for variability
-         };
-         taskId = await createTxt2ImgTask(prompt, styleApiCode, { target_w: 512, target_h: 512 });
-         
-       } else if (characterData.photoUrl) {
-         // --- Image-to-Image ---
-         taskType = 'img2img';
-         updateProgressInfo('Creating Image-to-Image task...');
-         
-         // Ensure photoUrl is Base64
-         let base64Image = characterData.photoUrl;
-         if (!base64Image.startsWith('data:image')) {
-           // This shouldn't happen if handlePhotoUpload stores Base64, but handle defensively
-           console.warn('[Dzine img2img] photoUrl is not a Base64 string, attempting conversion (this indicates an issue).');
-           // Attempt conversion or throw error - conversion is complex here, better to ensure it's Base64 earlier
-           throw new Error("Input photo is not in Base64 format for Img2Img.");
+         // Enhance prompt if needed (example)
+         let enhancedPrompt = prompt || characterData.generationPrompt || 'character portrait';
+         if (characterData.name) {
+           enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
          }
+         enhancedPrompt += ", high quality illustration"; // Add quality modifier
          
+         // Correct payload for createTxt2ImgTask
          const payload = {
-           image_base64: base64Image,
+           prompt: enhancedPrompt.substring(0, 800), 
            style_code: styleApiCode,
-           target_h: 512,
-           target_w: 512,
-           quality_mode: 1,
-           generate_slots: [1, 0, 0, 0],
-           // style_intensity: 0.7, // Optional: Adjust intensity
+           aspect_ratio: '1:1', 
+           quality_mode: 1, 
+           output_format: 'webp',
+           seed: Math.floor(Math.random() * 2147483647) + 1,
+           negative_prompt: 'low quality, blurry, bad anatomy',
+           generate_slots: [1, 0, 0, 0] // Ensure only one image is requested
          };
-         console.log('Img2Img Payload (excluding base64):', JSON.stringify({
-           style_code: payload.style_code, target_h: payload.target_h, target_w: payload.target_w, quality_mode: payload.quality_mode, generate_slots: payload.generate_slots
-         }));
-         taskId = await createImg2ImgTask(base64Image, styleApiCode, { target_w: 512, target_h: 512 });
+         
+         console.log('Txt2Img Payload:', JSON.stringify(payload, null, 2));
+         // Pass the single payload object
+         taskResponse = await createTxt2ImgTask(payload.prompt, payload.style_code, payload); 
          
        } else {
-         throw new Error("Cannot generate image: No photo uploaded and no text description provided.");
+         // --- Image-to-Image Logic --- 
+         operationType = 'Img2Img';
+         console.log('[Generate] Using Image-to-Image');
+         
+         if (!characterData.photoUrl) {
+           throw new Error('Cannot perform Image-to-Image without a source photo.');
+         }
+         
+         let photoBase64ForPayload;
+         // Ensure photoUrl is Base64
+         if (!characterData.photoUrl.startsWith('data:image')) {
+           // Attempt conversion if not base64 (e.g., if it's a URL from selection)
+           console.warn('[Generate] photoUrl is not Base64, attempting conversion...');
+           const base64Photo = await fetchAndConvertToBase64(characterData.photoUrl);
+           if (!base64Photo) {
+              throw new Error('Failed to convert source photo to Base64 for Image-to-Image.');
+           }
+           // Update: Use a temporary variable instead of mutating state directly here
+           photoBase64ForPayload = base64Photo; 
+           console.log('[Generate] Conversion successful.');
+         } else {
+           photoBase64ForPayload = characterData.photoUrl; // Already base64
+         }
+         
+         // Construct prompt for Img2Img
+         const imgPrompt = prompt || `Character portrait of ${characterData.name || 'person'} in the selected style`;
+
+         // *** PAYLOAD FIX APPLIED HERE ***
+         const payload = {
+           style_code: styleApiCode, 
+           prompt: imgPrompt.substring(0, 800),
+           images: [{ base64_data: photoBase64ForPayload }], // Pass image correctly in the images array
+           quality_mode: 1, 
+           output_format: 'webp',
+           negative_prompt: 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
+           seed: Math.floor(Math.random() * 2147483647) + 1,
+           generate_slots: [1, 1] // Default for Model X
+           // style_intensity, structure_match, color_match can be added if needed
+         };
+         
+         console.log('Img2Img Payload (excluding base64):', JSON.stringify({
+              ...payload,
+              images: [{ base64_data: 'base64_data_present' }]
+            }, null, 2));
+         // Pass the single payload object and the face match flag
+         taskResponse = await createImg2ImgTask(payload, isHumanCharacter); 
        }
        
-       if (!taskId || !taskId.task_id) {
-         throw new Error(`Failed to create Dzine ${taskType} task.`);
+       // --- Common Task Handling --- 
+       if (!taskResponse || !taskResponse.task_id) {
+         // Attempt to extract error message from response if available
+         const apiErrorMsg = taskResponse?.error || taskResponse?.message || `Failed to initiate ${operationType} task.`;
+         throw new Error(apiErrorMsg);
        }
        
-       updateProgressInfo(`Dzine ${taskType} task created: ${taskId.task_id}. Starting polling...`);
-       startPollingTask(taskId.task_id, fallbackImage, generationId); // Pass generationId
+       console.log(`[Generate] ${operationType} task started with ID: ${taskResponse.task_id}`);
+       updateProgressInfo('Generation task submitted, waiting for progress...');
+       
+       // Start polling using the task ID
+       startPollingTask(taskResponse.task_id, fallbackImage, generationId);
        
      } catch (error) {
+       console.error(`[Generate] Error during ${operationType || 'generation'} initiation:`, error);
+       // Use centralized error handler
        handleGenerationError(error, fallbackImage);
      }
    };
-   
-   // --- ADD generateCharacterPreview function ---
+   // --- End generateCharacterImage function ---
+
+   // --- generateCharacterPreview function (Updated in previous step) --- 
    const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
-     if (!styleApiCode) {
-       setError("Please select an art style first.");
+     console.log('[GeneratePreview] Called with style:', styleApiCode);
+
+     const styleToUse = forcedArtStyle || styleApiCode;
+     if (!styleToUse) {
+       console.error('[GeneratePreview] No style code provided or selected.');
+       setError('Please select an art style first.');
        return;
      }
      
-     // Determine the prompt or use the uploaded photo
-     const prompt = characterData.useTextToImage ? characterData.generationPrompt : null;
-     const photo = characterData.useTextToImage ? null : characterData.photoUrl;
+     // Use a placeholder based on character name while generating
+     const placeholderText = characterData.name || 'Character';
+     const placeholderBg = stringToColor(placeholderText);
+     const placeholderImage = createColorPlaceholder(placeholderBg, placeholderText);
      
-     if (!prompt && !photo) {
-       setError("Please provide a description or upload a photo for the character.");
-       return;
+     // Set placeholder immediately AND set state to processing
+     updatePreviewImage(placeholderImage); 
+     updateGenerationState('processing', 'Preparing generation...'); // Set state early
+     
+     // Call the main generation function
+     try {
+       // Pass necessary details: style, prompt (optional), placeholder, isHuman
+       await generateCharacterImage(
+         styleToUse, 
+         characterData.generationPrompt, // Pass description if available
+         placeholderImage, // Pass placeholder as fallback
+         isHumanCharacter
+       );
+       // Success/error state is handled within generateCharacterImage/polling
+     } catch (error) {
+       // This catch might be redundant if generateCharacterImage handles its errors
+       console.error('[GeneratePreview] Error calling generateCharacterImage:', error);
+       handleGenerationError(error, placeholderImage); // Ensure fallback on error
      }
-     
-     // Create a fallback placeholder image based on name/description
-     const fallbackBgColor = stringToColor(characterData.name || characterData.generationPrompt || 'fallback');
-     const fallbackText = characterData.name || 'Character';
-     const fallbackImage = createColorPlaceholder(fallbackBgColor, fallbackText);
-     
-     // Start the generation process
-     await generateCharacterImage(styleApiCode, prompt, fallbackImage, isHumanCharacter);
    };
-   // --- END generateCharacterPreview function ---
-   
-   // --- ADD useFallbackImage function ---
-   const useFallbackImage = (fallbackDataUrl) => {
-     console.log('[Fallback] Using fallback placeholder image.');
-     updatePreviewImage(fallbackDataUrl); // Update the preview state
-     // Optionally set a specific error message indicating fallback usage
-     setError("Generation failed. Displaying placeholder. You can try again or proceed.");
-     updateGenerationState('error', 'Using fallback image due to error.'); // Keep status as error
+   // --- End generateCharacterPreview update ---
+
+   // --- useFallbackImage function (Updated in previous step) ---
+   const useFallbackImage = (fallbackImage) => {
+     console.log('[Fallback] Using fallback image.');
+     // Ensure fallbackImage is valid before using
+     if (fallbackImage && typeof fallbackImage === 'string') {
+       // Use the central image update function
+       updatePreviewImage(fallbackImage);
+       updateProgressInfo('Using placeholder image due to error.');
+       updateGenerationState('fallback'); // Use 'fallback' status
+     } else {
+       console.warn('[Fallback] Invalid fallback image provided.');
+       // If fallback is invalid, ensure state reflects error without a preview
+       setPreviewUrl(null); // Clear any existing preview
+       setCharacterData(prev => ({ ...prev, stylePreview: null }));
+       updateGenerationState('error', 'Generation failed, no valid fallback.'); 
+     }
    };
-   // --- END useFallbackImage function ---
-   
-   // --- REVISED startPollingTask function ---
+   // --- End useFallbackImage function ---
+
+   // --- startPollingTask function (Updated in previous step) ---
    const startPollingTask = (taskId, fallbackImage, generationId) => {
-     clearActiveTasks(); // Clear any existing intervals
      let pollCount = 0;
-     const maxPolls = 30; // Approx 2 minutes (30 * 4s)
+     const maxPolls = 30; // Approx 2 minutes
+     const pollInterval = 4000; // 4 seconds
+     
+     // Clear any existing interval *before* starting a new one
+     clearActiveTasks(); 
      
      updateGenerationState('processing', `Polling task ${taskId}... (0/${maxPolls})`);
      
@@ -1054,9 +1162,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          
          // Use the normalized status from getTaskProgress
          const currentStatus = result.status; 
-         const progressPercent = result.progress || 0; // Use progress if available
+         const progressPercent = Math.round((result.progress || 0) * 100); // Use progress if available, make percentage
          
-         console.log(`[Polling] Task status: "${currentStatus}" (original: "${result.original_status || currentStatus}"), progress: ${progressPercent}`);
+         console.log(`[Polling] Task status: "${currentStatus}" (original: "${result.original_status || currentStatus}"), progress: ${progressPercent}%`);
          
          if (currentStatus === 'success') {
            clearActiveTasks();
@@ -1071,13 +1179,33 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              const base64Image = await fetchAndConvertToBase64(imageUrl);
              if (base64Image) {
                updatePreviewImage(base64Image); // Update preview with Base64
-               updateGenerationState('success', 'Character preview generated!');
+               updateGenerationState('complete', 'Character preview generated!'); // Use 'complete' status
              } else {
                // Handle conversion failure
                handleGenerationError('Failed to convert final image to Base64.', fallbackImage);
              }
            } else {
-             handleGenerationError('Task succeeded but no image URL found in response.', fallbackImage);
+             // If no URL in progress, try getTaskResult
+             console.log(`[Polling] No image URL in progress, attempting getTaskResult for ${taskId}`);
+             try {
+                 const resultData = await getTaskResult(taskId);
+                 console.log(`[Polling] Task result:`, resultData);
+                 
+                 if (!resultData || !resultData.images || resultData.images.length === 0) {
+                   throw new Error('Task completed but no images were returned by getTaskResult');
+                 }
+                 const finalImageUrl = resultData.images[0];
+                 const base64Image = await fetchAndConvertToBase64(finalImageUrl);
+                 if (base64Image) {
+                    updatePreviewImage(base64Image);
+                    updateGenerationState('complete', 'Character preview generated!');
+                 } else {
+                    throw new Error('Failed to convert final image from getTaskResult to Base64.');
+                 }
+             } catch (getResultError) {
+                 console.error(`[Polling] Failed to fetch task result after success status:`, getResultError);
+                 handleGenerationError('Task succeeded but failed to retrieve the final image.', fallbackImage);
+             }
            }
            
          } else if (currentStatus === 'failed') {
@@ -1108,147 +1236,146 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          }
          // --- End check ---
          console.error(`[Polling] Error during polling task ${taskId}:`, error);
-         // Don't stop polling on network errors immediately, maybe retry?
-         // For now, update status but let loop continue up to max attempts
+         
+         // Special handling for 404 errors which might be temporary
+         const is404Error = error.message && (error.message.includes('404') || error.message.includes('not found'));
+         if (is404Error && pollCount < 5) {
+           console.log(`[Polling] Got 404 for task ${taskId} on attempt ${pollCount} - continuing to poll`);
+           updateProgressInfo(`Generation in progress... waiting for task to start`);
+           // Don't increment pollCount or fail yet for early 404s
+           return; 
+         }
+         
+         // For other errors or late 404s, update status but let loop continue up to max attempts
          updateProgressInfo(`Polling error: ${error.message} (${pollCount}/${maxPolls})`);
          if (pollCount >= maxPolls) {
            clearActiveTasks();
            handleGenerationError(`Polling failed after multiple errors: ${error.message}`, fallbackImage);
          }
        }
-     }, 4000); // Poll every 4 seconds
+     }, pollInterval); // Poll every 4 seconds
    };
-   // --- END REVISED startPollingTask function ---
-   
+   // --- End startPollingTask function ---
+
    // Cleanup polling on unmount
    useEffect(() => {
      return () => {
+       console.log('[Cleanup] Component unmounting, clearing polling interval'); // Log cleanup
        clearActiveTasks();
      };
-   }, []);
-   
-   // --- Image Preview Modal Component ---
-   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
-     if (!isOpen) return null;
-     
-     return (
-       <div 
-         className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-         onClick={onClose} // Close on backdrop click
-       >
-         <motion.div
-           initial={{ scale: 0.7, opacity: 0 }}
-           animate={{ scale: 1, opacity: 1 }}
-           exit={{ scale: 0.7, opacity: 0 }}
-           className="bg-white p-4 rounded-lg shadow-xl max-w-lg w-full relative"
-           onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
-         >
-           <button 
-             onClick={onClose} 
-             className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold"
-             aria-label="Close preview"
-           >
-             &times;
-           </button>
-           <img 
-             src={imageUrl} 
-             alt="Character Preview Large" 
-             className="max-w-full max-h-[80vh] object-contain mx-auto" 
-           />
-         </motion.div>
-       </div>
-     );
-   };
-   // --- End Image Preview Modal ---
-   
-   // --- MAIN JSX RETURN ---
-   return (
-     <div className="p-4 md:p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto">
-       {/* Tabs Navigation */}
-       <div className="mb-6 border-b border-gray-200">
-         <nav className="-mb-px flex space-x-4 md:space-x-8" aria-label="Tabs">
-           {[1, 2, 3, 4].map((stepNum) => (
-             <button
-               key={stepNum}
-               onClick={() => handleTabClick(stepNum)}
-               disabled={!unlockedSteps.includes(stepNum)}
-               className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${
-                 step === stepNum
-                   ? 'border-indigo-500 text-indigo-600'
-                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-               } ${!unlockedSteps.includes(stepNum) ? 'opacity-50 cursor-not-allowed' : ''}`}
-             >
-               {getStepTitle(stepNum)}
-             </button>
-           ))}
-         </nav>
-       </div>
-       
-       {/* Step Content */}
-       <AnimatePresence mode="wait">
-         <motion.div
-           key={step}
-           initial={{ opacity: 0, x: 50 }}
-           animate={{ opacity: 1, x: 0 }}
-           exit={{ opacity: 0, x: -50 }}
-           transition={{ duration: 0.3 }}
-         >
-           {renderStep()}
-         </motion.div>
-       </AnimatePresence>
-       
-       {/* Error Display */}
-       {error && (
-         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-           {error}
+   }, []); // Empty dependency array ensures this runs only on mount and unmount
+
+  // --- Image Preview Modal Component ---
+  const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+        onClick={onClose} // Close on backdrop click
+      >
+        <motion.div
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.7, opacity: 0 }}
+          className="bg-white p-4 rounded-lg shadow-xl max-w-lg w-full relative"
+          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+        >
+          <button 
+            onClick={onClose} 
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold"
+            aria-label="Close preview"
+          >
+            &times;
+          </button>
+          <img 
+            src={imageUrl} 
+            alt="Character Preview Large" 
+            className="max-w-full max-h-[80vh] object-contain mx-auto" 
+          />
+        </motion.div>
+      </div>
+    );
+  };
+  // --- End Image Preview Modal ---
+  
+  // --- MAIN JSX RETURN ---
+  return (
+    <div className="p-4 md:p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto">
+      {/* Tabs Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-4 md:space-x-8" aria-label="Tabs">
+          {[1, 2, 3].map((stepNum) => ( // Only 3 steps
+            <button
+              key={stepNum}
+              onClick={() => handleTabClick(stepNum)}
+              disabled={!unlockedSteps.includes(stepNum)}
+              className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${
+                step === stepNum
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } ${!unlockedSteps.includes(stepNum) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {getStepTitle(stepNum)}
+            </button>
+          ))}
+        </nav>
+      </div>
+      
+      {/* Step Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
+      
+      {/* Error Display - Use general error state */}
+      {error && !error.startsWith('Generation failed:') && ( // Don't show general error if it's a generation error shown in step 3
+        <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+          {error}
          </div>
-       )}
-       
-       {/* Navigation Buttons */}
-       <div className="mt-8 pt-5 border-t border-gray-200">
-         <div className="flex justify-between">
-           <button
-             type="button"
-             onClick={handleBack}
-             disabled={step === 1}
-             className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-           >
-             Back
-           </button>
-           
-           {step < 4 ? (
+      )}
+      
+      {/* Image Preview Modal */}
+      <ImagePreviewModal 
+        isOpen={showImagePreview} 
+        imageUrl={previewImageUrl} 
+        onClose={closeImagePreview} 
+      />
+      
+      {/* Navigation Buttons are now inside renderConfirmStep for Step 3 */}
+      {/* Add general Next button for steps 1 and 2 */}
+      {step < 3 && (
+         <div className="mt-8 pt-5 border-t border-gray-200">
+           <div className="flex justify-between">
              <button
                type="button"
-               onClick={handleNext}
-               className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+               onClick={handleBack}
+               disabled={step === 1 || isGenerating} // Disable on step 1 or if generating
+               className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 || isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
              >
-               Next
+               Back
              </button>
-           ) : (
              <button
-               type="button"
-               onClick={handleComplete}
-               disabled={isGenerating || !characterData.stylePreview} // Disable if generating or no preview
-               className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-                 !characterData.stylePreview || isGenerating
-                   ? 'bg-gray-400 cursor-not-allowed'
-                   : 'bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
-               } ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
-             >
-               {isGenerating ? 'Processing...' : 'Add Character'}
-             </button>
-           )}
+                 type="button"
+                 onClick={handleNext}
+                 disabled={isGenerating} // Disable if generating
+                 className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+               >
+                 Next
+               </button>
+           </div>
          </div>
-       </div>
-       
-       {/* Image Preview Modal */}
-       <ImagePreviewModal 
-         isOpen={showImagePreview} 
-         imageUrl={previewImageUrl} 
-         onClose={closeImagePreview} 
-       />
-     </div>
-   );
- }
- 
- export default CharacterWizard;
+      )}
+      
+    </div>
+  );
+}
+
+export default CharacterWizard;
