@@ -330,7 +330,7 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
  * @param {string} base64Image - Base64 image data URL
  * @returns {Promise<string>} - Temporary image URL
  */
-const uploadBase64ToGetUrl = async (base64Image) => {
+export const uploadBase64ToGetUrl = async (base64Image) => {
     // If it's already a URL, just return it
     if (base64Image.startsWith('http')) {
         return base64Image;
