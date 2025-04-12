@@ -639,15 +639,11 @@ export const getTaskProgress = async (taskId) => {
           console.warn(`Task ${taskId} succeeded but no valid image URL found in generate_result_slots:`, slots);
         }
         
-        // Return success status and the found URL (or null)
-        // Ensure the object structure matches what GenerateBookStep expects
+        // Return the original data, ensuring status is 'success' and adding the found imageUrl
         return {
-          status: 'success',
-          imageUrl: foundUrl,
-          // Include other relevant data from statusData if needed by the caller
-          task_id: statusData.task_id,
-          // Add other fields from statusData if GenerateBookStep relies on them
-          // For example: generate_result_slots: slots
+          ...statusData, // Spread original data to preserve all fields
+          status: 'success', // Ensure status is correctly set
+          imageUrl: foundUrl // Add the correctly found image URL (or null)
         };
       }
       
