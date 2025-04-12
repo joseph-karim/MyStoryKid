@@ -4,7 +4,7 @@ import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as segmindService from '../../services/segmindService';
 import { getStyleNameFromCode, createTxt2ImgTask, getTaskProgress } from '../../services/dzineService'; // Use correct function name createTxt2ImgTask
-import { swapCharacterInImage } from '../../services/segmindService'; // Removed generateIllustrationWithWorkflow, added swapCharacterInImage
+import { swapCharacterInImage, uploadBase64ToGetUrl } from '../../services/segmindService'; // Added uploadBase64ToGetUrl
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -580,7 +580,15 @@ const GenerateBookStep = () => {
         // --- Segmind Cover Swap ---
         updateProgressInfo('Swapping character for cover (Segmind)...');
         const selectCoverCharacterText = `the ${mainCharacter.gender || 'child'} character`;
-        coverImageUrl = await swapCharacterInImage(dzineCoverSceneUrl, dzinePreviewUrl, selectCoverCharacterText);
+        
+        // Ensure reference image is a URL for Segmind
+        let coverReferenceUrl = dzinePreviewUrl;
+        if (dzinePreviewUrl.startsWith('data:image')) {
+          updateProgressInfo('Uploading cover reference image...');
+          coverReferenceUrl = await uploadBase64ToGetUrl(dzinePreviewUrl);
+        }
+        
+        coverImageUrl = await swapCharacterInImage(dzineCoverSceneUrl, coverReferenceUrl, selectCoverCharacterText);
         updateProgressInfo('Cover image generated.');
         setGeneratedCoverUrl(coverImageUrl); // Update state immediately
 
@@ -659,7 +667,17 @@ const GenerateBookStep = () => {
             updateProgressInfo(`Swapping character for page ${index + 1} (Segmind)...`);
             setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.8));
             const selectCharacterText = `the ${mainCharacter.gender || 'child'} character`;
-            finalImageUrl = await swapCharacterInImage(dzineSceneImageUrl, dzinePreviewUrl, selectCharacterText);
+            
+            // Ensure reference image is a URL for Segmind
+            let pageReferenceUrl = dzinePreviewUrl;
+            if (dzinePreviewUrl.startsWith('data:image')) {
+              // No need to re-upload if already done for cover, but check just in case cover failed
+              // A more robust solution might cache the uploaded URL
+              updateProgressInfo(`Uploading page ${index + 1} reference image...`);
+              pageReferenceUrl = await uploadBase64ToGetUrl(dzinePreviewUrl);
+            }
+            
+            finalImageUrl = await swapCharacterInImage(dzineSceneImageUrl, pageReferenceUrl, selectCharacterText);
             updateProgressInfo(`Image for page ${index + 1} completed.`);
 
           } catch (imageGenError) {
