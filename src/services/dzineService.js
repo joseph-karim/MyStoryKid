@@ -624,11 +624,34 @@ export const getTaskProgress = async (taskId) => {
       const statusData = data.data || data; // Look in 'data' field or root
       const normalizedStatus = normalizeStatus(statusData.status);
       
-      // If task completed successfully, reset backoff
+      // If task completed successfully, reset backoff and extract image URL
       if (normalizedStatus === 'success') {
         resetBackoff();
+        
+        // Find the first non-empty URL in the result slots
+        const slots = statusData.generate_result_slots;
+        let foundUrl = null;
+        if (Array.isArray(slots)) {
+          foundUrl = slots.find(url => url && typeof url === 'string' && url.trim() !== '') || null;
+        }
+        
+        if (!foundUrl) {
+          console.warn(`Task ${taskId} succeeded but no valid image URL found in generate_result_slots:`, slots);
+        }
+        
+        // Return success status and the found URL (or null)
+        // Ensure the object structure matches what GenerateBookStep expects
+        return {
+          status: 'success',
+          imageUrl: foundUrl,
+          // Include other relevant data from statusData if needed by the caller
+          task_id: statusData.task_id,
+          // Add other fields from statusData if GenerateBookStep relies on them
+          // For example: generate_result_slots: slots
+        };
       }
       
+      // For non-success statuses, return the normalized status and original data
       return {
         ...statusData, // Return all fields from the data part
         status: normalizedStatus, // Ensure status is normalized

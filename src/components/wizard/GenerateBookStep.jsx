@@ -564,6 +564,7 @@ const GenerateBookStep = () => {
           const dzineResult = await getTaskProgress(dzineCoverTaskId.task_id);
           pollingAttempts++;
           updateProgressInfo(`Polling Dzine cover... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
+          console.log('Checking cover status:', dzineResult.status, typeof dzineResult.status); // DEBUG
           if (dzineResult.status === 'success') { // Check against normalized 'success'
             dzineCoverSceneUrl = dzineResult.imageUrl;
             if (!dzineCoverSceneUrl) throw new Error("Dzine cover task succeeded but URL missing.");
@@ -642,6 +643,7 @@ const GenerateBookStep = () => {
               dzineResult = await getTaskProgress(dzineTaskId.task_id);
               pollingAttempts++;
               updateProgressInfo(`Polling Dzine page ${index + 1}... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
+              console.log(`Checking page ${index + 1} status:`, dzineResult.status, typeof dzineResult.status); // DEBUG
               if (dzineResult.status === 'success') {
                 dzineSceneImageUrl = dzineResult.imageUrl;
                 if (!dzineSceneImageUrl) throw new Error("Dzine task succeeded but image URL missing.");
