@@ -7,7 +7,7 @@ const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid';
 const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
 // Define the specific workflow URL
 const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1";
-const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/67f6316b9096a62b4f3f6f78-v1"; // Updated to the published workflow version
+const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/678aa4026426baad7e5392fb-v6"; // Updated to the correct workflow version from API reference
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
   // Handle missing key appropriately in production (e.g., disable feature)
@@ -406,7 +406,7 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
       "child"
     ];
 
-    // Note: We're using the published workflow version with ID 67f6316b9096a62b4f3f6f78-v1
+    // Note: We're using the correct workflow version with ID 678aa4026426baad7e5392fb-v6 from the API reference
 
     // Payload structure from the Character Swap API docs - note the order matches their documentation exactly
     const payload = {
