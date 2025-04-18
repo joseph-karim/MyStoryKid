@@ -3,7 +3,7 @@ import { uploadImageToSupabase } from './supabaseClient';
 
 const SEGMIND_API_KEY = import.meta.env.VITE_SEGMIND_API_KEY;
 // Assuming the specific endpoint for Flux PuLID. Verify from Segmind docs.
-const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid'; 
+const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid';
 const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
 // Define the specific workflow URL
 const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1";
@@ -16,7 +16,7 @@ if (!SEGMIND_API_KEY) {
 /**
  * Generates an illustration using Segmind Flux PuLID.
  * Assumes a synchronous API call that returns image data directly.
- * 
+ *
  * @param {string} prompt - The text prompt describing the scene.
  * @param {string} referenceImageBase64 - The Base64 encoded reference character image (must include data:image/...;base64, prefix).
  * @param {object} options - Optional parameters for the API.
@@ -33,7 +33,7 @@ export const generateFluxIllustration = async (prompt, referenceImageBase64, opt
   if (!SEGMIND_API_KEY) {
     console.warn('Segmind API key missing. Cannot generate illustration.');
     // Returning a placeholder image base64 (1x1 grey pixel) for graceful failure
-    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mN8/w8AAusB/2QD3rgAAAAASUVORK5CYII='; 
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mN8/w8AAusB/2QD3rgAAAAASUVORK5CYII=';
   }
 
   // Validate reference image format
@@ -48,7 +48,7 @@ export const generateFluxIllustration = async (prompt, referenceImageBase64, opt
     main_face_image: referenceImageBase64, // API likely expects the full data URI
     id_weight: options.id_weight ?? 1.5,
     start_step: options.start_step ?? 1,
-    guidance_scale: options.guidance_scale ?? 7, 
+    guidance_scale: options.guidance_scale ?? 7,
     num_inference_steps: options.steps || 30,
     // Include optional parameters if provided
     ...(options.scheduler && { scheduler: options.scheduler }),
@@ -83,7 +83,7 @@ export const generateFluxIllustration = async (prompt, referenceImageBase64, opt
     } else if (response.data && typeof response.data.base64 === 'string') { // Example: { "base64": "data:image/..." }
         imageBase64 = response.data.base64;
     }
-    
+
     // Check if we got a valid base64 string with the expected prefix
     if (imageBase64 && imageBase64.startsWith('data:image')) {
        return imageBase64;
@@ -114,7 +114,7 @@ export const generateFluxIllustration = async (prompt, referenceImageBase64, opt
  */
 export const generateConsistentCharacter = async (referenceImageBase64, pagePrompt, styleKeywords) => {
   if (!SEGMIND_API_KEY) throw new Error('Segmind API key is missing.');
-  
+
   // Input Validation
   if (!referenceImageBase64 || !referenceImageBase64.startsWith('data:image')) {
        throw new Error('Valid reference image (Base64 Data URL) is required for Segmind.');
@@ -195,7 +195,7 @@ export const generateConsistentCharacter = async (referenceImageBase64, pageProm
             if (error.response.data instanceof Blob) {
                errorData = await error.response.data.text();
             } else if (error.response.data instanceof ArrayBuffer) {
-              errorData = new TextDecoder().decode(error.response.data); 
+              errorData = new TextDecoder().decode(error.response.data);
             } else if (typeof error.response.data === 'object'){
                errorData = JSON.stringify(error.response.data);
             } else {
@@ -204,7 +204,7 @@ export const generateConsistentCharacter = async (referenceImageBase64, pageProm
          }
        } catch (e) { /* Ignore decoding error */ }
 
-       errorMessage = `Segmind API Error ${statusCode || '(Network Error)'}: ${errorData}`; 
+       errorMessage = `Segmind API Error ${statusCode || '(Network Error)'}: ${errorData}`;
        if (error.code === 'ECONNABORTED') errorMessage = 'Segmind API request timed out (90 seconds).';
        if (statusCode === 406) errorMessage = 'Segmind API Error: Not enough credits or invalid input.'; // 406 can be credits or bad input
        if (statusCode === 401) errorMessage = 'Segmind API Error: Invalid API Key.';
@@ -230,18 +230,38 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
                      console.log(`Segmind Credits Remaining: ${response.headers['x-remaining-credits']}`);
                  }
 
+                // Log the full response data for debugging
+                console.log("Segmind polling response data:", JSON.stringify(response.data));
+
                 if (response.data.status === "SUCCEEDED") {
                     // Extract image URL from the specific output field name ('character_swap_image') for Character Swap workflow
-                    const imageUrl = response.data.output?.character_swap_image || response.data.character_swap_image;
+                    // Check multiple possible locations for the image URL
+                    const imageUrl = response.data.output?.character_swap_image ||
+                                    response.data.character_swap_image ||
+                                    response.data.output?.image ||
+                                    response.data.image;
                     if (!imageUrl) {
-                        console.error("Polling Succeeded but output image URL ('character_swap_image') not found:", response.data);
-                        throw new Error("Workflow succeeded but 'character_swap_image' URL is missing in response.");
+                        console.error("Polling Succeeded but output image URL not found:", response.data);
+                        throw new Error("Workflow succeeded but image URL is missing in response.");
                     }
                     console.log("Segmind Polling Succeeded:", imageUrl);
                     return imageUrl;
                 } else if (response.data.status === "FAILED") {
                     console.error("Segmind Workflow execution failed:", response.data);
-                    throw new Error(`Workflow failed: ${response.data.error || 'Unknown error'}`);
+
+                    // Extract error message, handling both string and array formats
+                    let errorMessage = 'Unknown error';
+                    if (response.data.error_message) {
+                        if (Array.isArray(response.data.error_message)) {
+                            errorMessage = response.data.error_message.join('; ');
+                        } else {
+                            errorMessage = response.data.error_message;
+                        }
+                    } else if (response.data.error) {
+                        errorMessage = response.data.error;
+                    }
+
+                    throw new Error(`Workflow failed: ${errorMessage}`);
                 } else {
                     // Still QUEUED or PROCESSING
                     console.log(`Segmind Status: ${response.data.status}`);
@@ -273,6 +293,16 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
     if (!sceneImageUrl || !referenceCharacterUrl) throw new Error('Both scene image URL and reference character URL are required.');
     if (!characterSelector) throw new Error('Character selector text is required.');
 
+    // Validate URLs
+    if (!sceneImageUrl.startsWith('http')) {
+        console.error('Invalid scene image URL format:', sceneImageUrl);
+        throw new Error('Scene image URL must start with http/https');
+    }
+    if (!referenceCharacterUrl.startsWith('http')) {
+        console.error('Invalid reference character URL format:', referenceCharacterUrl);
+        throw new Error('Reference character URL must start with http/https');
+    }
+
     // Payload structure from the Character Swap API docs
     const payload = {
         character_image: sceneImageUrl,          // Dzine scene URL
@@ -283,10 +313,15 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
     console.log("Sending payload to Segmind Character Swap:", payload);
 
     try {
+        // Log the full request details for debugging
+        console.log(`Making POST request to ${CHARACTER_SWAP_URL} with API key: ${SEGMIND_API_KEY ? 'Present (length: ' + SEGMIND_API_KEY.length + ')' : 'Missing'}`);
+
         const initialResponse = await axios.post(CHARACTER_SWAP_URL, payload, {
             headers: { 'x-api-key': SEGMIND_API_KEY, 'Content-Type': 'application/json' },
             timeout: 30000 // 30 second timeout for initial request
         });
+
+        console.log("Initial Segmind response:", JSON.stringify(initialResponse.data));
 
         if (initialResponse.data && initialResponse.data.poll_url) {
             console.log(`Swap workflow started. Polling: ${initialResponse.data.poll_url}`);
@@ -309,7 +344,23 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
                  config: error.config
             });
             if (error.response) {
-                 const apiError = error.response.data?.detail || error.response.data?.error || error.response.data;
+                 // Try to extract detailed error information
+                 let apiError = '';
+                 if (error.response.data) {
+                     if (typeof error.response.data === 'string') {
+                         apiError = error.response.data;
+                     } else if (error.response.data.detail) {
+                         apiError = error.response.data.detail;
+                     } else if (error.response.data.error) {
+                         apiError = error.response.data.error;
+                     } else if (error.response.data.error_message) {
+                         apiError = Array.isArray(error.response.data.error_message)
+                             ? error.response.data.error_message.join('; ')
+                             : error.response.data.error_message;
+                     } else {
+                         apiError = JSON.stringify(error.response.data);
+                     }
+                 }
                  errorMessage = `Segmind Character Swap API Error (${error.response.status}): ${apiError || error.message}`;
              } else if (error.request) {
                  errorMessage = 'Segmind Character Swap API Error: No response received from server.';
@@ -321,7 +372,10 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
              }
          }
          console.error('Error calling Segmind Character Swap API:', errorMessage);
-         throw new Error(errorMessage); // Re-throw a cleaner error message
+
+         // Implement fallback behavior
+         console.warn('Character swap failed. Returning original scene image as fallback.');
+         return sceneImageUrl; // Return the original scene image as fallback
     }
 };
 
@@ -335,12 +389,12 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
     if (base64Image.startsWith('http')) {
         return base64Image;
     }
-    
+
     // Validate the base64 image format
     if (!base64Image || !base64Image.startsWith('data:image')) {
         throw new Error('Invalid Base64 image format');
     }
-    
+
     // Try Supabase upload first, then fall back to other services if needed
     try {
         // Use our Supabase client to upload the image
@@ -350,13 +404,13 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
         return publicUrl;
     } catch (supabaseError) {
         console.warn('Supabase upload failed, trying fallback services:', supabaseError.message);
-        
+
         // Extract the base64 data without the prefix for fallback services
         const base64Data = base64Image.split(',')[1];
         if (!base64Data) {
             throw new Error('Invalid Base64 image format');
         }
-        
+
         // Fallback services
         const fallbackServices = [
             // ImgBB - fallback service 1
@@ -364,9 +418,9 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
                 const apiKey = import.meta.env.VITE_IMGBB_API_KEY || 'f9cae7aa8c1df07a54e5c8cf11febe35';
                 const formData = new FormData();
                 formData.append('image', base64Data);
-                
+
                 const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData);
-                
+
                 if (response.data && response.data.data && response.data.data.url) {
                     console.log('Base64 image uploaded to ImgBB, temporary URL:', response.data.data.url);
                     return response.data.data.url;
@@ -377,13 +431,13 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
             async () => {
                 const formData = new FormData();
                 formData.append('source', base64Data);
-                
+
                 const response = await axios.post('https://freeimage.host/api/1/upload', formData, {
                     params: {
                         key: '6d207e02198a847aa98d0a2a901485a5'
                     }
                 });
-                
+
                 if (response.data && response.data.image && response.data.image.url) {
                     console.log('Base64 image uploaded to FreeImageHost, temporary URL:', response.data.image.url);
                     return response.data.image.url;
@@ -391,7 +445,7 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
                 throw new Error('FreeImageHost did not return a valid URL');
             }
         ];
-        
+
         // Try each fallback service in sequence
         let lastError = supabaseError;
         for (const service of fallbackServices) {
@@ -402,7 +456,7 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
                 lastError = error;
             }
         }
-        
+
         // If all services fail, throw the last error
         throw lastError || new Error('All image upload services failed');
     }
@@ -410,7 +464,8 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
 // Helper function for fallback when Base64 upload fails
 const directBase64Illustration = () => {
     console.warn("Falling back to placeholder image URL as Base64 upload failed.");
-    return 'https://mystorykid.com/placeholder-fallback.jpg'; // Placeholder URL
+    // Use a more reliable placeholder URL (e.g., from a CDN or your own domain)
+    return 'https://placehold.co/600x400?text=Image+Unavailable'; // Placeholder URL from placehold.co
 };
 
 
@@ -420,7 +475,7 @@ const directBase64Illustration = () => {
  */
 export const generateIllustrationWithWorkflow = async (referenceImageUrl, characterPrompt, scenePrompt) => {
     if (!SEGMIND_API_KEY) throw new Error('Segmind API key is missing.');
-    
+
     // Ensure we have a URL for the reference image - convert Base64 to URL if needed
     let imageUrl = referenceImageUrl;
     if (referenceImageUrl && typeof referenceImageUrl === 'string' && referenceImageUrl.startsWith('data:image')) {
@@ -433,7 +488,7 @@ export const generateIllustrationWithWorkflow = async (referenceImageUrl, charac
             imageUrl = directBase64Illustration();
         }
     }
-    
+
     // API expects URL for 'image_rqcw4', ensure reference is a URL
     if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
        console.error("PixelFlow workflow expects a URL for reference image ('image_rqcw4'), received:", typeof imageUrl);
@@ -448,8 +503,8 @@ export const generateIllustrationWithWorkflow = async (referenceImageUrl, charac
         image_rqcw4: imageUrl, // Use the URL (either original or converted from Base64)
         scene_prompt: scenePrompt,
         // Add other inputs if your specific workflow requires them (e.g., seed, negative_prompt)
-        // "seed": 42, 
-        // "negative_prompt": "low quality, blurry..." 
+        // "seed": 42,
+        // "negative_prompt": "low quality, blurry..."
     };
 
     console.log("Sending payload to Segmind PixelFlow Workflow:", payload);
