@@ -287,6 +287,69 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
 };
 
 /**
+ * Tests if an image URL is publicly accessible and returns its content type.
+ * @param {string} imageUrl - The URL of the image to test.
+ * @returns {Promise<{accessible: boolean, contentType: string|null}>} - Accessibility status and content type.
+ */
+const testImageAccessibility = async (imageUrl) => {
+  try {
+    console.log(`Testing accessibility of image: ${imageUrl}`);
+    const response = await fetch(imageUrl, { method: 'HEAD' });
+    if (!response.ok) {
+      console.error(`Image at ${imageUrl} is not accessible: ${response.status} ${response.statusText}`);
+      return { accessible: false, contentType: null };
+    }
+
+    // Check content type
+    const contentType = response.headers.get('content-type');
+    console.log(`Image at ${imageUrl} has content type: ${contentType}`);
+
+    return { accessible: true, contentType };
+  } catch (error) {
+    console.error(`Error checking image accessibility for ${imageUrl}:`, error);
+    return { accessible: false, contentType: null };
+  }
+};
+
+/**
+ * Attempts to convert a WebP image URL to JPEG format if needed.
+ * @param {string} imageUrl - The URL of the image to potentially convert.
+ * @param {string} contentType - The content type of the image.
+ * @returns {Promise<string>} - A URL to a JPEG version of the image, or the original URL if conversion not needed/possible.
+ */
+const convertImageFormatIfNeeded = async (imageUrl, contentType) => {
+  // If it's not a WebP image, no need to convert
+  if (!contentType || !contentType.includes('webp')) {
+    return imageUrl;
+  }
+
+  console.log(`Converting WebP image to JPEG: ${imageUrl}`);
+  try {
+    // Fetch the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the image as a blob
+    const imageBlob = await response.blob();
+
+    // Convert to base64
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(imageBlob);
+    });
+
+    // Upload to get a JPEG URL
+    return await uploadBase64ToGetUrl(base64, 'jpeg');
+  } catch (error) {
+    console.error(`Error converting image format for ${imageUrl}:`, error);
+    return imageUrl; // Return original URL if conversion fails
+  }
+};
+
+/**
  * Swaps a character in an image using Segmind's Character Swap workflow.
  * Handles asynchronous polling. Returns the final image URL.
  * @param {string} sceneImageUrl - URL of the base scene image (from Dzine).
@@ -309,96 +372,152 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
         throw new Error('Reference character URL must start with http/https');
     }
 
+    // Test image accessibility
+    console.log("Testing image accessibility...");
+    const sceneImageResult = await testImageAccessibility(sceneImageUrl);
+    const referenceImageResult = await testImageAccessibility(referenceCharacterUrl);
+
+    if (!sceneImageResult.accessible || !referenceImageResult.accessible) {
+      console.error("One or both images are not publicly accessible");
+      return sceneImageUrl; // Fallback to original image
+    }
+
+    // Convert image formats if needed (WebP to JPEG)
+    let finalSceneUrl = sceneImageUrl;
+    let finalReferenceUrl = referenceCharacterUrl;
+
+    if (sceneImageResult.contentType && sceneImageResult.contentType.includes('webp')) {
+      console.log("Scene image is WebP, attempting to convert to JPEG...");
+      finalSceneUrl = await convertImageFormatIfNeeded(sceneImageUrl, sceneImageResult.contentType);
+    }
+
+    if (referenceImageResult.contentType && referenceImageResult.contentType.includes('webp')) {
+      console.log("Reference image is WebP, attempting to convert to JPEG...");
+      finalReferenceUrl = await convertImageFormatIfNeeded(referenceCharacterUrl, referenceImageResult.contentType);
+    }
+
+    // Try different character descriptions if the first one fails
+    const characterDescriptions = [
+      characterSelector, // Try the original first
+      "boy",
+      "the main character",
+      "the character in the center"
+    ];
+
     // Payload structure from the Character Swap API docs
     const payload = {
-        character_image: sceneImageUrl,          // Dzine scene URL
-        reference_character_image: referenceCharacterUrl, // Dzine preview URL
-        select_character: characterSelector      // Text to guide swap
+        character_image: finalSceneUrl,          // Dzine scene URL (possibly converted)
+        reference_character_image: finalReferenceUrl, // Dzine preview URL (possibly converted)
+        select_character: characterDescriptions[0]      // Text to guide swap
     };
 
-    console.log("Sending payload to Segmind Character Swap:", payload);
+    console.log("Sending payload to Segmind Character Swap:", {
+      character_image: finalSceneUrl,
+      reference_character_image: finalReferenceUrl,
+      select_character: characterDescriptions[0],
+      scene_image_format: sceneImageResult.contentType,
+      reference_image_format: referenceImageResult.contentType
+    });
 
-    try {
-        // Log the full request details for debugging
-        console.log(`Making POST request to ${CHARACTER_SWAP_URL} with API key: ${SEGMIND_API_KEY ? 'Present (length: ' + SEGMIND_API_KEY.length + ')' : 'Missing'}`);
+    // Try each character description until one works
+    for (let i = 0; i < characterDescriptions.length; i++) {
+      try {
+          // Update the character selector for this attempt
+          if (i > 0) {
+            console.log(`Attempt ${i+1}: Trying with character description: "${characterDescriptions[i]}"`);
+            payload.select_character = characterDescriptions[i];
+          }
 
-        const initialResponse = await axios.post(CHARACTER_SWAP_URL, payload, {
-            headers: { 'x-api-key': SEGMIND_API_KEY, 'Content-Type': 'application/json' },
-            timeout: 30000 // 30 second timeout for initial request
-        });
+          // Log the full request details for debugging
+          console.log(`Making POST request to ${CHARACTER_SWAP_URL} with API key: ${SEGMIND_API_KEY ? 'Present (length: ' + SEGMIND_API_KEY.length + ')' : 'Missing'}`);
 
-        console.log("Initial Segmind response:", JSON.stringify(initialResponse.data));
+          const initialResponse = await axios.post(CHARACTER_SWAP_URL, payload, {
+              headers: { 'x-api-key': SEGMIND_API_KEY, 'Content-Type': 'application/json' },
+              timeout: 30000 // 30 second timeout for initial request
+          });
 
-        if (initialResponse.data && initialResponse.data.poll_url) {
-            console.log(`Swap workflow started. Polling: ${initialResponse.data.poll_url}`);
-            // Use the modified pollForResult which looks for 'character_swap_image'
-            const finalImageUrl = await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
-            console.log("Segmind Character Swap successful. Final image URL:", finalImageUrl);
-            return finalImageUrl;
-        } else {
-            console.error("Unexpected initial response from Segmind Character Swap:", initialResponse.data);
-            throw new Error('Failed to start Segmind Character Swap workflow. Response missing poll_url.');
-        }
-    } catch (error) {
-         let errorMessage = error.message;
-         if (axios.isAxiosError(error)) {
-             console.error('Axios error details (Character Swap):', {
-                 message: error.message,
-                 code: error.code,
-                 status: error.response?.status,
-                 data: error.response?.data,
-                 config: error.config
-            });
-            if (error.response) {
-                 // Try to extract detailed error information
-                 let apiError = '';
-                 if (error.response.data) {
-                     if (typeof error.response.data === 'string') {
-                         apiError = error.response.data;
-                     } else if (error.response.data.detail) {
-                         apiError = error.response.data.detail;
-                     } else if (error.response.data.error) {
-                         apiError = error.response.data.error;
-                     } else if (error.response.data.error_message) {
-                         if (Array.isArray(error.response.data.error_message)) {
-                             // Format each error object in the array
-                             apiError = error.response.data.error_message.map(err => {
-                                 if (typeof err === 'object') {
-                                     return `${err.model || ''}: ${err.error || 'Unknown error'}`;
-                                 }
-                                 return String(err);
-                             }).join('; ');
-                         } else {
-                             apiError = error.response.data.error_message;
-                         }
-                     } else {
-                         apiError = JSON.stringify(error.response.data);
-                     }
-                 }
-                 errorMessage = `Segmind Character Swap API Error (${error.response.status}): ${apiError || error.message}`;
-             } else if (error.request) {
-                 errorMessage = 'Segmind Character Swap API Error: No response received from server.';
-             } else {
-                 errorMessage = `Segmind Character Swap API Error: ${error.message}`;
-             }
-             if (error.code === 'ECONNABORTED') {
-                 errorMessage = 'Segmind Character Swap API request timed out.';
-             }
-         }
-         console.error('Error calling Segmind Character Swap API:', errorMessage);
+          console.log("Initial Segmind response:", JSON.stringify(initialResponse.data));
 
-         // Implement fallback behavior
-         console.warn('Character swap failed. Returning original scene image as fallback.');
-         return sceneImageUrl; // Return the original scene image as fallback
+          if (initialResponse.data && initialResponse.data.poll_url) {
+              console.log(`Swap workflow started. Polling: ${initialResponse.data.poll_url}`);
+              // Use the modified pollForResult which looks for 'character_swap_image'
+              const finalImageUrl = await pollForResult(initialResponse.data.poll_url, SEGMIND_API_KEY);
+              console.log("Segmind Character Swap successful. Final image URL:", finalImageUrl);
+              return finalImageUrl;
+          } else {
+              console.error("Unexpected initial response from Segmind Character Swap:", initialResponse.data);
+              throw new Error('Failed to start Segmind Character Swap workflow. Response missing poll_url.');
+          }
+      } catch (error) {
+           let errorMessage = error.message;
+           if (axios.isAxiosError(error)) {
+               console.error('Axios error details (Character Swap):', {
+                   message: error.message,
+                   code: error.code,
+                   status: error.response?.status,
+                   data: error.response?.data,
+                   config: error.config
+              });
+              if (error.response) {
+                   // Try to extract detailed error information
+                   let apiError = '';
+                   if (error.response.data) {
+                       if (typeof error.response.data === 'string') {
+                           apiError = error.response.data;
+                       } else if (error.response.data.detail) {
+                           apiError = error.response.data.detail;
+                       } else if (error.response.data.error) {
+                           apiError = error.response.data.error;
+                       } else if (error.response.data.error_message) {
+                           if (Array.isArray(error.response.data.error_message)) {
+                               // Format each error object in the array
+                               apiError = error.response.data.error_message.map(err => {
+                                   if (typeof err === 'object') {
+                                       return `${err.model || ''}: ${err.error || 'Unknown error'}`;
+                                   }
+                                   return String(err);
+                               }).join('; ');
+                           } else {
+                               apiError = error.response.data.error_message;
+                           }
+                       } else {
+                           apiError = JSON.stringify(error.response.data);
+                       }
+                   }
+                   errorMessage = `Segmind Character Swap API Error (${error.response.status}): ${apiError || error.message}`;
+               } else if (error.request) {
+                   errorMessage = 'Segmind Character Swap API Error: No response received from server.';
+               } else {
+                   errorMessage = `Segmind Character Swap API Error: ${error.message}`;
+               }
+               if (error.code === 'ECONNABORTED') {
+                   errorMessage = 'Segmind Character Swap API request timed out.';
+               }
+           }
+           console.error(`Error calling Segmind Character Swap API (attempt ${i+1}):`, errorMessage);
+
+           // If this is the last attempt, implement fallback behavior
+           if (i === characterDescriptions.length - 1) {
+             console.warn('All character swap attempts failed. Returning original scene image as fallback.');
+             return sceneImageUrl; // Return the original scene image as fallback
+           }
+
+           // Otherwise continue to the next attempt
+           console.log(`Continuing to next character description attempt...`);
+      }
     }
+
+    // This should never be reached due to the return in the last iteration of the loop
+    return sceneImageUrl;
 };
 
 /**
  * Uploads a Base64 image to ImgBB to get a temporary URL
  * @param {string} base64Image - Base64 image data URL
+ * @param {string} [format] - Optional format to convert to (e.g., 'jpeg', 'png')
  * @returns {Promise<string>} - Temporary image URL
  */
-export const uploadBase64ToGetUrl = async (base64Image) => {
+export const uploadBase64ToGetUrl = async (base64Image, format) => {
     // If it's already a URL, just return it
     if (base64Image.startsWith('http')) {
         return base64Image;
@@ -407,6 +526,35 @@ export const uploadBase64ToGetUrl = async (base64Image) => {
     // Validate the base64 image format
     if (!base64Image || !base64Image.startsWith('data:image')) {
         throw new Error('Invalid Base64 image format');
+    }
+
+    // If format conversion is requested and the image is not already in that format
+    if (format && !base64Image.includes(`data:image/${format}`)) {
+        try {
+            console.log(`Converting image to ${format} format...`);
+            // Convert the image to the requested format
+            const img = new Image();
+            const loadPromise = new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+            });
+            img.src = base64Image;
+            await loadPromise;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // Convert to the requested format
+            const mimeType = `image/${format}`;
+            base64Image = canvas.toDataURL(mimeType, 0.9); // 0.9 quality for JPEG
+            console.log(`Image converted to ${format} format.`);
+        } catch (error) {
+            console.error(`Error converting image format:`, error);
+            // Continue with original format if conversion fails
+        }
     }
 
     // Try Supabase upload first, then fall back to other services if needed
