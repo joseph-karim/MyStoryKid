@@ -2,11 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  createImg2ImgTask, 
-  createTxt2ImgTask, 
-  getTaskProgress, 
-  checkApiAccess, 
+import {
+  createImg2ImgTask,
+  createTxt2ImgTask,
+  getTaskProgress,
+  checkApiAccess,
   getDzineStyles,
   getStyleCode,
   // getKeywordsForDzineStyle, // Removed as it's no longer exported/used
@@ -29,22 +29,22 @@ const defaultCharacterData = {
   isHuman: true
 };
 
-// --- ADD HELPER FUNCTION --- 
+// --- ADD HELPER FUNCTION ---
 async function fetchAndConvertToBase64(imageUrl) {
   console.log(`[Base64 Convert] Attempting to fetch: ${imageUrl}`);
   try {
-    // Important: Add no-cors mode temporarily if direct fetch fails, 
+    // Important: Add no-cors mode temporarily if direct fetch fails,
     // but be aware this might lead to an opaque response.
     // A backend proxy is the robust solution for CORS.
     const response = await fetch(imageUrl); // Try direct fetch first
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch image URL (${response.status} ${response.statusText})`);
     }
-    
+
     const blob = await response.blob();
     console.log(`[Base64 Convert] Fetched blob type: ${blob.type}, size: ${blob.size}`);
-    
+
     // CRITICAL FIX: Ensure we have a proper image MIME type
     // If the blob type is generic or missing, infer it from URL or set a default
     let mimeType = blob.type;
@@ -62,7 +62,7 @@ async function fetchAndConvertToBase64(imageUrl) {
       }
       console.log(`[Base64 Convert] Corrected MIME type from ${blob.type} to ${mimeType}`);
     }
-    
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -71,7 +71,7 @@ async function fetchAndConvertToBase64(imageUrl) {
         const dataUrl = `data:${mimeType};base64,${base64Data}`;
         console.log(`[Base64 Convert] Successfully created dataUrl with MIME type: ${mimeType}`);
         console.log(`[Base64 Convert] Data URL prefix: ${dataUrl.substring(0, 40)}...`);
-        
+
         resolve(dataUrl); // Return the properly formatted data URL
       };
       reader.onerror = (error) => {
@@ -85,7 +85,7 @@ async function fetchAndConvertToBase64(imageUrl) {
     // Decide on fallback behavior: throw, return null, or return placeholder?
     // Returning null for now to indicate failure.
     // throw error; // Re-throw if the caller should handle it more explicitly
-    return null; 
+    return null;
   }
 }
 // --- END HELPER FUNCTION ---
@@ -134,7 +134,7 @@ const createColorPlaceholder = (bgColor, text) => {
     ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
+
     // Basic text wrapping
     const words = (text || 'Placeholder').split(' ');
     let line = '';
@@ -181,53 +181,53 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   const fileInputRef = useRef(null);
   const pollIntervalRef = useRef(null); // Ref to store interval ID
   const activeGenerationIdRef = useRef(null); // Ref to track the LATEST generation request - ADDED
-  
+
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
-  
+
   // Character data
   const [characterData, setCharacterData] = useState(defaultCharacterData);
-  
+
   // Add state for image preview modal
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
-  
+
   // Track generation attempt
   const [generationAttempted, setGenerationAttempted] = useState(false);
-  
-  // --- ADD previewUrl and generationStatus state --- 
-  const [previewUrl, setPreviewUrl] = useState(null); 
-  const [generationStatus, setGenerationStatus] = useState('idle'); 
+
+  // --- ADD previewUrl and generationStatus state ---
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [generationStatus, setGenerationStatus] = useState('idle');
   // -----------------------------------------------
-  
+
   // --- ADD updateProgressInfo function ---
   const updateProgressInfo = (message) => {
     console.log(`[Progress] ${message}`);
     setProgressMessage(message);
   };
   // --- END updateProgressInfo function ---
-  
+
   // --- ADD helper functions for consistent state management ---
   // Centralize generation state updates for consistency
   const updateGenerationState = (status, message = null) => {
     console.log(`[State] Updating generation state to: ${status}, message: ${message || 'none'}`);
     setGenerationStatus(status);
     if (message) updateProgressInfo(message);
-    
+
     // Update isGenerating based on status
     setIsGenerating(status === 'processing');
-    
+
     // Clear error when starting, but don't clear during other state changes
     if (status === 'processing' && error) setError('');
   };
-  
+
   // Handle setting both image preview locations consistently
   const updatePreviewImage = (imageData) => {
     if (!imageData) {
       console.warn('[Preview] Attempted to set null/undefined image data');
       return;
     }
-    
+
     console.log(`[Preview] Setting preview image: ${imageData.substring(0, 50)}...`);
     // Update both state variables that track the preview
     setPreviewUrl(imageData);
@@ -236,22 +236,22 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       stylePreview: imageData
     }));
   };
-  
+
   // Consistent error handling
   const handleGenerationError = (errorMessage, fallbackImage = null) => {
-    const message = typeof errorMessage === 'string' ? errorMessage : 
+    const message = typeof errorMessage === 'string' ? errorMessage :
                    (errorMessage?.message || 'Unknown error');
-    
+
     console.error(`[Error] Generation error: ${message}`);
     setError(`Generation failed: ${message}. Please try again.`);
     updateGenerationState('error', `Error occurred: ${message}`);
-    
+
     // Use fallback image if provided
     if (fallbackImage) {
       useFallbackImage(fallbackImage);
     }
   };
-  
+
   // Standardized task management
   const clearActiveTasks = () => {
     if (pollIntervalRef.current) {
@@ -264,8 +264,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // activeGenerationIdRef.current = null;
   };
   // --- END helper functions ---
-  
-  // --- MOVED EFFECT: Update isHuman based on type --- 
+
+  // --- MOVED EFFECT: Update isHuman based on type ---
   useEffect(() => {
     // Determine default isHuman value based on type
     const defaultIsHuman = !['pet', 'magical', 'animal'].includes(characterData.type);
@@ -273,20 +273,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     // Check if isHuman is still at its initial undefined/null state OR if the type change *requires* a default change
     const shouldSetDefault = characterData.isHuman === undefined || characterData.isHuman === null ||
                              (['pet', 'magical', 'animal'].includes(characterData.type) !== !characterData.isHuman);
-                             
+
     if (shouldSetDefault) {
         console.log(`[EFFECT - Top Level] Setting default isHuman based on type '${characterData.type}': ${defaultIsHuman}`);
         // Use the state setter directly or ensure handleChange doesn't cause loops
         setCharacterData(prev => ({ ...prev, isHuman: defaultIsHuman }));
     }
   }, [characterData.type]); // Dependency remains characterData.type
-  // --- END MOVED EFFECT --- 
-  
+  // --- END MOVED EFFECT ---
+
   // Effect specifically for handling forcedArtStyle
   useEffect(() => {
     if (forcedArtStyle) {
       console.log('[CharacterWizard] Applying forced art style:', forcedArtStyle);
-      
+
       // Update character data with the forced style
       setCharacterData(prev => ({
         ...prev,
@@ -294,21 +294,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       }));
     }
   }, [forcedArtStyle]);
-  
+
   // Add the checkApiStatus function definition
   const checkApiStatus = async () => {
     try {
       console.log('Checking Dzine API connectivity...');
       const status = await checkApiAccess();
       console.log('API check result:', status);
-      
+
       setApiStatus({
         checked: true,
         working: status.success,
         message: status.message,
         details: status.details || ''
       });
-      
+
       if (!status.success) {
         console.warn('Dzine API check failed:', status.message);
       }
@@ -321,21 +321,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       });
     }
   };
-  
+
   // Update the useEffect to store forcedArtStyle
   useEffect(() => {
     console.log('[CharacterWizard] Initializing with forcedArtStyle:', forcedArtStyle);
-    
+
     // If a forced art style is provided, apply it to the character data
     if (forcedArtStyle) {
       setCharacterData(prevData => ({
         ...prevData,
         artStyle: forcedArtStyle
       }));
-      
+
       console.log('[CharacterWizard] Applied forced art style to character data:', forcedArtStyle);
     }
-    
+
     // Set the initial role if provided
     if (initialRole) {
       setCharacterData(prevData => ({
@@ -343,48 +343,45 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         role: initialRole
       }));
     }
-    
-    // If initial step is provided, set it
-    if (initialStep > 1) {
-      setStep(initialStep);
-      // Unlock all steps up to and including the initial step
-      const stepsToUnlock = Array.from({ length: initialStep }, (_, i) => i + 1);
-      setUnlockedSteps(stepsToUnlock);
-    }
+
+    // Always start at step 1 (Details) regardless of initialStep
+    // This ensures the user always starts with the Details tab
+    setStep(1);
+    setUnlockedSteps([1]);
 
     // Check API status
     checkApiStatus();
   }, [forcedArtStyle, initialRole, initialStep]);
-  
+
   // Character types
   const CHARACTER_TYPES = [
     { id: 'child', name: 'Main Character', description: 'The main character of your story' },
   ];
-  
+
   // Character roles (simplified to just main character)
   const CHARACTER_ROLES = [
     { id: 'main', label: 'Main Character', description: 'The hero of the story' },
   ];
-  
+
   const handleChange = (field, value) => {
       setCharacterData(prev => ({
         ...prev,
       [field]: value
     }));
-    
+
     // Clear any errors when field changes
     if (error) {
       setError('');
     }
   };
-  
+
   const handlePhotoSelect = (photoUrl) => {
     setCharacterData({
       ...characterData,
       photoUrl,
     });
   };
-  
+
   // Reset function to clear state
   const resetCharacterState = () => {
       setIsGenerating(false);
@@ -410,8 +407,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       useTextToImage: false,
       isHuman: true
     });
+
+    // Always start at step 1 (Details) when resetting
+    setStep(1);
+    setUnlockedSteps([1]);
   };
-  
+
   const handleComplete = () => {
     try {
       // Make sure we have the basic info needed for a character
@@ -419,25 +420,25 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please provide a name for your character.');
       return;
     }
-    
+
       // Explicitly log current stylePreview for debugging
       console.log('Style preview before completion:', characterData.stylePreview);
       console.log('Art style before completion:', characterData.artStyle);
-      
+
       // Create the final character object
       const finalCharacter = {
       ...characterData,
         id: characterData.id || uuidv4(), // Ensure we have an ID
         type: characterData.type || 'child', // Set a default type
-        
+
         // CRITICAL: Store the Dzine stylePreview, discard original photoUrl
         stylePreview: characterData.stylePreview, // This should contain the Base64/URL from Dzine
         photoUrl: null, // Nullify the original photo reference
-        
+
         // Ensure artStyle (Dzine code) is stored
         artStyle: characterData.artStyle || forcedArtStyle || null,
       };
-      
+
       // Validation: Check if stylePreview exists
       if (!finalCharacter.stylePreview) {
           // If no style preview, AND we didn't use text-to-image, use photo as fallback?
@@ -460,16 +461,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                return;
           }
       }
-      
+
       console.log('Completing character creation with data:', {
           ...finalCharacter,
           stylePreview: finalCharacter.stylePreview ? `[Base64 Preview Present: ${finalCharacter.stylePreview.substring(0,50)}...]` : null,
       });
-      
+
       // If this is a new character, add it (this logic might be simplified if CharacterWizard always calls onComplete)
       // The parent component (CreateBookPage) likely handles the actual adding/updating in the main store.
       // So, just call onComplete.
-      
+
       // Invoke the callback with the final data
       if (onComplete) {
         console.log('Invoking completion callback...');
@@ -477,20 +478,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       } else {
           console.warn('CharacterWizard: onComplete callback is missing!');
       }
-      
+
     } catch (err) {
       console.error('Error completing character:', err);
       setError('Failed to save character. Please try again.');
     }
   };
-  
+
   const handleCancel = () => {
     // Reset for next use
     resetCharacterState();
-    
+
     onComplete(null);
   };
-  
+
   const handleBack = () => {
     setError(''); // Clear errors on navigation
     let targetStep = step - 1;
@@ -499,13 +500,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
       console.log('[NAV] Skipping Step 2 (Appearance) backwards because style is forced');
       targetStep = 1; // Go back to Step 1 (Details) instead
     }
-    setStep(prev => Math.max(1, targetStep)); // Use Math.max to prevent going below 1
+    setStep(Math.max(1, targetStep)); // Use Math.max to prevent going below 1
   };
-  
+
   const handleNext = () => {
     console.log('[CharacterWizard] handleNext() called, current step:', step);
     setError(''); // Clear errors on navigation
-    
+
     // Validation for Step 1: Details
     if (step === 1) {
       if (!characterData.name) {
@@ -524,7 +525,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please select a gender for your character.');
         return;
       }
-    
+
       // --- Skip Step 2 (Appearance) if art style is forced ---
       if (forcedArtStyle) {
         console.log('[NAV] Skipping Step 2 (Appearance) forwards because style is forced');
@@ -534,7 +535,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           artStyle: forcedArtStyle // Make sure this is set
         }));
         // Generate preview immediately since we skip the step where it normally happens
-        generateCharacterPreview(forcedArtStyle, characterData.isHuman); 
+        generateCharacterPreview(forcedArtStyle, characterData.isHuman);
         setUnlockedSteps(prev => [...new Set([...prev, 2, 3])]); // Unlock 2 and 3
         setStep(3); // Go directly to Step 3 (Confirm)
       } else {
@@ -553,30 +554,30 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
         setError('Please provide a description for image generation.');
         return;
       }
-      
+
       // Check for forced art style or user selected style (shouldn't happen if skipped)
       if (!forcedArtStyle && !characterData.artStyle) {
         setError('Please select an art style for your character.');
         return;
       }
-      
+
       console.log(`[CharacterWizard] Selected/Forced art style: ${characterData.artStyle || forcedArtStyle}`);
       setUnlockedSteps(prev => [...new Set([...prev, 3])]);
-      
+
       // Generate preview image based on selected or forced style
       const styleToUse = forcedArtStyle || characterData.artStyle;
       // Use isHuman state which is now managed by useEffect
-      const isHumanCharacter = characterData.isHuman; 
-      
+      const isHumanCharacter = characterData.isHuman;
+
       // Generate a preview with the photo and style
       generateCharacterPreview(styleToUse, isHumanCharacter);
-      
+
       setStep(3);
     }
     // Step 3: Confirm - The "Next" action is handled by the "Complete Character" button inside renderConfirmStep
     // No explicit setStep(4) needed here.
   };
-  
+
   // --- ADDED: Handle clicking tabs ---
   const handleTabClick = (tabStep) => {
     if (unlockedSteps.includes(tabStep)) {
@@ -641,7 +642,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     reader.readAsDataURL(file);
 
     // Clear the input value so the same file can be selected again if needed
-    e.target.value = null; 
+    e.target.value = null;
 
     console.log('UPLOAD COMPLETE:', {
       photoUrlSet: !!characterData.photoUrl, // Check if photoUrl was set in state update
@@ -798,7 +799,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <p className="text-xs text-gray-500 mt-1">Be descriptive! Include hair color, clothing, expression, etc.</p>
         </div>
       )}
-      
+
       {/* Art Style Selection (Only if not forced) */}
       {!forcedArtStyle && (
         <div>
@@ -818,19 +819,19 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           <p className="text-xs text-gray-500 mt-1">Choose the visual style for your character.</p>
         </div>
       )}
-      
+
     </div>
   );
-  
+
    const renderConfirmStep = () => {
      // Use previewUrl for display, fallback to stylePreview if needed
      const displayPreviewUrl = previewUrl || characterData.stylePreview;
-     
+
      return (
        <div className="space-y-6">
          <h3 className="text-2xl font-semibold text-center text-gray-800">Confirm Character</h3>
          <p className="text-center text-gray-600">Review your character details and the generated style preview.</p>
-         
+
          {/* Generation Status/Error Display */}
          {generationStatus === 'processing' && (
            <div className="flex justify-center items-center flex-col my-4">
@@ -846,28 +847,28 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
 
          {displayPreviewUrl && generationStatus !== 'processing' ? ( // Hide preview while processing
            <div className="flex flex-col items-center space-y-4">
-             <div 
+             <div
                className="w-48 h-48 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
                onClick={() => openImagePreview(displayPreviewUrl)}
              >
-               <img 
-                  src={displayPreviewUrl} 
-                  alt="Character Style Preview" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => { 
+               <img
+                  src={displayPreviewUrl}
+                  alt="Character Style Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
                        console.log('[Image] Error loading image, using placeholder');
                        e.target.src = createColorPlaceholder('#eeeeee', 'Preview Error');
-                    }} 
+                    }}
                  />
                </div>
-               
+
               <h3 className="text-xl font-bold">{characterData.name}</h3>
               <p className="text-gray-600 text-sm">
                 {characterData.age && `${characterData.age} years old • `}
                 {characterData.gender && `${characterData.gender} • `}
                 {characterData.type}
               </p>
-              
+
               {/* Optionally show description if used */}
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md border border-gray-200 max-w-md">
@@ -877,13 +878,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
             </div>
           ) : (
              // Only show placeholder if NOT processing and no preview exists
-             generationStatus !== 'processing' && ( 
+             generationStatus !== 'processing' && (
                 <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300 my-4 max-w-md mx-auto">
                   <p className="text-gray-600">Style preview will appear here after generation.</p>
                 </div>
              )
           )}
-             
+
         {/* Regenerate Button */}
         {/* Show button only if generation isn't processing */}
         {generationStatus !== 'processing' && (
@@ -892,11 +893,11 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                onClick={() => {
                  console.log('[Retry/Regen] User requested generation');
                  const styleToUse = forcedArtStyle || characterData.artStyle;
-                 const isHumanCharacter = characterData.isHuman; 
+                 const isHumanCharacter = characterData.isHuman;
                  generateCharacterPreview(styleToUse, isHumanCharacter);
                }}
                // Disable if generating, API not working, OR if required inputs are missing
-               disabled={isGenerating || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)} 
+               disabled={isGenerating || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)}
                className={`mt-3 px-4 py-2 text-sm rounded ${
                  (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isGenerating // Combined disabled condition
                    ? 'bg-gray-400 text-white cursor-not-allowed'
@@ -909,7 +910,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                 <p className="text-xs text-red-500 mt-1">API Error: {apiStatus.message}. Preview generation disabled.</p>
              )}
              {/* Updated condition to check useTextToImage flag */}
-             {(!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) && ( 
+             {(!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) && (
                 <p className="text-xs text-orange-500 mt-1">Please upload a photo or provide a description in Step 2 to enable preview generation.</p>
              )}
            </div>
@@ -928,7 +929,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            <button
             onClick={handleComplete}
             // Allow complete if preview exists OR if generation wasn't attempted yet
-            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`} 
+            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
             disabled={(!displayPreviewUrl && generationAttempted) || isGenerating} // Use isGenerating and allow complete if not attempted
            >
             Complete Character
@@ -945,68 +946,68 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        case 1: return renderDetailsStep();
        case 2: return renderAppearanceStep();
        case 3: return renderConfirmStep(); // Step 3 is Confirm
-       default: 
+       default:
          console.warn("Unknown step in renderStep, defaulting to 1");
          setStep(1);
-         return renderDetailsStep(); 
+         return renderDetailsStep();
      }
    };
-   
-   // --- generateCharacterImage function (Updated in previous step) --- 
+
+   // --- generateCharacterImage function (Updated in previous step) ---
    const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
      setGenerationAttempted(true); // Mark that we've tried to generate
      updateGenerationState('processing', 'Starting character image generation...');
-     
+
      // Validate style code early
      if (!styleApiCode) {
        handleGenerationError('An invalid art style was specified.', fallbackImage);
-       return; 
+       return;
      }
-     
+
      const generationId = uuidv4(); // Unique ID for this specific generation attempt
      activeGenerationIdRef.current = generationId; // Track this attempt
-     let operationType = ''; 
-     
+     let operationType = '';
+
      try {
        let taskResponse;
-       
+
        if (characterData.useTextToImage) {
          // --- Text-to-Image Logic ---
          operationType = 'Txt2Img';
          console.log('[Generate] Using Text-to-Image');
-         
+
          // Enhance prompt if needed (example)
          let enhancedPrompt = prompt || characterData.generationPrompt || 'character portrait';
          if (characterData.name) {
            enhancedPrompt = `${characterData.name}, ${enhancedPrompt}`;
          }
          enhancedPrompt += ", high quality illustration"; // Add quality modifier
-         
+
          // Correct payload for createTxt2ImgTask
          const payload = {
-           prompt: enhancedPrompt.substring(0, 800), 
+           prompt: enhancedPrompt.substring(0, 800),
            style_code: styleApiCode,
-           aspect_ratio: '1:1', 
-           quality_mode: 1, 
+           aspect_ratio: '1:1',
+           quality_mode: 1,
            output_format: 'webp',
            seed: Math.floor(Math.random() * 2147483647) + 1,
            negative_prompt: 'low quality, blurry, bad anatomy',
            generate_slots: [1, 0, 0, 0] // Ensure only one image is requested
          };
-         
+
          console.log('Txt2Img Payload:', JSON.stringify(payload, null, 2));
          // Pass the single payload object
-         taskResponse = await createTxt2ImgTask(payload.prompt, payload.style_code, payload); 
-         
+         taskResponse = await createTxt2ImgTask(payload.prompt, payload.style_code, payload);
+
        } else {
-         // --- Image-to-Image Logic --- 
+         // --- Image-to-Image Logic ---
          operationType = 'Img2Img';
          console.log('[Generate] Using Image-to-Image');
-         
+
          if (!characterData.photoUrl) {
            throw new Error('Cannot perform Image-to-Image without a source photo.');
          }
-         
+
          let photoBase64ForPayload;
          // Ensure photoUrl is Base64
          if (!characterData.photoUrl.startsWith('data:image')) {
@@ -1017,49 +1018,49 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
               throw new Error('Failed to convert source photo to Base64 for Image-to-Image.');
            }
            // Update: Use a temporary variable instead of mutating state directly here
-           photoBase64ForPayload = base64Photo; 
+           photoBase64ForPayload = base64Photo;
            console.log('[Generate] Conversion successful.');
          } else {
            photoBase64ForPayload = characterData.photoUrl; // Already base64
          }
-         
+
          // Construct prompt for Img2Img
          const imgPrompt = prompt || `Character portrait of ${characterData.name || 'person'} in the selected style`;
 
          // *** PAYLOAD FIX APPLIED HERE ***
          const payload = {
-           style_code: styleApiCode, 
+           style_code: styleApiCode,
            prompt: imgPrompt.substring(0, 800),
            images: [{ base64_data: photoBase64ForPayload }], // Pass image correctly in the images array
-           quality_mode: 1, 
+           quality_mode: 1,
            output_format: 'webp',
            negative_prompt: 'ugly, deformed, disfigured, poor quality, blurry, nsfw',
            seed: Math.floor(Math.random() * 2147483647) + 1,
            generate_slots: [1, 1] // Default for Model X
            // style_intensity, structure_match, color_match can be added if needed
          };
-         
+
          console.log('Img2Img Payload (excluding base64):', JSON.stringify({
               ...payload,
               images: [{ base64_data: 'base64_data_present' }]
             }, null, 2));
          // Pass the single payload object and the face match flag
-         taskResponse = await createImg2ImgTask(payload, isHumanCharacter); 
+         taskResponse = await createImg2ImgTask(payload, isHumanCharacter);
        }
-       
-       // --- Common Task Handling --- 
+
+       // --- Common Task Handling ---
        if (!taskResponse || !taskResponse.task_id) {
          // Attempt to extract error message from response if available
          const apiErrorMsg = taskResponse?.error || taskResponse?.message || `Failed to initiate ${operationType} task.`;
          throw new Error(apiErrorMsg);
        }
-       
+
        console.log(`[Generate] ${operationType} task started with ID: ${taskResponse.task_id}`);
        updateProgressInfo('Generation task submitted, waiting for progress...');
-       
+
        // Start polling using the task ID
        startPollingTask(taskResponse.task_id, fallbackImage, generationId);
-       
+
      } catch (error) {
        console.error(`[Generate] Error during ${operationType || 'generation'} initiation:`, error);
        // Use centralized error handler
@@ -1068,7 +1069,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    };
    // --- End generateCharacterImage function ---
 
-   // --- generateCharacterPreview function (Updated in previous step) --- 
+   // --- generateCharacterPreview function (Updated in previous step) ---
    const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
      console.log('[GeneratePreview] Called with style:', styleApiCode);
 
@@ -1078,21 +1079,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        setError('Please select an art style first.');
        return;
      }
-     
+
      // Use a placeholder based on character name while generating
      const placeholderText = characterData.name || 'Character';
      const placeholderBg = stringToColor(placeholderText);
      const placeholderImage = createColorPlaceholder(placeholderBg, placeholderText);
-     
+
      // Set placeholder immediately AND set state to processing
-     updatePreviewImage(placeholderImage); 
+     updatePreviewImage(placeholderImage);
      updateGenerationState('processing', 'Preparing generation...'); // Set state early
-     
+
      // Call the main generation function
      try {
        // Pass necessary details: style, prompt (optional), placeholder, isHuman
        await generateCharacterImage(
-         styleToUse, 
+         styleToUse,
          characterData.generationPrompt, // Pass description if available
          placeholderImage, // Pass placeholder as fallback
          isHumanCharacter
@@ -1120,7 +1121,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
        // If fallback is invalid, ensure state reflects error without a preview
        setPreviewUrl(null); // Clear any existing preview
        setCharacterData(prev => ({ ...prev, stylePreview: null }));
-       updateGenerationState('error', 'Generation failed, no valid fallback.'); 
+       updateGenerationState('error', 'Generation failed, no valid fallback.');
      }
    };
    // --- End useFallbackImage function ---
@@ -1130,12 +1131,12 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      let pollCount = 0;
      const maxPolls = 30; // Approx 2 minutes
      const pollInterval = 4000; // 4 seconds
-     
+
      // Clear any existing interval *before* starting a new one
-     clearActiveTasks(); 
-     
+     clearActiveTasks();
+
      updateGenerationState('processing', `Polling task ${taskId}... (0/${maxPolls})`);
-     
+
      pollIntervalRef.current = setInterval(async () => {
        // --- Check if this is still the active generation task ---
        if (activeGenerationIdRef.current !== generationId) {
@@ -1144,14 +1145,14 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          return;
        }
        // --- End check ---
-       
+
        pollCount++;
        console.log(`[Polling] Poll attempt ${pollCount} for task ${taskId}`);
-       
+
        try {
          const result = await getTaskProgress(taskId);
          console.log('[Polling] Progress data:', result); // Log the raw result
-         
+
          // --- Check again if this is still the active task AFTER the async call ---
          if (activeGenerationIdRef.current !== generationId) {
            console.log(`[Polling] Task ${taskId} became inactive during API call. Stopping poll.`);
@@ -1159,20 +1160,20 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            return;
          }
          // --- End check ---
-         
+
          // Use the normalized status from getTaskProgress
-         const currentStatus = result.status; 
+         const currentStatus = result.status;
          const progressPercent = Math.round((result.progress || 0) * 100); // Use progress if available, make percentage
-         
+
          console.log(`[Polling] Task status: "${currentStatus}" (original: "${result.original_status || currentStatus}"), progress: ${progressPercent}%`);
-         
+
          if (currentStatus === 'success') {
            clearActiveTasks();
            updateProgressInfo('Task successful! Fetching final image...');
-           
+
            // Extract image URL (handle potential variations in response)
            const imageUrl = result.imageUrl || (result.generate_result_slots && result.generate_result_slots.find(url => url));
-           
+
            if (imageUrl) {
              updateProgressInfo('Converting final image URL to Base64...');
              // Convert the final URL to Base64 before setting
@@ -1190,7 +1191,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
              try {
                  const resultData = await getTaskResult(taskId);
                  console.log(`[Polling] Task result:`, resultData);
-                 
+
                  if (!resultData || !resultData.images || resultData.images.length === 0) {
                    throw new Error('Task completed but no images were returned by getTaskResult');
                  }
@@ -1207,26 +1208,26 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
                  handleGenerationError('Task succeeded but failed to retrieve the final image.', fallbackImage);
              }
            }
-           
+
          } else if (currentStatus === 'failed') {
            clearActiveTasks();
            handleGenerationError(result.error || result.error_reason || 'Task failed with unknown error', fallbackImage);
-           
+
          } else if (currentStatus === 'running') {
            // Update progress message while running
            updateGenerationState('processing', `Generation in progress... ${progressPercent}% (${pollCount}/${maxPolls})`);
-           
+
          } else {
            // Handle other statuses like 'pending', 'queued' if needed
            updateGenerationState('processing', `Task status: ${currentStatus}... (${pollCount}/${maxPolls})`);
          }
-         
+
          // Timeout check
          if (pollCount >= maxPolls && currentStatus !== 'success' && currentStatus !== 'failed') {
            clearActiveTasks();
            handleGenerationError('Polling timed out after maximum attempts.', fallbackImage);
          }
-         
+
        } catch (error) {
          // --- Check again if this is still the active task after error ---
          if (activeGenerationIdRef.current !== generationId) {
@@ -1236,16 +1237,16 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
          }
          // --- End check ---
          console.error(`[Polling] Error during polling task ${taskId}:`, error);
-         
+
          // Special handling for 404 errors which might be temporary
          const is404Error = error.message && (error.message.includes('404') || error.message.includes('not found'));
          if (is404Error && pollCount < 5) {
            console.log(`[Polling] Got 404 for task ${taskId} on attempt ${pollCount} - continuing to poll`);
            updateProgressInfo(`Generation in progress... waiting for task to start`);
            // Don't increment pollCount or fail yet for early 404s
-           return; 
+           return;
          }
-         
+
          // For other errors or late 404s, update status but let loop continue up to max attempts
          updateProgressInfo(`Polling error: ${error.message} (${pollCount}/${maxPolls})`);
          if (pollCount >= maxPolls) {
@@ -1268,9 +1269,9 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // --- Image Preview Modal Component ---
   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
     if (!isOpen) return null;
-    
+
     return (
-      <div 
+      <div
         className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
         onClick={onClose} // Close on backdrop click
       >
@@ -1281,24 +1282,24 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           className="bg-white p-4 rounded-lg shadow-xl max-w-lg w-full relative"
           onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
         >
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold"
             aria-label="Close preview"
           >
             &times;
           </button>
-          <img 
-            src={imageUrl} 
-            alt="Character Preview Large" 
-            className="max-w-full max-h-[80vh] object-contain mx-auto" 
+          <img
+            src={imageUrl}
+            alt="Character Preview Large"
+            className="max-w-full max-h-[80vh] object-contain mx-auto"
           />
         </motion.div>
       </div>
     );
   };
   // --- End Image Preview Modal ---
-  
+
   // --- MAIN JSX RETURN ---
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto">
@@ -1321,7 +1322,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           ))}
         </nav>
       </div>
-      
+
       {/* Step Content */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -1334,21 +1335,21 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
           {renderStep()}
         </motion.div>
       </AnimatePresence>
-      
+
       {/* Error Display - Use general error state */}
       {error && !error.startsWith('Generation failed:') && ( // Don't show general error if it's a generation error shown in step 3
         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
           {error}
          </div>
       )}
-      
+
       {/* Image Preview Modal */}
-      <ImagePreviewModal 
-        isOpen={showImagePreview} 
-        imageUrl={previewImageUrl} 
-        onClose={closeImagePreview} 
+      <ImagePreviewModal
+        isOpen={showImagePreview}
+        imageUrl={previewImageUrl}
+        onClose={closeImagePreview}
       />
-      
+
       {/* Navigation Buttons are now inside renderConfirmStep for Step 3 */}
       {/* Add general Next button for steps 1 and 2 */}
       {step < 3 && (
@@ -1373,7 +1374,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
            </div>
          </div>
       )}
-      
+
     </div>
   );
 }
