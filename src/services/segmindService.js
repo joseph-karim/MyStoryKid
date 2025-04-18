@@ -253,7 +253,13 @@ const pollForResult = async (pollUrl, apiKey, timeout = 180000, interval = 4000)
                     let errorMessage = 'Unknown error';
                     if (response.data.error_message) {
                         if (Array.isArray(response.data.error_message)) {
-                            errorMessage = response.data.error_message.join('; ');
+                            // Format each error object in the array
+                            errorMessage = response.data.error_message.map(err => {
+                                if (typeof err === 'object') {
+                                    return `${err.model || ''}: ${err.error || 'Unknown error'}`;
+                                }
+                                return String(err);
+                            }).join('; ');
                         } else {
                             errorMessage = response.data.error_message;
                         }
@@ -354,9 +360,17 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
                      } else if (error.response.data.error) {
                          apiError = error.response.data.error;
                      } else if (error.response.data.error_message) {
-                         apiError = Array.isArray(error.response.data.error_message)
-                             ? error.response.data.error_message.join('; ')
-                             : error.response.data.error_message;
+                         if (Array.isArray(error.response.data.error_message)) {
+                             // Format each error object in the array
+                             apiError = error.response.data.error_message.map(err => {
+                                 if (typeof err === 'object') {
+                                     return `${err.model || ''}: ${err.error || 'Unknown error'}`;
+                                 }
+                                 return String(err);
+                             }).join('; ');
+                         } else {
+                             apiError = error.response.data.error_message;
+                         }
                      } else {
                          apiError = JSON.stringify(error.response.data);
                      }
