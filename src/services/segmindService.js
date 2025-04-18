@@ -8,6 +8,9 @@ const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-characte
 // Define the specific workflow URL
 const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1";
 const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/678aa4026426baad7e5392fb-v6"; // Updated to the correct workflow version from API reference
+
+// Direct API endpoints as fallbacks
+const DIRECT_CHARACTER_SWAP_URL = "https://api.segmind.com/v1/sd1.5-character-swap"; // Direct API endpoint as fallback
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
   // Handle missing key appropriately in production (e.g., disable feature)
@@ -516,10 +519,41 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
            }
            console.error(`Error calling Segmind Character Swap API (attempt ${attemptCount}):`, errorMessage);
 
-           // If this is the last attempt, implement fallback behavior
+           // If this is the last attempt with the workflow API, try the direct API as fallback
            if (attemptCount >= maxAttempts || i === characterDescriptions.length - 1 && attemptCount > characterDescriptions.length) {
-             console.warn('All character swap attempts failed. Returning original scene image as fallback.');
-             return sceneImageUrl; // Return the original scene image as fallback
+             console.warn('All workflow character swap attempts failed. Trying direct API as fallback...');
+
+             // Try the direct API endpoint as a last resort
+             try {
+               console.log('Attempting character swap with direct API endpoint...');
+
+               // Direct API has slightly different parameters
+               const directApiPayload = {
+                 reference_image: finalReferenceUrl,
+                 target_image: finalSceneUrl,
+                 prompt: `Swap the character with ${characterSelector || 'the main character'}`
+               };
+
+               const directApiResponse = await axios.post(DIRECT_CHARACTER_SWAP_URL, directApiPayload, {
+                 headers: {
+                   'x-api-key': SEGMIND_API_KEY,
+                   'Content-Type': 'application/json'
+                 },
+                 timeout: 120000 // 2 minute timeout for direct API
+               });
+
+               if (directApiResponse.data && directApiResponse.data.image) {
+                 console.log('Direct API character swap successful!');
+                 return directApiResponse.data.image;
+               } else {
+                 console.error('Direct API returned success but no image data');
+                 return sceneImageUrl; // Return original as fallback
+               }
+             } catch (directApiError) {
+               console.error('Direct API character swap failed:', directApiError);
+               console.warn('All character swap attempts failed. Returning original scene image as final fallback.');
+               return sceneImageUrl; // Return the original scene image as fallback
+             }
            }
 
            // Otherwise continue to the next attempt
