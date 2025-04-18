@@ -7,7 +7,7 @@ const FLUX_PULID_URL = 'https://api.segmind.com/v1/flux-pulid';
 const CONSISTENT_CHARACTER_URL = 'https://api.segmind.com/v1/consistent-character';
 // Define the specific workflow URL
 const PIXELFLOW_WORKFLOW_URL = "https://api.segmind.com/workflows/67f4b79fcd0ffd34e79d0b8e-v1";
-const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/678aa4026426baad7e5392fb-v6"; // Added for Character Swap workflow
+const CHARACTER_SWAP_URL = "https://api.segmind.com/workflows/67f6316b9096a62b4f3f6f78-v1"; // Updated to the published workflow version
 if (!SEGMIND_API_KEY) {
   console.error('Segmind API key not found. Please set VITE_SEGMIND_API_KEY in your .env file.');
   // Handle missing key appropriately in production (e.g., disable feature)
@@ -401,31 +401,51 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
       characterSelector, // Try the original first
       "boy",
       "the main character",
-      "the character in the center"
+      "the character in the center",
+      "person",
+      "child"
     ];
 
-    // Payload structure from the Character Swap API docs
+    // Note: We're using the published workflow version with ID 67f6316b9096a62b4f3f6f78-v1
+
+    // Payload structure from the Character Swap API docs - note the order matches their documentation exactly
     const payload = {
-        character_image: finalSceneUrl,          // Dzine scene URL (possibly converted)
         reference_character_image: finalReferenceUrl, // Dzine preview URL (possibly converted)
+        character_image: finalSceneUrl,          // Dzine scene URL (possibly converted)
         select_character: characterDescriptions[0]      // Text to guide swap
     };
 
     console.log("Sending payload to Segmind Character Swap:", {
-      character_image: finalSceneUrl,
       reference_character_image: finalReferenceUrl,
+      character_image: finalSceneUrl,
       select_character: characterDescriptions[0],
       scene_image_format: sceneImageResult.contentType,
       reference_image_format: referenceImageResult.contentType
     });
 
-    // Try each character description until one works
-    for (let i = 0; i < characterDescriptions.length; i++) {
+    // Try different combinations of parameters until one works
+    let attemptCount = 0;
+    const maxAttempts = 12; // Limit the number of attempts to avoid infinite loops
+
+    // Try each character description with each image URL combination
+    for (let i = 0; i < characterDescriptions.length && attemptCount < maxAttempts; i++) {
+      // Try standard image URLs first
       try {
+          attemptCount++;
           // Update the character selector for this attempt
           if (i > 0) {
-            console.log(`Attempt ${i+1}: Trying with character description: "${characterDescriptions[i]}"`);
+            console.log(`Attempt ${attemptCount}: Trying with character description: "${characterDescriptions[i]}"`);
             payload.select_character = characterDescriptions[i];
+          } else {
+            console.log(`Attempt ${attemptCount}: Using initial character description: "${characterDescriptions[i]}"`);
+          }
+
+          // Try swapping the order of parameters (some APIs are sensitive to parameter order)
+          if (attemptCount > characterDescriptions.length) {
+            // For later attempts, try with parameters in different order
+            console.log(`Attempt ${attemptCount}: Trying with swapped parameter order`);
+            payload.reference_character_image = finalSceneUrl;
+            payload.character_image = finalReferenceUrl;
           }
 
           // Log the full request details for debugging
@@ -494,16 +514,16 @@ export const swapCharacterInImage = async (sceneImageUrl, referenceCharacterUrl,
                    errorMessage = 'Segmind Character Swap API request timed out.';
                }
            }
-           console.error(`Error calling Segmind Character Swap API (attempt ${i+1}):`, errorMessage);
+           console.error(`Error calling Segmind Character Swap API (attempt ${attemptCount}):`, errorMessage);
 
            // If this is the last attempt, implement fallback behavior
-           if (i === characterDescriptions.length - 1) {
+           if (attemptCount >= maxAttempts || i === characterDescriptions.length - 1 && attemptCount > characterDescriptions.length) {
              console.warn('All character swap attempts failed. Returning original scene image as fallback.');
              return sceneImageUrl; // Return the original scene image as fallback
            }
 
            // Otherwise continue to the next attempt
-           console.log(`Continuing to next character description attempt...`);
+           console.log(`Continuing to next attempt...`);
       }
     }
 
