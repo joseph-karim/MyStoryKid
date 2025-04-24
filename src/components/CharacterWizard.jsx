@@ -501,11 +501,8 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
   const handleBack = () => {
     setError(''); // Clear errors on navigation
     let targetStep = step - 1;
-    // --- Skip Step 2 (Appearance) if art style is forced ---
-    if (step === 3 && forcedArtStyle) { // Check if going back FROM step 3
-      console.log('[NAV] Skipping Step 2 (Appearance) backwards because style is forced');
-      targetStep = 1; // Go back to Step 1 (Details) instead
-    }
+    // Always go through all steps, even if art style is forced
+    console.log('[NAV] Going back to step', targetStep);
     setStep(Math.max(1, targetStep)); // Use Math.max to prevent going below 1
   };
 
@@ -532,22 +529,21 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
         return;
       }
 
-      // --- Skip Step 2 (Appearance) if art style is forced ---
+      // Always go to Step 2 (Appearance) even if art style is forced
+      // This ensures users can upload a photo or provide a description
+      console.log('[NAV] Going to Step 2 (Appearance)');
+
+      // Update the character data with the forced art style if provided
       if (forcedArtStyle) {
-        console.log('[NAV] Skipping Step 2 (Appearance) forwards because style is forced');
-        // Update the character data with the forced art style before skipping
         setCharacterData(prevData => ({
           ...prevData,
           artStyle: forcedArtStyle // Make sure this is set
         }));
-        // Generate preview immediately since we skip the step where it normally happens
-        generateCharacterPreview(forcedArtStyle, characterData.isHuman);
-        setUnlockedSteps(prev => [...new Set([...prev, 2, 3])]); // Unlock 2 and 3
-        setStep(3); // Go directly to Step 3 (Confirm)
-      } else {
-        setUnlockedSteps(prev => [...new Set([...prev, 2])]);
-        setStep(2);
       }
+
+      // Unlock the next step and navigate to it
+      setUnlockedSteps(prev => [...new Set([...prev, 2])]);
+      setStep(2);
     }
     // Validation for Step 2: Photo & Style
     else if (step === 2) {
