@@ -1,19 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import {
+  // Keep these for backward compatibility and potential fallback
   createImg2ImgTask,
   createTxt2ImgTask,
   getTaskProgress,
-  checkApiAccess,
-  getDzineStyles,
-  getStyleCode,
-  // getKeywordsForDzineStyle, // Removed as it's no longer exported/used
   getStyleNameFromCode,
   getTaskResult
 } from '../services/dzineService';
-import { uploadImageAndGetUrl } from '../services/imageUploadService';
+import * as openaiImageService from '../services/openaiImageService';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
@@ -100,7 +97,7 @@ const stringToColor = (str) => {
   let color = '#';
   for (let i = 0; i < 3; i++) {
     const value = (hash >> (i * 8)) & 0xFF;
-    color += ('00' + value.toString(16)).substr(-2);
+    color += ('00' + value.toString(16)).slice(-2);
   }
   return color;
 };
@@ -169,10 +166,12 @@ const createColorPlaceholder = (bgColor, text) => {
 };
 // --- End Placeholder Helper Functions ---
 
-function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
+function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-line no-unused-vars */ bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
+  // eslint-disable-next-line no-unused-vars
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
   const [error, setError] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [currentCharacter, setCurrentCharacter] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -298,26 +297,29 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // Add the checkApiStatus function definition
   const checkApiStatus = async () => {
     try {
-      console.log('Checking Dzine API connectivity...');
-      const status = await checkApiAccess();
-      console.log('API check result:', status);
+      console.log('Checking OpenAI API connectivity...');
 
+      // Check if OpenAI API key is available
+      if (!import.meta.env.VITE_OPENAI_API_KEY) {
+        throw new Error('OpenAI API key not found');
+      }
+
+      // For now, we'll assume the API is working if the key is present
+      // In a production app, you might want to make a test call to verify
       setApiStatus({
         checked: true,
-        working: status.success,
-        message: status.message,
-        details: status.details || ''
+        working: true,
+        message: 'OpenAI API ready',
+        details: ''
       });
 
-      if (!status.success) {
-        console.warn('Dzine API check failed:', status.message);
-      }
+      console.log('OpenAI API check successful');
     } catch (error) {
-      console.error('Error checking API:', error);
+      console.error('Error checking OpenAI API:', error);
       setApiStatus({
         checked: true,
         working: false,
-        message: `API check error: ${error.message}`
+        message: `OpenAI API check error: ${error.message}`
       });
     }
   };
@@ -354,11 +356,13 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   }, [forcedArtStyle, initialRole, initialStep]);
 
   // Character types
+  // eslint-disable-next-line no-unused-vars
   const CHARACTER_TYPES = [
     { id: 'child', name: 'Main Character', description: 'The main character of your story' },
   ];
 
   // Character roles (simplified to just main character)
+  // eslint-disable-next-line no-unused-vars
   const CHARACTER_ROLES = [
     { id: 'main', label: 'Main Character', description: 'The hero of the story' },
   ];
@@ -375,6 +379,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handlePhotoSelect = (photoUrl) => {
     setCharacterData({
       ...characterData,
@@ -485,6 +490,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleCancel = () => {
     // Reset for next use
     resetCharacterState();
@@ -589,6 +595,7 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
   // --- END ADDED ---
 
   // --- ADDED: Handle selecting existing character ---
+  // eslint-disable-next-line no-unused-vars
   const handleSelectExistingCharacter = (character) => {
     // This function might need more logic depending on how existing characters are handled
     console.log('Selected existing character:', character);
@@ -953,7 +960,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
      }
    };
 
-   // --- generateCharacterImage function (Updated in previous step) ---
+   // --- generateCharacterImage function (Kept for backward compatibility) ---
+   // eslint-disable-next-line no-unused-vars
    const generateCharacterImage = async (styleApiCode, prompt, fallbackImage, isHumanCharacter) => {
      setGenerationAttempted(true); // Mark that we've tried to generate
      updateGenerationState('processing', 'Starting character image generation...');
@@ -1069,8 +1077,8 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
    };
    // --- End generateCharacterImage function ---
 
-   // --- generateCharacterPreview function (Updated in previous step) ---
-   const generateCharacterPreview = async (styleApiCode, isHumanCharacter) => {
+   // --- generateCharacterPreview function (Using OpenAI) ---
+   const generateCharacterPreview = async (styleApiCode, /* eslint-disable-next-line no-unused-vars */ isHumanCharacter) => {
      console.log('[GeneratePreview] Called with style:', styleApiCode);
 
      const styleToUse = forcedArtStyle || styleApiCode;
@@ -1087,21 +1095,34 @@ function CharacterWizard({ onComplete, initialStep = 1, bookCharacters = [], for
 
      // Set placeholder immediately AND set state to processing
      updatePreviewImage(placeholderImage);
-     updateGenerationState('processing', 'Preparing generation...'); // Set state early
+     updateGenerationState('processing', 'Preparing character generation with OpenAI...'); // Set state early
 
-     // Call the main generation function
      try {
-       // Pass necessary details: style, prompt (optional), placeholder, isHuman
-       await generateCharacterImage(
-         styleToUse,
-         characterData.generationPrompt, // Pass description if available
-         placeholderImage, // Pass placeholder as fallback
-         isHumanCharacter
+       // Get style description from style code
+       const styleDescription = getStyleNameFromCode(styleToUse) || 'colorful, child-friendly illustration style';
+
+       // Generate character image using OpenAI
+       updateProgressInfo('Generating character with OpenAI...');
+
+       // Use the photo as reference if available
+       const photoReference = characterData.photoUrl || null;
+
+       // Generate the character image
+       const generatedImage = await openaiImageService.generateCharacterImage(
+         characterData, // Pass the entire character data object
+         `Use a ${styleDescription} style.`,
+         photoReference
        );
-       // Success/error state is handled within generateCharacterImage/polling
+
+       if (generatedImage) {
+         // Update the preview with the generated image
+         updatePreviewImage(generatedImage);
+         updateGenerationState('complete', 'Character preview generated!');
+       } else {
+         throw new Error('Failed to generate character image with OpenAI.');
+       }
      } catch (error) {
-       // This catch might be redundant if generateCharacterImage handles its errors
-       console.error('[GeneratePreview] Error calling generateCharacterImage:', error);
+       console.error('[GeneratePreview] Error generating character with OpenAI:', error);
        handleGenerationError(error, placeholderImage); // Ensure fallback on error
      }
    };

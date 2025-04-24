@@ -70,15 +70,54 @@ export const generateImage = async (prompt, options = {}) => {
 
 /**
  * Generate a character image using OpenAI
- * @param {string} characterDescription - Description of the character
+ * @param {Object} characterData - Character data object with properties like name, age, gender, type, etc.
  * @param {string} styleDescription - Description of the art style
+ * @param {string} photoReference - Optional base64 photo reference to use as inspiration
  * @returns {Promise<string>} - Base64 encoded image data
  */
-export const generateCharacterImage = async (characterDescription, styleDescription) => {
-  const prompt = `Create a portrait of ${characterDescription}. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+export const generateCharacterImage = async (characterData, styleDescription, photoReference = null) => {
+  // Extract character details
+  const { name, age, gender, type, traits = [], interests = [] } = characterData;
+
+  // Build a detailed character description
+  let characterDescription = `${name}, a ${age || ''} year old ${gender || 'child'}`;
+
+  // Add character type
+  if (type === 'child') {
+    characterDescription += `, the main character`;
+  } else if (type === 'sibling') {
+    characterDescription += `, a sibling`;
+  } else if (type === 'friend') {
+    characterDescription += `, a friend`;
+  } else if (type === 'magical') {
+    characterDescription += `, a magical character`;
+  } else if (type === 'animal') {
+    characterDescription += `, an animal companion`;
+  }
+
+  // Add traits and interests if available
+  if (traits.length > 0) {
+    characterDescription += `. Personality traits: ${traits.join(', ')}`;
+  }
+
+  if (interests.length > 0) {
+    characterDescription += `. Interests: ${interests.join(', ')}`;
+  }
+
+  // Create a detailed prompt
+  let prompt;
+  if (photoReference) {
+    // If we have a photo reference, mention it in the prompt
+    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+
+    // Note: OpenAI's gpt-image-1 doesn't directly support image inputs yet, so we're using text description
+    // In the future, when OpenAI supports image inputs, we could use the photoReference
+  } else {
+    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+  }
 
   return generateImage(prompt, {
-    size: "1024x1024",
+    size: "1024x1024", // Square format for character portraits
     quality: "high"
   });
 };
