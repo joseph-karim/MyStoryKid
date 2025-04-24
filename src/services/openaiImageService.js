@@ -104,17 +104,30 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
     characterDescription += `. Interests: ${interests.join(', ')}`;
   }
 
+  // Enhanced style guidance for consistency
+  const enhancedStyleGuidance = `
+    Create the character with these specific style characteristics:
+    - Use warm, rich colors with soft lighting and gentle shadows
+    - Character should have appealing, expressive features with a clear, friendly expression
+    - Use a hand-drawn, slightly textured illustration style similar to Pixar or high-quality children's books
+    - The character design should be consistent with the style that will be used throughout the book
+    - Create a portrait with a simple, non-distracting background that highlights the character
+    ${styleDescription || 'Use a child-friendly, colorful illustration style.'}
+  `;
+
   // Create a detailed prompt
   let prompt;
   if (photoReference) {
     // If we have a photo reference, mention it in the prompt
-    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${enhancedStyleGuidance}`;
 
     // Note: OpenAI's gpt-image-1 doesn't directly support image inputs yet, so we're using text description
     // In the future, when OpenAI supports image inputs, we could use the photoReference
   } else {
-    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+    prompt = `Create a portrait of ${characterDescription}. The character should be looking directly at the viewer with a friendly expression. Create a high-quality, detailed illustration suitable for a children's book. ${enhancedStyleGuidance}`;
   }
+
+  console.log('Generating character image with enhanced style guidance');
 
   return generateImage(prompt, {
     size: "1024x1024", // Square format for character portraits
@@ -127,9 +140,11 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
  * @param {string} sceneDescription - Description of the scene
  * @param {string|Array} characterDescriptions - Description of the character(s) to include
  * @param {string} styleDescription - Description of the art style
+ * @param {string} referenceImageUrl - Optional URL of a previously generated image to use as style reference
+ * @param {number} pageNumber - The page number being generated
  * @returns {Promise<string>} - Base64 encoded image data
  */
-export const generateSceneImage = async (sceneDescription, characterDescriptions, styleDescription) => {
+export const generateSceneImage = async (sceneDescription, characterDescriptions, styleDescription, referenceImageUrl = null, pageNumber = 1) => {
   // Handle multiple characters
   let characterPrompt;
   if (Array.isArray(characterDescriptions)) {
@@ -145,7 +160,26 @@ export const generateSceneImage = async (sceneDescription, characterDescriptions
     characterPrompt = characterDescriptions;
   }
 
-  const prompt = `Create a scene showing ${characterPrompt} in ${sceneDescription}. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+  // Enhanced style guidance for consistency
+  const enhancedStyleGuidance = `
+    Maintain a consistent animation style throughout the book with these characteristics:
+    - Use warm, rich colors with soft lighting and gentle shadows
+    - Characters should have consistent proportions and features across all pages
+    - Use a hand-drawn, slightly textured illustration style similar to Pixar or high-quality children's books
+    - Maintain consistent lighting direction and color palette across all illustrations
+    - Create depth with subtle background details that don't distract from the main characters
+    - This is page ${pageNumber} of the story, so maintain visual continuity with previous pages
+    ${styleDescription || 'Use a child-friendly, colorful illustration style.'}
+  `;
+
+  // Reference previous images if available
+  const referenceNote = referenceImageUrl ?
+    "Maintain exact visual consistency with the character designs, art style, and color palette from the previous illustrations." :
+    "";
+
+  const prompt = `Create a scene showing ${characterPrompt} in ${sceneDescription}. ${enhancedStyleGuidance} ${referenceNote}`;
+
+  console.log(`Generating image for page ${pageNumber} with enhanced style guidance`);
 
   return generateImage(prompt, {
     size: "1536x1024", // Landscape format for scenes
@@ -176,7 +210,20 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
     characterPrompt = characterDescriptions;
   }
 
-  const prompt = `Create a children's book cover for "${title}" featuring ${characterPrompt}. The cover should be vibrant, engaging, and appropriate for young children. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+  // Enhanced style guidance for consistency
+  const enhancedStyleGuidance = `
+    Create the cover with these specific style characteristics:
+    - Use warm, rich colors with soft lighting and gentle shadows
+    - Characters should have appealing, expressive features with clear emotions
+    - Use a hand-drawn, slightly textured illustration style similar to Pixar or high-quality children's books
+    - Create depth with subtle background details that don't distract from the main characters
+    - The cover should establish the visual style that will be consistent throughout all book illustrations
+    ${styleDescription || 'Use a child-friendly, colorful illustration style.'}
+  `;
+
+  const prompt = `Create a children's book cover for "${title}" featuring ${characterPrompt}. The cover should be vibrant, engaging, and appropriate for young children. ${enhancedStyleGuidance}`;
+
+  console.log('Generating cover image with enhanced style guidance');
 
   return generateImage(prompt, {
     size: "1024x1536", // Portrait format for book covers

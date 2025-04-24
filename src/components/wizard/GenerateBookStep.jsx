@@ -627,17 +627,22 @@ const GenerateBookStep = () => {
       const totalPagesToGenerate = storyOutline.length;
       const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
 
+      // Track reference images for consistency
+      let previousPageImageUrl = generatedCoverUrl; // Start with cover as reference
+      let firstPageImageUrl = null; // Store the first page image as primary reference
+
       for (let index = 0; index < totalPagesToGenerate; index++) {
         const currentSpreadOutline = storyOutline[index];
         const currentPageProgressBase = pagesBaseProgress + (index * progressPerPage);
+        const pageNumber = index + 1; // For logging and display
 
-        let spreadText = `Error generating text for page ${index + 1}`;
-        let spreadVisualPrompt = `Error generating prompt for page ${index + 1}`;
+        let spreadText = `Error generating text for page ${pageNumber}`;
+        let spreadVisualPrompt = `Error generating prompt for page ${pageNumber}`;
         let finalImageUrl = 'ERROR_MISSING'; // Default for page image
 
         try {
           // --- Generate Text & Visual Prompt for Current Spread ---
-          updateProgressInfo(`Generating text/prompt for page ${index + 1}/${totalPagesToGenerate}...`);
+          updateProgressInfo(`Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
           setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.1));
           const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
           const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
@@ -646,19 +651,19 @@ const GenerateBookStep = () => {
           try {
             spreadContent = JSON.parse(contentResponse);
           } catch (e) {
-             console.warn(`Failed to parse content JSON for spread ${index + 1}, trying manual extraction:`, e);
+             console.warn(`Failed to parse content JSON for spread ${pageNumber}, trying manual extraction:`, e);
              const jsonMatch = contentResponse.match(/\{[\s\S]*\}/);
              if (jsonMatch) spreadContent = JSON.parse(jsonMatch[0]);
              else throw new Error('Could not parse spread content from AI response.');
           }
           spreadText = spreadContent.text || spreadText;
           spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
-          updateProgressInfo(`Text/prompt for page ${index + 1} generated.`);
+          updateProgressInfo(`Text/prompt for page ${pageNumber} generated.`);
 
           // --- Generate Image for Current Spread (OpenAI) ---
           try {
             // OpenAI Scene Generation
-            updateProgressInfo(`Generating image for page ${index + 1} with OpenAI...`);
+            updateProgressInfo(`Generating image for page ${pageNumber} with OpenAI...`);
             setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.4));
             if (!spreadVisualPrompt || spreadVisualPrompt.startsWith('Error:')) throw new Error("Visual prompt is missing or invalid.");
             if (!storyData.artStyleCode) throw new Error("Missing art style code.");
@@ -671,15 +676,35 @@ const GenerateBookStep = () => {
               return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
             });
 
-            // Generate scene image using OpenAI
+            // Determine which reference image to use
+            // For first page, no reference
+            // For second page, use first page
+            // For subsequent pages, use both first page (for character consistency) and previous page (for style)
+            const referenceImageToUse = index === 0 ? null :
+                                       (firstPageImageUrl && index > 1) ? firstPageImageUrl : previousPageImageUrl;
+
+            console.log(`Using reference image for page ${pageNumber}: ${referenceImageToUse ? 'Yes' : 'No'}`);
+
+            // Generate scene image using OpenAI with reference image and page number
             finalImageUrl = await openaiImageService.generateSceneImage(
               spreadVisualPrompt,
               characterDescriptions,
-              `Use a ${styleDescription} style.`
+              `Use a ${styleDescription} style.`,
+              referenceImageToUse,
+              pageNumber
             );
 
             if (!finalImageUrl) throw new Error("OpenAI image generation failed.");
-            updateProgressInfo(`Image for page ${index + 1} completed.`);
+            updateProgressInfo(`Image for page ${pageNumber} completed.`);
+
+            // Store the first page image as our primary reference for character consistency
+            if (index === 0 && finalImageUrl) {
+              firstPageImageUrl = finalImageUrl;
+              console.log('Stored first page image as primary reference');
+            }
+
+            // Update the previous page image reference for the next iteration
+            previousPageImageUrl = finalImageUrl;
 
           } catch (imageGenError) {
             console.error(`Error generating image for page ${index + 1}:`, imageGenError);
