@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
-import * as segmindService from '../../services/segmindService';
-import { getStyleNameFromCode, createTxt2ImgTask, getTaskProgress } from '../../services/dzineService'; // Use correct function name createTxt2ImgTask
-import { swapCharacterInImage, uploadBase64ToGetUrl } from '../../services/segmindService'; // Added uploadBase64ToGetUrl
+import * as openaiImageService from '../../services/openaiImageService';
+import { getStyleNameFromCode } from '../../services/dzineService';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 const createOutlinePrompt = (bookDetails, characters) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
   const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
-  
+
   // Calculate number of spreads based on book type
   let numSpreads = 8; // default
   if (bookDetails.storyType === 'board_book') {
@@ -26,28 +25,28 @@ const createOutlinePrompt = (bookDetails, characters) => {
   const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
   const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
   const mainChallengePlot = bookDetails.mainChallengePlot || bookDetails.storyStart || `A story about ${mainCharacter.name || 'the main character'}'s adventure finding something new`;
-  
+
   // Extract more plot elements (some might be named differently or missing)
   const mainHurdle = bookDetails.mainHurdle || bookDetails.hurdle || 'Character faces a challenge that requires creativity to overcome';
   const bigTry = bookDetails.bigTry || bookDetails.characterBigTry || 'Character makes several attempts to solve the problem';
   const turningPoint = bookDetails.turningPoint || bookDetails.keyTurningPoint || 'Character realizes they need a different approach';
   const happyEnding = bookDetails.happyEnding || bookDetails.resolution || bookDetails.ending || 'Character succeeds and learns a valuable lesson';
   const takeaway = bookDetails.takeaway || bookDetails.lesson || 'The importance of perseverance and friendship';
-  
+
   // Debug what we're actually using
   console.log("[createOutlinePrompt] Using story parameters:", {
     storyType,
-    targetAgeRange, 
+    targetAgeRange,
     coreTheme,
     mainChallengePlot,
-    mainHurdle, 
+    mainHurdle,
     bigTry,
     turningPoint,
     happyEnding,
     takeaway,
     numSpreads
   });
-  
+
   return `
 **Goal:** Generate a concise page-by-page OR spread-by-spread outline for a children's book based on the provided details.
 
@@ -56,7 +55,7 @@ const createOutlinePrompt = (bookDetails, characters) => {
 * **Target Illustration Age Range:** ${targetAgeRange}
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
 * **Supporting Characters (Optional):** ${supportingCharacters.map(c => `${c.name}: ${c.traits?.join(', ')}`).join('; ') || 'None'}
-* **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Defined by keywords'} 
+* **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Defined by keywords'}
 * **Core Theme:** ${coreTheme}
 * **Overall Length:** ${numSpreads} Spreads (${numSpreads * 2} pages)
 * **Story Spark:** ${mainChallengePlot}
@@ -87,12 +86,12 @@ Return a JSON array of strings, where each string describes one spread. Example:
 // Helper function to create the page content prompt
 const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex, spreadOutline) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
-  
+
   // Extract fields with defaults for consistent access
   const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
   const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
   const artStyleReference = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'N/A';
-  
+
   // Debug what we're actually using
   console.log(`[createSpreadContentPrompt] Spread ${spreadIndex + 1} parameters:`, {
     targetAgeRange,
@@ -102,7 +101,7 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
     mainCharacterTraits: mainCharacter.traits?.join(', ') || 'friendly and adventurous',
     spreadOutline
   });
-  
+
   return `
 **Goal:** Generate the page text AND an inferred image prompt for a specific page/spread of the children's book, using the outline and core details.
 
@@ -112,8 +111,8 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
 * **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
 * **Art Style Reference (Dzine Code):** ${artStyleReference}
 * **Core Theme:** ${coreTheme}
-* **Full Story Outline:** 
-${outline.map((item, i) => `${item}`).join('\n')}
+* **Full Story Outline:**
+${outline.map(item => `${item}`).join('\n')}
 
 **Current Target:** **Spread ${spreadIndex + 1} (Pages ${(spreadIndex + 1) * 2}-${(spreadIndex + 1) * 2 + 1})**
 
@@ -141,7 +140,8 @@ Return ONLY a JSON object with two properties:
 `;
 };
 
-// Helper: Convert URL to Base64 (Add this if stylePreview might be a URL)
+// Helper: Convert URL to Base64 (Kept for reference)
+// eslint-disable-next-line no-unused-vars
 async function urlToBase64(url) {
   try {
     const response = await fetch(url);
@@ -161,18 +161,19 @@ async function urlToBase64(url) {
   }
 }
 
-// --- Add new helper function for ensuring proper Base64 format --- 
+// --- Helper function for ensuring proper Base64 format (Kept for reference) ---
+// eslint-disable-next-line no-unused-vars
 const ensureImageBase64Format = (dataUrl) => {
   if (!dataUrl) return null;
-  
+
   console.log(`[Base64 Format] Checking format of data URL: ${dataUrl.substring(0, 40)}...`);
-  
+
   // If it's already in the right format, return as is
   if (dataUrl.startsWith('data:image/')) {
     console.log('[Base64 Format] URL already has a valid image MIME type');
     return dataUrl;
   }
-  
+
   // If it's a Base64 URL but with wrong MIME type, correct it
   if (dataUrl.startsWith('data:') && dataUrl.includes(';base64,')) {
     try {
@@ -186,19 +187,20 @@ const ensureImageBase64Format = (dataUrl) => {
       console.error('[Base64 Format] Error correcting data URL format:', error);
     }
   }
-  
+
   // For URLs, return null (will be handled by the URL-to-Base64 conversion elsewhere)
   if (dataUrl.startsWith('http')) {
     console.log('[Base64 Format] URL is an HTTP address, not a Base64 string');
     return null;
   }
-  
+
   // For completely unrecognized formats, log and return null
   console.error('[Base64 Format] Unrecognized data URL format');
   return null;
 };
 
-// Function to handle AI response validation
+// Function to handle AI response validation (Kept for reference)
+// eslint-disable-next-line no-unused-vars
 const validateOutlineResponse = (response) => {
   try {
     const parsedResponse = JSON.parse(response);
@@ -219,29 +221,30 @@ const validateOutlineResponse = (response) => {
  * @returns {Promise<Array>} - Array of page objects with text and illustration prompts
  */
 // NOTE: This function is no longer used directly by generateBook, but kept for reference or potential future use
+// eslint-disable-next-line no-unused-vars
 const generateStoryPages = async (storyData) => {
   console.log('[generateStoryPages] Generating story with data:', storyData);
-  
+
   // Get the main character and other data
   const characters = storyData.bookCharacters || [];
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
-  
+
   if (!mainCharacter) {
     throw new Error('Main character is required to generate a story');
   }
-  
+
   try {
     // Step 1: Generate story outline
     console.log('[generateStoryPages] Generating story outline...');
     const outlinePrompt = createOutlinePrompt(storyData, characters);
-    
+
     // Use OpenAI to generate the outline
     const outlineResponse = await openaiService.generateContent({
       prompt: outlinePrompt,
       temperature: 0.7,
       max_tokens: 1000
     });
-    
+
     // Extract and parse the outline
     let storyOutline;
     try {
@@ -276,25 +279,25 @@ const generateStoryPages = async (storyData) => {
           .map(line => line.replace(/^"/, '').replace(/",$/, '').trim());
       }
     }
-    
+
     if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
       console.error('Invalid outline format:', storyOutline);
       throw new Error('Failed to generate a valid story outline');
     }
-    
+
     console.log('[generateStoryPages] Generated outline:', storyOutline);
-    
+
     // Step 2: Generate detailed content for each spread
     console.log('[generateStoryPages] Generating content for each spread...');
     const pagesPromises = storyOutline.map(async (spreadOutline, index) => {
       const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, spreadOutline);
-      
+
       const contentResponse = await openaiService.generateContent({
         prompt: spreadPrompt,
         temperature: 0.7,
         max_tokens: 800
       });
-      
+
       // Parse the response to extract text and image prompt
       let spreadContent;
       try {
@@ -322,11 +325,11 @@ const generateStoryPages = async (storyData) => {
           };
         }
       }
-      
+
       // Add necessary fields for the page, using the single visualPrompt
       // Ensure spreadContent.imagePrompt corresponds to the visual prompt requested from OpenAI
       const visualPromptFromAI = spreadContent.imagePrompt || spreadContent.visualPrompt || `Error: Visual prompt missing from AI response for spread ${index + 1}`;
-      
+
       // Removed duplicate declaration of visualPromptFromAI
 
       // Return the final page object with ONLY the required fields
@@ -339,11 +342,11 @@ const generateStoryPages = async (storyData) => {
         // Ensure characterPrompt and scenePrompt are NOT included
       };
     });
-    
+
     // Wait for all pages to be generated
     const generatedPages = await Promise.all(pagesPromises);
     console.log('[generateStoryPages] All pages generated successfully:', generatedPages.length);
-    
+
     return generatedPages;
   } catch (error) {
     console.error('Error generating story pages:', error);
@@ -358,41 +361,41 @@ const generateStoryPages = async (storyData) => {
  */
 const generateCoverPrompt = async (storyData) => {
   console.log('[generateCoverPrompt] Generating cover prompt for:', storyData.title);
-  
+
   try {
     const characters = storyData.bookCharacters || [];
     const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
-    
+
     if (!mainCharacter) {
       throw new Error('Main character is required to generate a cover');
     }
-    
+
     const title = storyData.title || `A Story About ${mainCharacter.name}`;
     const category = storyData.category || 'adventure';
-    
+
     // Build a basic prompt for the cover
     const coverPrompt = `
     Generate a single visual prompt suitable for Dzine Text-to-Image for the cover of a children's book titled "${title}".
     The main character is ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}.
     The book is about ${category}.
-    
+
     The prompt should describe an appealing cover image, including:
     1. The overall scene, setting, mood, and composition.
     2. A description of a placeholder character (e.g., 'a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'} placeholder') in an engaging pose or action representing the book's theme.
     3. Include relevant style keywords (e.g., "${getStyleNameFromCode(storyData.artStyleCode)} style").
-    
+
     Return ONLY a JSON object with a single key "coverVisualPrompt":
     {
       "coverVisualPrompt": "Detailed visual prompt for the cover image..."
     }
     `;
-    
+
     const coverResponse = await openaiService.generateContent({
       prompt: coverPrompt,
       temperature: 0.7,
       max_tokens: 400
     });
-    
+
     // Parse the response
     let coverContent;
     try {
@@ -420,10 +423,10 @@ const generateCoverPrompt = async (storyData) => {
         };
       }
     }
-    
+
     // Ensure the response structure matches the requested "coverVisualPrompt"
     const visualPrompt = coverContent.coverVisualPrompt || `Placeholder cover scene featuring ${mainCharacter.name}. ${getStyleNameFromCode(storyData.artStyleCode)} style.`;
-    
+
     return {
       coverVisualPrompt: visualPrompt
     };
@@ -441,7 +444,7 @@ const GenerateBookStep = () => {
     resetWizard,
     setLatestGeneratedBookId,
   } = useBookStore();
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState('');
@@ -451,7 +454,7 @@ const GenerateBookStep = () => {
   const [generatedCoverUrl, setGeneratedCoverUrl] = useState(null); // State for cover image URL
   const [generatedPagesData, setGeneratedPagesData] = useState([]); // State for progressively generated pages
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     // Ensure we have an anonymous session before starting generation
     const initializeAndGenerate = async () => {
@@ -463,7 +466,7 @@ const GenerateBookStep = () => {
           setError(`Authentication error: ${error}`);
           return;
         }
-        
+
         // Start book generation
         generateBook();
       } catch (err) {
@@ -471,7 +474,7 @@ const GenerateBookStep = () => {
         setError(`Session initialization error: ${err.message}`);
       }
     };
-    
+
     initializeAndGenerate();
   }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -511,7 +514,7 @@ const GenerateBookStep = () => {
       setError("Character style preview is in an invalid format.");
       setIsGenerating(false); return;
     }
-    const dzinePreviewUrl = stylePreview; // Use validated URL/DataURL
+    // Character style preview is validated
 
     // --- Generation Start ---
     let storyOutline = []; // Define outline variable outside try block
@@ -525,7 +528,7 @@ const GenerateBookStep = () => {
       setGenerationProgress(outlineProgressAllocation / 2);
       const outlinePrompt = createOutlinePrompt(storyData, characters);
       const outlineResponse = await openaiService.generateContent({ prompt: outlinePrompt, temperature: 0.7, max_tokens: 1000 });
-      
+
       // let storyOutline; // Moved definition outside
       try {
         const parsedOutline = JSON.parse(outlineResponse);
@@ -550,46 +553,24 @@ const GenerateBookStep = () => {
         const { coverVisualPrompt } = await generateCoverPrompt(storyData);
         if (!coverVisualPrompt) throw new Error("Failed to generate cover visual prompt.");
 
-        // --- Dzine Cover Scene ---
-        updateProgressInfo('Generating cover scene (Dzine)...');
-        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.2); // Progress update
-        const dzineCoverTaskId = await createTxt2ImgTask(coverVisualPrompt, storyData.artStyleCode, { target_w: 800, target_h: 1000 });
-        if (!dzineCoverTaskId || !dzineCoverTaskId.task_id) throw new Error("Failed to initiate Dzine cover task.");
+        // --- OpenAI Cover Image Generation ---
+        updateProgressInfo('Generating cover image with OpenAI...');
+        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.5); // Progress update
 
-        let dzineCoverSceneUrl = null;
-        let pollingAttempts = 0;
-        const maxPollingAttempts = 30;
-        while (pollingAttempts < maxPollingAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 4000));
-          const dzineResult = await getTaskProgress(dzineCoverTaskId.task_id);
-          pollingAttempts++;
-          updateProgressInfo(`Polling Dzine cover... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
-          console.log('Checking cover status:', dzineResult.status, typeof dzineResult.status); // DEBUG
-          if (dzineResult.status === 'success') { // Check against normalized 'success'
-            dzineCoverSceneUrl = dzineResult.imageUrl;
-            if (!dzineCoverSceneUrl) throw new Error("Dzine cover task succeeded but URL missing.");
-            break;
-          } else if (dzineResult.status === 'failed') {
-            throw new Error(`Dzine cover task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
-          }
-        }
-        if (!dzineCoverSceneUrl) throw new Error("Dzine cover generation timed out.");
-        updateProgressInfo('Dzine cover scene generated.');
-        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.6); // Progress update
+        // Get style description based on art style code
+        const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
 
-        // --- Segmind Cover Swap ---
-        updateProgressInfo('Swapping character for cover (Segmind)...');
-        const selectCoverCharacterText = `the ${mainCharacter.gender || 'child'} character`;
-        
-        // Ensure reference image is a URL for Segmind
-        let coverReferenceUrl = dzinePreviewUrl;
-        if (dzinePreviewUrl.startsWith('data:image')) {
-          updateProgressInfo('Uploading cover reference image...');
-          coverReferenceUrl = await uploadBase64ToGetUrl(dzinePreviewUrl);
-        }
-        
-        coverImageUrl = await swapCharacterInImage(dzineCoverSceneUrl, coverReferenceUrl, selectCoverCharacterText);
-        updateProgressInfo('Cover image generated.');
+        // Generate cover image using OpenAI
+        coverImageUrl = await openaiImageService.generateCoverImage(
+          storyData.title,
+          `${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}`,
+          `Use a ${styleDescription} style. ${coverVisualPrompt}`
+        );
+
+        if (!coverImageUrl) throw new Error("OpenAI cover generation failed.");
+        updateProgressInfo('Cover image completed.');
+
+        // Store the generated cover URL
         setGeneratedCoverUrl(coverImageUrl); // Update state immediately
 
       } catch (coverError) {
@@ -602,11 +583,11 @@ const GenerateBookStep = () => {
       // ---------- STEP 3: Generate Pages Sequentially ----------
       const totalPagesToGenerate = storyOutline.length;
       const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
-      
+
       for (let index = 0; index < totalPagesToGenerate; index++) {
         const currentSpreadOutline = storyOutline[index];
         const currentPageProgressBase = pagesBaseProgress + (index * progressPerPage);
-        
+
         let spreadText = `Error generating text for page ${index + 1}`;
         let spreadVisualPrompt = `Error generating prompt for page ${index + 1}`;
         let finalImageUrl = 'ERROR_MISSING'; // Default for page image
@@ -617,7 +598,7 @@ const GenerateBookStep = () => {
           setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.1));
           const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
           const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
-          
+
           let spreadContent;
           try {
             spreadContent = JSON.parse(contentResponse);
@@ -628,56 +609,28 @@ const GenerateBookStep = () => {
              else throw new Error('Could not parse spread content from AI response.');
           }
           spreadText = spreadContent.text || spreadText;
-          spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt; 
+          spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
           updateProgressInfo(`Text/prompt for page ${index + 1} generated.`);
 
-          // --- Generate Image for Current Spread (Dzine + Segmind) ---
-          let dzineSceneImageUrl = null;
+          // --- Generate Image for Current Spread (OpenAI) ---
           try {
-            // Dzine Scene
-            updateProgressInfo(`Generating scene for page ${index + 1} (Dzine)...`);
+            // OpenAI Scene Generation
+            updateProgressInfo(`Generating image for page ${index + 1} with OpenAI...`);
             setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.4));
             if (!spreadVisualPrompt || spreadVisualPrompt.startsWith('Error:')) throw new Error("Visual prompt is missing or invalid.");
             if (!storyData.artStyleCode) throw new Error("Missing art style code.");
 
-            const dzineTaskId = await createTxt2ImgTask(spreadVisualPrompt, storyData.artStyleCode, { target_w: 1024, target_h: 768 });
-            if (!dzineTaskId || !dzineTaskId.task_id) throw new Error("Failed to initiate Dzine scene task.");
+            // Get style description based on art style code
+            const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
 
-            let dzineResult = null;
-            let pollingAttempts = 0;
-            const maxPollingAttempts = 30;
-            while (pollingAttempts < maxPollingAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 4000));
-              dzineResult = await getTaskProgress(dzineTaskId.task_id);
-              pollingAttempts++;
-              updateProgressInfo(`Polling Dzine page ${index + 1}... Status: ${dzineResult.status} (${pollingAttempts}/${maxPollingAttempts})`);
-              console.log(`Checking page ${index + 1} status:`, dzineResult.status, typeof dzineResult.status); // DEBUG
-              if (dzineResult.status === 'success') {
-                dzineSceneImageUrl = dzineResult.imageUrl;
-                if (!dzineSceneImageUrl) throw new Error("Dzine task succeeded but image URL missing.");
-                break;
-              } else if (dzineResult.status === 'failed') {
-                throw new Error(`Dzine scene task failed: ${dzineResult.error || 'Unknown Dzine error'}`);
-              }
-            }
-            if (!dzineSceneImageUrl) throw new Error("Dzine scene generation timed out.");
-            updateProgressInfo(`Dzine scene for page ${index + 1} generated.`);
+            // Generate scene image using OpenAI
+            finalImageUrl = await openaiImageService.generateSceneImage(
+              spreadVisualPrompt,
+              `${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}`,
+              `Use a ${styleDescription} style.`
+            );
 
-            // Segmind Swap
-            updateProgressInfo(`Swapping character for page ${index + 1} (Segmind)...`);
-            setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.8));
-            const selectCharacterText = `the ${mainCharacter.gender || 'child'} character`;
-            
-            // Ensure reference image is a URL for Segmind
-            let pageReferenceUrl = dzinePreviewUrl;
-            if (dzinePreviewUrl.startsWith('data:image')) {
-              // No need to re-upload if already done for cover, but check just in case cover failed
-              // A more robust solution might cache the uploaded URL
-              updateProgressInfo(`Uploading page ${index + 1} reference image...`);
-              pageReferenceUrl = await uploadBase64ToGetUrl(dzinePreviewUrl);
-            }
-            
-            finalImageUrl = await swapCharacterInImage(dzineSceneImageUrl, pageReferenceUrl, selectCharacterText);
+            if (!finalImageUrl) throw new Error("OpenAI image generation failed.");
             updateProgressInfo(`Image for page ${index + 1} completed.`);
 
           } catch (imageGenError) {
@@ -701,7 +654,7 @@ const GenerateBookStep = () => {
           spreadIndex: index
         };
         // Update state progressively
-        setGeneratedPagesData(prev => [...prev, newPageObject]); 
+        setGeneratedPagesData(prev => [...prev, newPageObject]);
         setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage)); // Mark page as fully done
 
       } // End loop through pages
@@ -747,7 +700,7 @@ const GenerateBookStep = () => {
       setGenerationProgress(100); // End progress on error
     } finally {
       setIsGenerating(false); // Set generating to false now that all steps are done or failed
-      console.log("Full book generation process finished."); 
+      console.log("Full book generation process finished.");
     }
   };
   // --- End of REFACTORED generateBook Function ---
@@ -755,19 +708,19 @@ const GenerateBookStep = () => {
   const handleBack = () => {
     console.log("[GenerateBookStep] Navigating back to summary (previous wizard step)...");
     // Navigate back to the previous step in the wizard
-    setWizardStep(wizardState.currentStep - 1); 
+    setWizardStep(wizardState.currentStep - 1);
     // It might be better to navigate to a specific summary step number if defined
-    // setWizardStep(5); // Assuming summary is step 5 
+    // setWizardStep(5); // Assuming summary is step 5
     navigate('/create'); // Go back to the main wizard page
   };
-  
+
   const handleViewBook = () => {
     if (generatedBook) {
       navigate(`/book/${generatedBook.id}`);
     }
   };
 
-  // --- JSX Structure --- 
+  // --- JSX Structure ---
   return (
     <div className="container mx-auto p-6 max-w-4xl bg-white rounded-lg shadow-xl">
       <h1 className="text-3xl font-bold text-center mb-6 text-purple-700">Generating Your Book</h1>
@@ -777,8 +730,8 @@ const GenerateBookStep = () => {
           <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
           <p className="text-lg font-medium text-gray-700">{progressInfo || 'Generation in progress...'}</p>
           <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div 
-              className="bg-blue-600 h-2.5 rounded-full transition-width duration-300 ease-in-out" 
+            <div
+              className="bg-blue-600 h-2.5 rounded-full transition-width duration-300 ease-in-out"
               style={{ width: `${generationProgress}%` }}>
             </div>
           </div>
@@ -799,9 +752,9 @@ const GenerateBookStep = () => {
         {generatedCoverUrl && (
           <div className="border p-4 rounded shadow bg-gray-50"> {/* Added subtle background */}
             <h2 className="text-xl font-semibold mb-3 text-center text-gray-700">Cover</h2> {/* Centered title */}
-            <img 
-              src={generatedCoverUrl === 'PLACEHOLDER_COVER_URL' ? '/placeholder-image.png' : generatedCoverUrl} 
-              alt="Generated Book Cover" 
+            <img
+              src={generatedCoverUrl === 'PLACEHOLDER_COVER_URL' ? '/placeholder-image.png' : generatedCoverUrl}
+              alt="Generated Book Cover"
               className="w-full max-w-xs mx-auto rounded shadow-md border" // Added border
               onError={(e) => { e.target.onerror = null; e.target.src='/placeholder-image.png'; }} // Fallback image
             />
@@ -817,9 +770,9 @@ const GenerateBookStep = () => {
               {generatedPagesData.map((page, index) => (
                 <div key={page.id} className="border p-3 rounded shadow-sm bg-white">
                   <h3 className="text-lg font-medium mb-2 text-gray-600">Page {index + 1}</h3>
-                  <img 
-                    src={page.imageUrl === 'ERROR_MISSING' || page.imageUrl === 'ERROR_IMAGE_GEN' ? '/placeholder-image.png' : page.imageUrl} 
-                    alt={`Illustration for page ${index + 1}`} 
+                  <img
+                    src={page.imageUrl === 'ERROR_MISSING' || page.imageUrl === 'ERROR_IMAGE_GEN' ? '/placeholder-image.png' : page.imageUrl}
+                    alt={`Illustration for page ${index + 1}`}
                     className="w-full h-48 object-cover rounded border mb-2" // Fixed height, object-cover
                     onError={(e) => { e.target.onerror = null; e.target.src='/placeholder-image.png'; }}
                   />
