@@ -140,11 +140,19 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
  * @param {string} sceneDescription - Description of the scene
  * @param {string|Array} characterDescriptions - Description of the character(s) to include
  * @param {string} styleDescription - Description of the art style
- * @param {string} referenceImageUrl - Optional URL of a previously generated image to use as style reference
+ * @param {string} styleReferenceImageUrl - Optional URL of a previously generated image to use as style reference
  * @param {number} pageNumber - The page number being generated
+ * @param {Object} characterReferenceInfo - Information about character references and appearances
  * @returns {Promise<string>} - Base64 encoded image data
  */
-export const generateSceneImage = async (sceneDescription, characterDescriptions, styleDescription, referenceImageUrl = null, pageNumber = 1) => {
+export const generateSceneImage = async (
+  sceneDescription,
+  characterDescriptions,
+  styleDescription,
+  styleReferenceImageUrl = null,
+  pageNumber = 1,
+  characterReferenceInfo = {}
+) => {
   // Handle multiple characters
   let characterPrompt;
   if (Array.isArray(characterDescriptions)) {
@@ -172,14 +180,46 @@ export const generateSceneImage = async (sceneDescription, characterDescriptions
     ${styleDescription || 'Use a child-friendly, colorful illustration style.'}
   `;
 
-  // Reference previous images if available
-  const referenceNote = referenceImageUrl ?
-    "Maintain exact visual consistency with the character designs, art style, and color palette from the previous illustrations." :
+  // Build character-specific reference guidance
+  let characterReferenceGuidance = '';
+
+  if (Object.keys(characterReferenceInfo).length > 0) {
+    // Get characters with reference images
+    const charactersWithReferences = Object.entries(characterReferenceInfo)
+      .filter(([_, info]) => info.referenceImageUrl && !info.isFirstAppearance)
+      .map(([characterId, info]) => characterId);
+
+    // Get characters appearing for the first time
+    const newCharacters = Object.entries(characterReferenceInfo)
+      .filter(([_, info]) => info.isFirstAppearance)
+      .map(([characterId, info]) => characterId);
+
+    if (charactersWithReferences.length > 0) {
+      characterReferenceGuidance += `
+        For the following characters, maintain exact visual consistency with their previous appearances:
+        ${charactersWithReferences.map(id => `- ${characterReferenceInfo[id].name}`).join('\n')}
+      `;
+    }
+
+    if (newCharacters.length > 0) {
+      characterReferenceGuidance += `
+        The following characters are appearing for the first time in this scene:
+        ${newCharacters.map(id => `- ${characterReferenceInfo[id].name}`).join('\n')}
+      `;
+    }
+  }
+
+  // Reference previous images if available for style consistency
+  const styleReferenceNote = styleReferenceImageUrl ?
+    "Maintain exact visual consistency with the art style, lighting, and color palette from the previous illustrations." :
     "";
 
-  const prompt = `Create a scene showing ${characterPrompt} in ${sceneDescription}. ${enhancedStyleGuidance} ${referenceNote}`;
+  const prompt = `Create a scene showing ${characterPrompt} in ${sceneDescription}.
+    ${enhancedStyleGuidance}
+    ${characterReferenceGuidance}
+    ${styleReferenceNote}`;
 
-  console.log(`Generating image for page ${pageNumber} with enhanced style guidance`);
+  console.log(`Generating image for page ${pageNumber} with enhanced style and character guidance`);
 
   return generateImage(prompt, {
     size: "1536x1024", // Landscape format for scenes

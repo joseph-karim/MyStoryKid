@@ -627,9 +627,24 @@ const GenerateBookStep = () => {
       const totalPagesToGenerate = storyOutline.length;
       const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
 
-      // Track reference images for consistency
-      let previousPageImageUrl = generatedCoverUrl; // Start with cover as reference
+      // Character tracking system for reference images
+      const characterReferenceImages = {}; // Store first appearance of each character
+      let previousPageImageUrl = generatedCoverUrl; // Start with cover as reference for style
+      // eslint-disable-next-line no-unused-vars
       let firstPageImageUrl = null; // Store the first page image as primary reference
+
+      // Initialize character tracking with all book characters
+      storyData.bookCharacters.forEach(character => {
+        characterReferenceImages[character.id] = {
+          name: character.name,
+          firstAppearance: null, // Will be set when character first appears
+          referenceImageUrl: character.stylePreview || null, // Use character preview if available
+          appearedInPages: [] // Track which pages this character appears in
+        };
+      });
+
+      console.log('Initialized character reference tracking:',
+        Object.keys(characterReferenceImages).map(id => characterReferenceImages[id].name));
 
       for (let index = 0; index < totalPagesToGenerate; index++) {
         const currentSpreadOutline = storyOutline[index];
@@ -660,6 +675,26 @@ const GenerateBookStep = () => {
           spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
           updateProgressInfo(`Text/prompt for page ${pageNumber} generated.`);
 
+          // --- Analyze which characters appear in this page ---
+          // This is a simple approach - in a more advanced implementation, we could use NLP to detect character mentions
+          const charactersInThisPage = [];
+
+          // Check which characters are mentioned in the text or prompt
+          storyData.bookCharacters.forEach(character => {
+            const characterName = character.name;
+            if (
+              spreadText.includes(characterName) ||
+              spreadVisualPrompt.includes(characterName)
+            ) {
+              charactersInThisPage.push(character.id);
+              // Record that this character appears on this page
+              characterReferenceImages[character.id].appearedInPages.push(pageNumber);
+            }
+          });
+
+          console.log(`Characters detected in page ${pageNumber}:`,
+            charactersInThisPage.map(id => characterReferenceImages[id].name));
+
           // --- Generate Image for Current Spread (OpenAI) ---
           try {
             // OpenAI Scene Generation
@@ -676,32 +711,80 @@ const GenerateBookStep = () => {
               return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
             });
 
-            // Determine which reference image to use
+            // Build character reference information
+            const characterReferenceInfo = {};
+
+            // For each character in this page
+            charactersInThisPage.forEach(characterId => {
+              const charInfo = characterReferenceImages[characterId];
+
+              // If this is the character's first appearance in the story
+              if (charInfo.appearedInPages.length === 1 && charInfo.appearedInPages[0] === pageNumber) {
+                console.log(`First appearance of character ${charInfo.name} on page ${pageNumber}`);
+                // No reference image yet for this character
+                characterReferenceInfo[characterId] = {
+                  isFirstAppearance: true,
+                  referenceImageUrl: charInfo.referenceImageUrl // Use character preview if available
+                };
+              } else {
+                // Character has appeared before, use their first appearance as reference
+                if (!charInfo.firstAppearance && charInfo.appearedInPages.length > 0) {
+                  // Set the first appearance if not already set
+                  charInfo.firstAppearance = charInfo.appearedInPages[0];
+                }
+
+                characterReferenceInfo[characterId] = {
+                  isFirstAppearance: false,
+                  referenceImageUrl: charInfo.referenceImageUrl,
+                  firstAppearancePage: charInfo.firstAppearance
+                };
+              }
+            });
+
+            // Determine which reference image to use for style consistency
             // For first page, no reference
-            // For second page, use first page
-            // For subsequent pages, use both first page (for character consistency) and previous page (for style)
-            const referenceImageToUse = index === 0 ? null :
-                                       (firstPageImageUrl && index > 1) ? firstPageImageUrl : previousPageImageUrl;
+            // For subsequent pages, use previous page for style consistency
+            const styleReferenceImage = index === 0 ? null : previousPageImageUrl;
 
-            console.log(`Using reference image for page ${pageNumber}: ${referenceImageToUse ? 'Yes' : 'No'}`);
+            // Log reference image usage
+            console.log(`Using style reference image for page ${pageNumber}: ${styleReferenceImage ? 'Yes' : 'No'}`);
+            console.log(`Character reference info for page ${pageNumber}:`,
+              Object.keys(characterReferenceInfo).map(id => ({
+                name: characterReferenceImages[id].name,
+                isFirstAppearance: characterReferenceInfo[id].isFirstAppearance,
+                hasReference: !!characterReferenceInfo[id].referenceImageUrl
+              })));
 
-            // Generate scene image using OpenAI with reference image and page number
+            // Generate scene image using OpenAI with reference images and character info
             finalImageUrl = await openaiImageService.generateSceneImage(
               spreadVisualPrompt,
               characterDescriptions,
               `Use a ${styleDescription} style.`,
-              referenceImageToUse,
-              pageNumber
+              styleReferenceImage, // Style reference (previous page)
+              pageNumber,
+              characterReferenceInfo // Character-specific reference information
             );
 
             if (!finalImageUrl) throw new Error("OpenAI image generation failed.");
             updateProgressInfo(`Image for page ${pageNumber} completed.`);
 
-            // Store the first page image as our primary reference for character consistency
+            // Store the first page image as our primary reference for style consistency
             if (index === 0 && finalImageUrl) {
               firstPageImageUrl = finalImageUrl;
-              console.log('Stored first page image as primary reference');
+              console.log('Stored first page image as primary style reference');
             }
+
+            // Update reference images for characters that appear in this page
+            charactersInThisPage.forEach(characterId => {
+              const charInfo = characterReferenceImages[characterId];
+
+              // If this is the character's first appearance, store this image as their reference
+              if (charInfo.appearedInPages.length === 1 && charInfo.appearedInPages[0] === pageNumber) {
+                charInfo.referenceImageUrl = finalImageUrl;
+                charInfo.firstAppearance = pageNumber;
+                console.log(`Set reference image for character ${charInfo.name} from page ${pageNumber}`);
+              }
+            });
 
             // Update the previous page image reference for the next iteration
             previousPageImageUrl = finalImageUrl;
