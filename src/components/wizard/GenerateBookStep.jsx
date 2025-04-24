@@ -12,6 +12,16 @@ const createOutlinePrompt = (bookDetails, characters) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
   const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
 
+  // Format character descriptions for the prompt
+  let characterDescriptions = `Main Character: ${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}. `;
+
+  if (supportingCharacters.length > 0) {
+    characterDescriptions += "Supporting Characters: ";
+    characterDescriptions += supportingCharacters.map(char =>
+      `${char.name}, a ${char.age || ''} year old ${char.gender || 'child'} (${char.customRole || 'friend'})`
+    ).join('; ');
+  }
+
   // Calculate number of spreads based on book type
   let numSpreads = 8; // default
   if (bookDetails.storyType === 'board_book') {
@@ -53,8 +63,7 @@ const createOutlinePrompt = (bookDetails, characters) => {
 **Core Book Details:**
 * **Target Reading Age Range:** ${targetAgeRange}
 * **Target Illustration Age Range:** ${targetAgeRange}
-* **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
-* **Supporting Characters (Optional):** ${supportingCharacters.map(c => `${c.name}: ${c.traits?.join(', ')}`).join('; ') || 'None'}
+* **Characters:** ${characterDescriptions}
 * **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Defined by keywords'}
 * **Core Theme:** ${coreTheme}
 * **Overall Length:** ${numSpreads} Spreads (${numSpreads * 2} pages)
@@ -71,13 +80,15 @@ const createOutlinePrompt = (bookDetails, characters) => {
     * The main action or event happening on that spread.
     * How it connects to the character(s) and the overall plot points.
 3.  Ensure the plot progresses logically according to the Story Details.
-4.  Keep descriptions concise and focused on the core content for each spread.
+4.  Include all relevant characters throughout the story, not just the main character.
+5.  Supporting characters should have meaningful roles in the story.
+6.  Keep descriptions concise and focused on the core content for each spread.
 
 **Output Format:**
 Return a JSON array of strings, where each string describes one spread. Example:
 [
-  "Spread 1 (Pages 2-3): Introduce [Character] in [Setting]. They discover [Story Spark].",
-  "Spread 2 (Pages 4-5): [Character] encounters [Main Hurdle] and realizes it's a problem.",
+  "Spread 1 (Pages 2-3): Introduce [Main Character] and [Supporting Character] in [Setting]. They discover [Story Spark].",
+  "Spread 2 (Pages 4-5): [Main Character] and [Supporting Character] encounter [Main Hurdle] and realize it's a problem.",
   ...and so on for each spread
 ]
 `;
@@ -86,6 +97,17 @@ Return a JSON array of strings, where each string describes one spread. Example:
 // Helper function to create the page content prompt
 const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex, spreadOutline) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
+  const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
+
+  // Format character descriptions for the prompt
+  let characterDescriptions = `Main Character: ${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}. `;
+
+  if (supportingCharacters.length > 0) {
+    characterDescriptions += "Supporting Characters: ";
+    characterDescriptions += supportingCharacters.map(char =>
+      `${char.name}, a ${char.age || ''} year old ${char.gender || 'child'} (${char.customRole || 'friend'})`
+    ).join('; ');
+  }
 
   // Extract fields with defaults for consistent access
   const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
@@ -108,8 +130,8 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
 **Core Book Details (Reminder):**
 * **Target Reading Age Range:** ${targetAgeRange}
 * **Target Illustration Age Range:** ${targetAgeRange}
-* **Main Character(s):** ${mainCharacter.name || 'Main Character'}, ${mainCharacter.traits?.join(', ') || 'friendly and adventurous'}
-* **Art Style Reference (Dzine Code):** ${artStyleReference}
+* **Characters:** ${characterDescriptions}
+* **Art Style Reference:** ${artStyleReference}
 * **Core Theme:** ${coreTheme}
 * **Full Story Outline:**
 ${outline.map(item => `${item}`).join('\n')}
@@ -123,10 +145,12 @@ ${outline.map(item => `${item}`).join('\n')}
     * Write the text that should appear on **Spread ${spreadIndex + 1} / Pages ${(spreadIndex + 1) * 2}-${(spreadIndex + 1) * 2 + 1}**.
     * The text must accurately reflect the action described in the **Outline Snippet for THIS Spread**.
     * Adhere strictly to the **Target Reading Age Range** regarding vocabulary, sentence length, and complexity.
+    * Include all relevant characters from the character list as appropriate for this spread.
     * Reflect the characters' personalities.
     * Ensure the amount of text is appropriate for the book type.
 2.  **Generate Inferred Image Prompt:**
-    * Create a descriptive prompt for an image generation AI (Segmind).
+    * Create a descriptive prompt for an image generation AI.
+    * Include all relevant characters from the character list that should appear in this spread.
     * Focus on Subject, Action, Setting, Composition, Mood.
     * **DO NOT include specific style keywords** (like 'watercolor') in this image prompt itself, as those will be added separately.
     * DO NOT include the page text.
@@ -373,16 +397,31 @@ const generateCoverPrompt = async (storyData) => {
     const title = storyData.title || `A Story About ${mainCharacter.name}`;
     const category = storyData.category || 'adventure';
 
+    // Format character descriptions for the prompt
+    let characterDescriptions = `Main Character: ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}. `;
+
+    const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
+    if (supportingCharacters.length > 0) {
+      characterDescriptions += "Supporting Characters: ";
+      characterDescriptions += supportingCharacters.map(char =>
+        `${char.name}, a ${char.age || ''} year old ${char.gender || 'child'} (${char.customRole || 'friend'})`
+      ).join('; ');
+    }
+
     // Build a basic prompt for the cover
     const coverPrompt = `
-    Generate a single visual prompt suitable for Dzine Text-to-Image for the cover of a children's book titled "${title}".
-    The main character is ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}.
+    Generate a single visual prompt suitable for image generation for the cover of a children's book titled "${title}".
+
+    Characters in the book:
+    ${characterDescriptions}
+
     The book is about ${category}.
 
     The prompt should describe an appealing cover image, including:
     1. The overall scene, setting, mood, and composition.
-    2. A description of a placeholder character (e.g., 'a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'} placeholder') in an engaging pose or action representing the book's theme.
-    3. Include relevant style keywords (e.g., "${getStyleNameFromCode(storyData.artStyleCode)} style").
+    2. Include all main and supporting characters in the cover image, with the main character being the focus.
+    3. Characters should be in an engaging pose or action representing the book's theme.
+    4. Include relevant style keywords (e.g., "${getStyleNameFromCode(storyData.artStyleCode)} style").
 
     Return ONLY a JSON object with a single key "coverVisualPrompt":
     {
@@ -411,15 +450,13 @@ const generateCoverPrompt = async (storyData) => {
           console.error('Failed to extract JSON for cover prompt:', e);
           // Create a basic object as fallback
           coverContent = {
-            characterPrompt: `${mainCharacter.name}, the main character of the story`,
-            scenePrompt: `Colorful and engaging cover for a children's book about ${category}`
+            coverVisualPrompt: `Colorful and engaging cover for a children's book titled "${title}" about ${category}, featuring ${mainCharacter.name} ${supportingCharacters.length > 0 ? 'and ' + supportingCharacters.map(c => c.name).join(', ') : ''}.`
           };
         }
       } else {
         // Create a basic object as fallback
         coverContent = {
-          characterPrompt: `${mainCharacter.name}, the main character of the story`,
-          scenePrompt: `Colorful and engaging cover for a children's book about ${category}`
+          coverVisualPrompt: `Colorful and engaging cover for a children's book titled "${title}" about ${category}, featuring ${mainCharacter.name} ${supportingCharacters.length > 0 ? 'and ' + supportingCharacters.map(c => c.name).join(', ') : ''}.`
         };
       }
     }
@@ -497,6 +534,7 @@ const GenerateBookStep = () => {
     const { storyData } = wizardState;
     const characters = storyData.bookCharacters || [];
     const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
+    const supportingCharacters = characters.filter(c => c.id !== mainCharacter?.id);
 
     // --- Validations (Keep these) ---
     if (!mainCharacter) {
@@ -560,10 +598,15 @@ const GenerateBookStep = () => {
         // Get style description based on art style code
         const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
 
+        // Prepare character descriptions for all characters
+        const characterDescriptions = storyData.bookCharacters.map(character => {
+          return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
+        });
+
         // Generate cover image using OpenAI
         coverImageUrl = await openaiImageService.generateCoverImage(
           storyData.title,
-          `${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}`,
+          characterDescriptions,
           `Use a ${styleDescription} style. ${coverVisualPrompt}`
         );
 
@@ -623,10 +666,15 @@ const GenerateBookStep = () => {
             // Get style description based on art style code
             const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
 
+            // Prepare character descriptions for all characters
+            const characterDescriptions = storyData.bookCharacters.map(character => {
+              return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
+            });
+
             // Generate scene image using OpenAI
             finalImageUrl = await openaiImageService.generateSceneImage(
               spreadVisualPrompt,
-              `${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}`,
+              characterDescriptions,
               `Use a ${styleDescription} style.`
             );
 
@@ -672,9 +720,9 @@ const GenerateBookStep = () => {
         characters: storyData.bookCharacters,
         pages: [
           { id: 'page-cover', type: 'cover', text: storyData.title, imageUrl: generatedCoverUrl || 'PLACEHOLDER_COVER_URL' },
-          { id: 'page-title', type: 'title', text: `${storyData.title}\n\nA story about ${mainCharacter.name}`, imageUrl: '' },
+          { id: 'page-title', type: 'title', text: `${storyData.title}\n\nA story about ${mainCharacter.name}${supportingCharacters.length > 0 ? ' and ' + supportingCharacters.map(c => c.name).join(', ') : ''}`, imageUrl: '' },
           ...generatedPagesData, // Use the progressively generated pages array from state
-          { id: 'page-back', type: 'back-cover', text: `The End\n\nCreated with love for ${mainCharacter.name}`, imageUrl: '' }
+          { id: 'page-back', type: 'back-cover', text: `The End\n\nCreated with love for ${mainCharacter.name}${supportingCharacters.length > 0 ? ' and ' + supportingCharacters.map(c => c.name).join(', ') : ''}`, imageUrl: '' }
         ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

@@ -16,7 +16,7 @@ export const generateImage = async (prompt, options = {}) => {
 
   try {
     console.log(`Generating image with OpenAI for prompt: "${prompt.substring(0, 100)}..."`);
-    
+
     const defaultOptions = {
       model: "gpt-image-1",
       n: 1,
@@ -44,7 +44,7 @@ export const generateImage = async (prompt, options = {}) => {
       // OpenAI returns base64 encoded image data directly for gpt-image-1
       const imageData = response.data.data[0].b64_json;
       console.log('Successfully generated image with OpenAI');
-      
+
       // Return as data URL
       return `data:image/png;base64,${imageData}`;
     } else {
@@ -52,7 +52,7 @@ export const generateImage = async (prompt, options = {}) => {
     }
   } catch (error) {
     console.error('Error generating image with OpenAI:', error);
-    
+
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -76,7 +76,7 @@ export const generateImage = async (prompt, options = {}) => {
  */
 export const generateCharacterImage = async (characterDescription, styleDescription) => {
   const prompt = `Create a portrait of ${characterDescription}. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
-  
+
   return generateImage(prompt, {
     size: "1024x1024",
     quality: "high"
@@ -86,13 +86,28 @@ export const generateCharacterImage = async (characterDescription, styleDescript
 /**
  * Generate a scene image using OpenAI
  * @param {string} sceneDescription - Description of the scene
- * @param {string} characterDescription - Description of the character to include
+ * @param {string|Array} characterDescriptions - Description of the character(s) to include
  * @param {string} styleDescription - Description of the art style
  * @returns {Promise<string>} - Base64 encoded image data
  */
-export const generateSceneImage = async (sceneDescription, characterDescription, styleDescription) => {
-  const prompt = `Create a scene showing ${characterDescription} in ${sceneDescription}. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
-  
+export const generateSceneImage = async (sceneDescription, characterDescriptions, styleDescription) => {
+  // Handle multiple characters
+  let characterPrompt;
+  if (Array.isArray(characterDescriptions)) {
+    if (characterDescriptions.length === 1) {
+      characterPrompt = characterDescriptions[0];
+    } else if (characterDescriptions.length === 2) {
+      characterPrompt = `${characterDescriptions[0]} and ${characterDescriptions[1]}`;
+    } else {
+      const lastChar = characterDescriptions.pop();
+      characterPrompt = `${characterDescriptions.join(', ')}, and ${lastChar}`;
+    }
+  } else {
+    characterPrompt = characterDescriptions;
+  }
+
+  const prompt = `Create a scene showing ${characterPrompt} in ${sceneDescription}. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+
   return generateImage(prompt, {
     size: "1536x1024", // Landscape format for scenes
     quality: "high"
@@ -102,13 +117,28 @@ export const generateSceneImage = async (sceneDescription, characterDescription,
 /**
  * Generate a book cover image using OpenAI
  * @param {string} title - The book title
- * @param {string} characterDescription - Description of the main character
+ * @param {string|Array} characterDescriptions - Description of the character(s) to include
  * @param {string} styleDescription - Description of the art style
  * @returns {Promise<string>} - Base64 encoded image data
  */
-export const generateCoverImage = async (title, characterDescription, styleDescription) => {
-  const prompt = `Create a children's book cover for "${title}" featuring ${characterDescription}. The cover should be vibrant, engaging, and appropriate for young children. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
-  
+export const generateCoverImage = async (title, characterDescriptions, styleDescription) => {
+  // Handle multiple characters
+  let characterPrompt;
+  if (Array.isArray(characterDescriptions)) {
+    if (characterDescriptions.length === 1) {
+      characterPrompt = characterDescriptions[0];
+    } else if (characterDescriptions.length === 2) {
+      characterPrompt = `${characterDescriptions[0]} and ${characterDescriptions[1]}`;
+    } else {
+      const lastChar = characterDescriptions.pop();
+      characterPrompt = `${characterDescriptions.join(', ')}, and ${lastChar}`;
+    }
+  } else {
+    characterPrompt = characterDescriptions;
+  }
+
+  const prompt = `Create a children's book cover for "${title}" featuring ${characterPrompt}. The cover should be vibrant, engaging, and appropriate for young children. ${styleDescription || 'Use a child-friendly, colorful illustration style.'}`;
+
   return generateImage(prompt, {
     size: "1024x1536", // Portrait format for book covers
     quality: "high"
