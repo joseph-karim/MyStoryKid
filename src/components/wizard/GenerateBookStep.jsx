@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
 import * as openaiService from '../../services/openaiService';
 import * as openaiImageService from '../../services/openaiImageService';
-import { getStyleNameFromCode } from '../../services/dzineService';
+import { getStyleNameFromCode } from '../../utils/styleUtils';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -57,11 +57,55 @@ const createOutlinePrompt = (bookDetails, characters) => {
     numSpreads
   });
 
+  // Determine text complexity guidance based on age range and book type
+  let textComplexityGuidance = '';
+
+  // Parse age range (e.g., "3-5" -> lowest age is 3)
+  const ageParts = targetAgeRange.split('-');
+  const lowestAge = parseInt(ageParts[0]) || 4;
+
+  if (bookDetails.storyType === 'board_book') {
+    textComplexityGuidance = 'This is a BOARD BOOK for very young children (0-3). Use extremely simple concepts, minimal text, and focus on basic elements that toddlers can understand.';
+  } else if (lowestAge <= 3) {
+    textComplexityGuidance = 'This is for VERY YOUNG CHILDREN (0-3). Keep the story extremely simple with basic concepts and minimal complexity.';
+  } else if (lowestAge <= 5) {
+    textComplexityGuidance = 'This is for PRESCHOOL/KINDERGARTEN CHILDREN (3-5). Keep the story simple with clear cause-and-effect and familiar situations.';
+  } else if (lowestAge <= 8) {
+    textComplexityGuidance = 'This is for EARLY ELEMENTARY CHILDREN (6-8). The story can have more complexity but should still be straightforward.';
+  } else {
+    textComplexityGuidance = 'This is for OLDER ELEMENTARY CHILDREN (9+). The story can have more nuanced themes and character development.';
+  }
+
+  // Determine if we have custom inputs for any story elements
+  const hasCustomStoryStart = bookDetails.storyStart === 'custom' && bookDetails.customStoryStart;
+  const hasCustomMainHurdle = bookDetails.mainHurdle === 'custom' && bookDetails.customMainHurdle;
+  const hasCustomBigTry = bookDetails.bigTry === 'custom' && bookDetails.customBigTry;
+  const hasCustomTurningPoint = bookDetails.turningPoint === 'custom' && bookDetails.customTurningPoint;
+  const hasCustomResolution = bookDetails.resolution === 'custom' && bookDetails.customResolution;
+  const hasCustomTakeaway = bookDetails.takeaway === 'custom' && bookDetails.customTakeaway;
+
+  // Create special instructions for custom inputs
+  let customInputInstructions = '';
+  if (hasCustomStoryStart || hasCustomMainHurdle || hasCustomBigTry ||
+      hasCustomTurningPoint || hasCustomResolution || hasCustomTakeaway) {
+    customInputInstructions = `
+**IMPORTANT - CUSTOM STORY ELEMENTS:**
+The user has provided custom descriptions for some story elements. These MUST be incorporated exactly as specified:
+${hasCustomStoryStart ? `* Story Start: "${bookDetails.customStoryStart}"` : ''}
+${hasCustomMainHurdle ? `* Main Hurdle: "${bookDetails.customMainHurdle}"` : ''}
+${hasCustomBigTry ? `* Character's Big Try: "${bookDetails.customBigTry}"` : ''}
+${hasCustomTurningPoint ? `* Key Turning Point: "${bookDetails.customTurningPoint}"` : ''}
+${hasCustomResolution ? `* Happy Ending: "${bookDetails.customResolution}"` : ''}
+${hasCustomTakeaway ? `* Takeaway: "${bookDetails.customTakeaway}"` : ''}
+`;
+  }
+
   return `
 **Goal:** Generate a concise page-by-page OR spread-by-spread outline for a children's book based on the provided details.
 
 **Core Book Details:**
 * **Target Reading Age Range:** ${targetAgeRange}
+* **Book Type:** ${bookDetails.storyType || 'standard'}
 * **Target Illustration Age Range:** ${targetAgeRange}
 * **Characters:** ${characterDescriptions}
 * **Art Style:** ${bookDetails.artStyleCode?.replace(/_/g, ' ') || 'Defined by keywords'}
@@ -73,7 +117,8 @@ const createOutlinePrompt = (bookDetails, characters) => {
 * **Key Turning Point:** ${turningPoint}
 * **Happy Ending:** ${happyEnding}
 * **Takeaway:** ${takeaway}
-
+* **Complexity Guidance:** ${textComplexityGuidance}
+${customInputInstructions}
 **Instructions for AI:**
 1.  Based on all the core book details, create a brief outline distributing the story events across the specified **Overall Length** (${numSpreads} spreads). Define a "spread" as two facing pages (e.g., Spread 1 = Pages 2-3).
 2.  For each spread, write 1-2 sentences describing:
@@ -83,6 +128,8 @@ const createOutlinePrompt = (bookDetails, characters) => {
 4.  Include all relevant characters throughout the story, not just the main character.
 5.  Supporting characters should have meaningful roles in the story.
 6.  Keep descriptions concise and focused on the core content for each spread.
+7.  CRITICAL: Adhere strictly to the age-appropriate complexity level specified above.
+8.  If custom story elements were provided, they MUST be incorporated exactly as specified.
 
 **Output Format:**
 Return a JSON array of strings, where each string describes one spread. Example:
@@ -124,12 +171,31 @@ const createSpreadContentPrompt = (bookDetails, characters, outline, spreadIndex
     spreadOutline
   });
 
+  // Determine text complexity guidance based on age range and book type
+  let textComplexityGuidance = '';
+
+  // Parse age range (e.g., "3-5" -> lowest age is 3)
+  const ageParts = targetAgeRange.split('-');
+  const lowestAge = parseInt(ageParts[0]) || 4;
+
+  if (bookDetails.storyType === 'board_book') {
+    textComplexityGuidance = 'Use EXTREMELY simple language with 1-2 very short sentences per page. Focus on basic concepts, repetition, and single-syllable words when possible. Vocabulary should be limited to words a 0-3 year old would understand.';
+  } else if (lowestAge <= 3) {
+    textComplexityGuidance = 'Use very simple language with 1-2 short sentences per page. Vocabulary should be basic and familiar to very young children (ages 0-3).';
+  } else if (lowestAge <= 5) {
+    textComplexityGuidance = 'Use simple language with 2-3 short sentences per page. Vocabulary should be appropriate for preschool/kindergarten children (ages 3-5).';
+  } else if (lowestAge <= 8) {
+    textComplexityGuidance = 'Use moderately complex language with 3-5 sentences per page. Vocabulary can include some challenging words but mostly familiar to early elementary children (ages 6-8).';
+  } else {
+    textComplexityGuidance = 'Use more complex language with 5+ sentences per page. Vocabulary can be more advanced but still appropriate for older elementary children (ages 9+).';
+  }
+
   return `
 **Goal:** Generate the page text AND an inferred image prompt for a specific page/spread of the children's book, using the outline and core details.
 
 **Core Book Details (Reminder):**
 * **Target Reading Age Range:** ${targetAgeRange}
-* **Target Illustration Age Range:** ${targetAgeRange}
+* **Book Type:** ${bookDetails.storyType || 'standard'}
 * **Characters:** ${characterDescriptions}
 * **Art Style Reference:** ${artStyleReference}
 * **Core Theme:** ${coreTheme}
@@ -144,10 +210,11 @@ ${outline.map(item => `${item}`).join('\n')}
 1.  **Generate Page Text:**
     * Write the text that should appear on **Spread ${spreadIndex + 1} / Pages ${(spreadIndex + 1) * 2}-${(spreadIndex + 1) * 2 + 1}**.
     * The text must accurately reflect the action described in the **Outline Snippet for THIS Spread**.
-    * Adhere strictly to the **Target Reading Age Range** regarding vocabulary, sentence length, and complexity.
+    * CRITICAL: ${textComplexityGuidance}
     * Include all relevant characters from the character list as appropriate for this spread.
     * Reflect the characters' personalities.
-    * Ensure the amount of text is appropriate for the book type.
+    * Ensure the amount of text is appropriate for the book type and age range.
+    * If the book type is 'board_book', use EXTREMELY simple text (1-2 very short sentences) regardless of age range.
 2.  **Generate Inferred Image Prompt:**
     * Create a descriptive prompt for an image generation AI.
     * Include all relevant characters from the character list that should appear in this spread.
@@ -408,7 +475,36 @@ const generateCoverPrompt = async (storyData) => {
       ).join('; ');
     }
 
-    // Build a basic prompt for the cover
+    // Determine text complexity guidance based on age range and book type
+    let ageGuidance = '';
+
+    // Parse age range (e.g., "3-5" -> lowest age is 3)
+    const ageRange = storyData.ageRange || '4-8';
+    const ageParts = ageRange.split('-');
+    const lowestAge = parseInt(ageParts[0]) || 4;
+
+    if (storyData.storyType === 'board_book') {
+      ageGuidance = 'This is a BOARD BOOK for very young children (0-3). The cover should be extremely simple, bold, and appealing to toddlers.';
+    } else if (lowestAge <= 3) {
+      ageGuidance = 'This is for VERY YOUNG CHILDREN (0-3). The cover should be simple, colorful, and immediately engaging.';
+    } else if (lowestAge <= 5) {
+      ageGuidance = 'This is for PRESCHOOL/KINDERGARTEN CHILDREN (3-5). The cover should be colorful and engaging with clear character focus.';
+    } else if (lowestAge <= 8) {
+      ageGuidance = 'This is for EARLY ELEMENTARY CHILDREN (6-8). The cover can have more detail but should remain bright and appealing.';
+    } else {
+      ageGuidance = 'This is for OLDER ELEMENTARY CHILDREN (9+). The cover can have more sophisticated composition and detail.';
+    }
+
+    // Check for custom story elements that should be featured on the cover
+    let customElements = '';
+    if (storyData.storyStart === 'custom' && storyData.customStoryStart) {
+      customElements += `\nThe story starts with: "${storyData.customStoryStart}"`;
+    }
+    if (storyData.mainScene === 'custom_scene' && storyData.customSceneDescription) {
+      customElements += `\nThe main setting is: "${storyData.customSceneDescription}"`;
+    }
+
+    // Build a comprehensive prompt for the cover
     const coverPrompt = `
     Generate a single visual prompt suitable for image generation for the cover of a children's book titled "${title}".
 
@@ -416,12 +512,16 @@ const generateCoverPrompt = async (storyData) => {
     ${characterDescriptions}
 
     The book is about ${category}.
+    ${ageGuidance}
+    ${customElements}
 
     The prompt should describe an appealing cover image, including:
     1. The overall scene, setting, mood, and composition.
     2. Include all main and supporting characters in the cover image, with the main character being the focus.
     3. Characters should be in an engaging pose or action representing the book's theme.
     4. Include relevant style keywords (e.g., "${getStyleNameFromCode(storyData.artStyleCode)} style").
+    5. The cover should be appropriate for the specified age range (${ageRange}).
+    6. If custom story elements were provided above, incorporate them into the cover design.
 
     Return ONLY a JSON object with a single key "coverVisualPrompt":
     {
@@ -603,11 +703,19 @@ const GenerateBookStep = () => {
           return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
         });
 
-        // Generate cover image using OpenAI
+        // Collect character reference images for cover generation
+        const characterReferenceImageUrls = storyData.bookCharacters
+          .filter(character => character.stylePreview)
+          .map(character => character.stylePreview);
+
+        console.log(`Using ${characterReferenceImageUrls.length} character reference images for cover generation`);
+
+        // Generate cover image using OpenAI with reference images
         coverImageUrl = await openaiImageService.generateCoverImage(
           storyData.title,
           characterDescriptions,
-          `Use a ${styleDescription} style. ${coverVisualPrompt}`
+          `Use a ${styleDescription} style. ${coverVisualPrompt}`,
+          characterReferenceImageUrls // Pass reference images
         );
 
         if (!coverImageUrl) throw new Error("OpenAI cover generation failed.");
@@ -639,7 +747,11 @@ const GenerateBookStep = () => {
           name: character.name,
           firstAppearance: null, // Will be set when character first appears
           referenceImageUrl: character.stylePreview || null, // Use character preview if available
-          appearedInPages: [] // Track which pages this character appears in
+          appearedInPages: [], // Track which pages this character appears in
+          appearanceDetails: {}, // Store appearance details for each page
+          outfitDescription: '', // Will be populated after first appearance
+          hairstyleDescription: '', // Will be populated after first appearance
+          colorScheme: '' // Will be populated after first appearance
         };
       });
 
@@ -723,8 +835,12 @@ const GenerateBookStep = () => {
                 console.log(`First appearance of character ${charInfo.name} on page ${pageNumber}`);
                 // No reference image yet for this character
                 characterReferenceInfo[characterId] = {
+                  name: charInfo.name,
                   isFirstAppearance: true,
-                  referenceImageUrl: charInfo.referenceImageUrl // Use character preview if available
+                  referenceImageUrl: charInfo.referenceImageUrl, // Use character preview if available
+                  outfitDescription: charInfo.outfitDescription || '',
+                  hairstyleDescription: charInfo.hairstyleDescription || '',
+                  colorScheme: charInfo.colorScheme || ''
                 };
               } else {
                 // Character has appeared before, use their first appearance as reference
@@ -734,9 +850,13 @@ const GenerateBookStep = () => {
                 }
 
                 characterReferenceInfo[characterId] = {
+                  name: charInfo.name,
                   isFirstAppearance: false,
                   referenceImageUrl: charInfo.referenceImageUrl,
-                  firstAppearancePage: charInfo.firstAppearance
+                  firstAppearancePage: charInfo.firstAppearance,
+                  outfitDescription: charInfo.outfitDescription || '',
+                  hairstyleDescription: charInfo.hairstyleDescription || '',
+                  colorScheme: charInfo.colorScheme || ''
                 };
               }
             });
@@ -752,7 +872,10 @@ const GenerateBookStep = () => {
               Object.keys(characterReferenceInfo).map(id => ({
                 name: characterReferenceImages[id].name,
                 isFirstAppearance: characterReferenceInfo[id].isFirstAppearance,
-                hasReference: !!characterReferenceInfo[id].referenceImageUrl
+                hasReference: !!characterReferenceInfo[id].referenceImageUrl,
+                outfitDescription: characterReferenceInfo[id].outfitDescription || 'Not yet defined',
+                hairstyleDescription: characterReferenceInfo[id].hairstyleDescription || 'Not yet defined',
+                colorScheme: characterReferenceInfo[id].colorScheme || 'Not yet defined'
               })));
 
             // Generate scene image using OpenAI with reference images and character info
@@ -782,7 +905,27 @@ const GenerateBookStep = () => {
               if (charInfo.appearedInPages.length === 1 && charInfo.appearedInPages[0] === pageNumber) {
                 charInfo.referenceImageUrl = finalImageUrl;
                 charInfo.firstAppearance = pageNumber;
-                console.log(`Set reference image for character ${charInfo.name} from page ${pageNumber}`);
+
+                // Generate appearance descriptions for the character based on the prompt
+                // These will be used for consistency in future appearances
+                charInfo.outfitDescription = `${charInfo.name} wears the same outfit as shown in their first appearance on page ${pageNumber}`;
+                charInfo.hairstyleDescription = `${charInfo.name} has the same hairstyle as shown in their first appearance on page ${pageNumber}`;
+                charInfo.colorScheme = `${charInfo.name} has the same color scheme as shown in their first appearance on page ${pageNumber}`;
+
+                // Store appearance details for this page
+                charInfo.appearanceDetails[pageNumber] = {
+                  imageUrl: finalImageUrl,
+                  outfitDescription: charInfo.outfitDescription,
+                  hairstyleDescription: charInfo.hairstyleDescription,
+                  colorScheme: charInfo.colorScheme
+                };
+
+                console.log(`Set reference image and appearance details for character ${charInfo.name} from page ${pageNumber}`);
+              } else {
+                // For subsequent appearances, store the image but don't change the reference
+                charInfo.appearanceDetails[pageNumber] = {
+                  imageUrl: finalImageUrl
+                };
               }
             });
 
