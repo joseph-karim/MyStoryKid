@@ -5,7 +5,56 @@
 
 // Style code mapping with our consolidated art styles
 export const styleCodeMap = {
-  // Original styles (for backward compatibility)
+  // WATERCOLOR & TRADITIONAL PAINTING STYLES
+  'watercolor_storybook': 'watercolor_storybook',
+  'watercolor_splash': 'watercolor_splash',
+  'gouache_painting': 'gouache_painting',
+  'oil_pastel': 'oil_pastel',
+
+  // INK & DRAWING STYLES
+  'ink_wash': 'ink_wash',
+  'pencil_sketch': 'pencil_sketch',
+  'colored_pencil': 'colored_pencil',
+  'chalk_drawing': 'chalk_drawing',
+
+  // CARTOON & VECTOR STYLES
+  'cartoon_character': 'cartoon_character',
+  'flat_vector': 'flat_vector',
+  'pixel_art': 'pixel_art',
+
+  // 3D & TEXTURED STYLES
+  'clay_animation': 'clay_animation',
+  'plush_toy': 'plush_toy',
+  'felt_craft': 'felt_craft',
+  'paper_cutout': 'paper_cutout',
+  'paper_diorama': 'paper_diorama',
+
+  // FANTASY & MAGICAL STYLES
+  'fantasy_storybook': 'fantasy_storybook',
+  'dreamy_glow': 'dreamy_glow',
+  'magical_light': 'magical_light',
+  'stained_glass': 'stained_glass',
+
+  // CULTURAL & HISTORICAL STYLES
+  'folk_art': 'folk_art',
+  'vintage_midcentury': 'vintage_midcentury',
+  'retro_70s': 'retro_70s',
+  'asian_brushwork': 'asian_brushwork',
+  'nordic_cozy': 'nordic_cozy',
+
+  // LIGHTING & MOOD STYLES
+  'golden_hour': 'golden_hour',
+  'night_glow': 'night_glow',
+  'vibrant_scene': 'vibrant_scene',
+
+  // DIGITAL & MODERN STYLES
+  'digital_airbrush': 'digital_airbrush',
+  'mixed_media': 'mixed_media',
+
+  // DEFAULT STYLE
+  'default': 'default',
+
+  // Legacy mappings for backward compatibility
   'Storytime Whimsy': 'watercolor_storybook',
   'Fantasy Hero': 'fantasy_storybook',
   'Soft Radiance': 'dreamy_glow',
@@ -29,39 +78,7 @@ export const styleCodeMap = {
   'Line & Wash': 'ink_wash',
   'Paper Cutout': 'paper_cutout',
   'Starlit Fantasy': 'fantasy_storybook',
-  'Cheerful Storybook': 'watercolor_storybook',
-
-  // Consolidated art styles
-  'watercolor_storybook': 'watercolor_storybook',
-  'watercolor_splash': 'watercolor_splash',
-  'gouache_painting': 'gouache_painting',
-  'oil_pastel': 'oil_pastel',
-  'ink_wash': 'ink_wash',
-  'pencil_sketch': 'pencil_sketch',
-  'colored_pencil': 'colored_pencil',
-  'chalk_drawing': 'chalk_drawing',
-  'cartoon_character': 'cartoon_character',
-  'flat_vector': 'flat_vector',
-  'pixel_art': 'pixel_art',
-  'clay_animation': 'clay_animation',
-  'plush_toy': 'plush_toy',
-  'felt_craft': 'felt_craft',
-  'paper_cutout': 'paper_cutout',
-  'paper_diorama': 'paper_diorama',
-  'fantasy_storybook': 'fantasy_storybook',
-  'dreamy_glow': 'dreamy_glow',
-  'magical_light': 'magical_light',
-  'stained_glass': 'stained_glass',
-  'folk_art': 'folk_art',
-  'vintage_midcentury': 'vintage_midcentury',
-  'retro_70s': 'retro_70s',
-  'asian_brushwork': 'asian_brushwork',
-  'nordic_cozy': 'nordic_cozy',
-  'golden_hour': 'golden_hour',
-  'night_glow': 'night_glow',
-  'vibrant_scene': 'vibrant_scene',
-  'digital_airbrush': 'digital_airbrush',
-  'mixed_media': 'mixed_media'
+  'Cheerful Storybook': 'watercolor_storybook'
 };
 
 /**

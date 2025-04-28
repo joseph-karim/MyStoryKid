@@ -6,287 +6,247 @@ import { motion } from 'framer-motion';
 // Export the style code map for use in other components
 export { STYLE_CODE_MAP };
 
-// Style categories for UI organization
-const CATEGORIES = [
-  { id: 'whimsical', label: 'Whimsical & Fun', icon: '✨' },
-  { id: 'illustrated', label: 'Illustrated & Artistic', icon: '🎨' },
-  { id: 'stylized', label: 'Stylized & Modern', icon: '🌟' },
-  { id: 'portraits', label: 'Portraits & Characters', icon: '👤' },
-  { id: 'special', label: 'Special Styles', icon: '🔮' },
-];
-
-// Map styles to their categories
-const STYLE_CATEGORIES = {
-  'whimsical': [
-    'Storytime Whimsy', 'Fantasy Hero', 'Soft Radiance', 'Paper Cutout',
-    'Joyful Clay', 'Playful Enamel', 'Ceramic Lifelike', 'Colourful Felt'
-  ],
-  'illustrated': [
-    'Sketch Elegance', 'Skyborn Realm', 'Aquarelle Life', 'Vivid Tableaux',
-    'Everything Kawaii', 'Dreamy 3D', 'Cutie 3D', 'Shimmering Glow'
-  ],
-  'stylized': [
-    'Surreal Iridescence', 'Golden Hour', 'Inked Realism', 'Magic Portrait',
-    'Warm Portrait', 'Retro Noir Chromatics', 'Vintage Engraving', 'Ancient China'
-  ],
-  'portraits': [
-    'Graffiti Splash', 'Pleasantly Warm', '80bit Arcade', 'Impressionist',
-    'Zen Spirit', 'Vibrant Whimsy', 'Whimsical Brushwork', 'Bedtime Story'
-  ],
-  'special': [
-    'Line & Wash', 'Nouveau Classic', 'Innocent CUtie', 'Glossy Elegance',
-    'Memphis Illustration', 'Minimalist Cutesy', 'Watercolor Whimsy', 'Sketchbook Sticker',
-    'Vibrant Impasto', 'Dreamy Spectrum', 'Enhanced Elegance', 'Cheerful Storybook',
-    'Starlit Fantasy', 'Delicate Aquarelle'
-  ]
-};
+// Art style categories are defined in ART_STYLE_CATEGORIES_STRUCTURE
 
 // Updated Art Style Categories with verified API style codes
 export const ART_STYLE_CATEGORIES_STRUCTURE = [
   {
-    category: 'Whimsical & Fun',
-    description: 'Playful and whimsical styles with colorful, fun designs perfect for young readers.',
+    category: 'Watercolor & Traditional',
+    description: 'Soft, artistic styles with traditional painting techniques.',
     styleIds: [
       {
-        id: 'storytime_whimsy',
-        apiCode: STYLE_CODE_MAP['Storytime Whimsy'],
-        title: 'Storytime Whimsy',
-        description: 'Whimsical, storybook-style illustrations with a classic feel'
+        id: 'watercolor_storybook',
+        apiCode: 'watercolor_storybook',
+        title: 'Watercolor Storybook',
+        description: 'Soft watercolor children\'s book illustration with gentle pastel colors'
       },
       {
-        id: 'fantasy_hero',
-        apiCode: STYLE_CODE_MAP['Fantasy Hero'],
-        title: 'Fantasy Hero',
-        description: 'Bold, heroic character illustrations with a fantasy adventure feel'
+        id: 'watercolor_splash',
+        apiCode: 'watercolor_splash',
+        title: 'Watercolor Splash',
+        description: 'Minimalist line art with loose watercolor splashes for color'
       },
       {
-        id: 'soft_radiance',
-        apiCode: STYLE_CODE_MAP['Soft Radiance'],
-        title: 'Soft Radiance',
-        description: 'Gentle, glowing artwork with soft lighting and delicate details'
+        id: 'gouache_painting',
+        apiCode: 'gouache_painting',
+        title: 'Gouache Painting',
+        description: 'Gouache-style with matte colors and thick brush strokes'
+      },
+      {
+        id: 'oil_pastel',
+        apiCode: 'oil_pastel',
+        title: 'Oil Pastel',
+        description: 'Rich, creamy textures and bold, joyful colors'
+      }
+    ]
+  },
+  {
+    category: 'Ink & Drawing',
+    description: 'Hand-drawn styles with line work and traditional drawing techniques.',
+    styleIds: [
+      {
+        id: 'ink_wash',
+        apiCode: 'ink_wash',
+        title: 'Ink Wash',
+        description: 'Fine ink line and watercolor wash with clean, classic lines'
+      },
+      {
+        id: 'pencil_sketch',
+        apiCode: 'pencil_sketch',
+        title: 'Pencil Sketch',
+        description: 'Lightly colored pencil sketch with soft pastels and delicate textures'
+      },
+      {
+        id: 'colored_pencil',
+        apiCode: 'colored_pencil',
+        title: 'Colored Pencil',
+        description: 'Colored pencil textures with bright marker accents'
+      },
+      {
+        id: 'chalk_drawing',
+        apiCode: 'chalk_drawing',
+        title: 'Chalk Drawing',
+        description: 'Colorful chalk drawing with bright lines on a dark background'
+      }
+    ]
+  },
+  {
+    category: 'Cartoon & Vector',
+    description: 'Bold, graphic styles with clean lines and vibrant colors.',
+    styleIds: [
+      {
+        id: 'cartoon_character',
+        apiCode: 'cartoon_character',
+        title: 'Cartoon Character',
+        description: 'Bold outlines, colorful details, and expressive features'
+      },
+      {
+        id: 'flat_vector',
+        apiCode: 'flat_vector',
+        title: 'Flat Vector',
+        description: 'Clean lines, soft shading, and bright minimalistic colors'
+      },
+      {
+        id: 'pixel_art',
+        apiCode: 'pixel_art',
+        title: 'Pixel Art',
+        description: 'Soft pixel art with rounded pixels and gentle gradients'
+      }
+    ]
+  },
+  {
+    category: '3D & Textured',
+    description: 'Styles with dimensional qualities and tactile textures.',
+    styleIds: [
+      {
+        id: 'clay_animation',
+        apiCode: 'clay_animation',
+        title: 'Clay Animation',
+        description: '3D claymation-style with soft clay textures and rounded features'
+      },
+      {
+        id: 'plush_toy',
+        apiCode: 'plush_toy',
+        title: 'Plush Toy',
+        description: 'Soft textures, simplified features, and a cuddly look'
+      },
+      {
+        id: 'felt_craft',
+        apiCode: 'felt_craft',
+        title: 'Felt Craft',
+        description: 'Textured illustration mimicking felt crafts with visible texture'
       },
       {
         id: 'paper_cutout',
-        apiCode: STYLE_CODE_MAP['Paper Cutout'],
+        apiCode: 'paper_cutout',
         title: 'Paper Cutout',
-        description: 'Illustrations that look like layered paper cutouts with clean edges'
+        description: 'Cut-paper collage style with bright textured paper layers'
       },
       {
-        id: 'joyful_clay',
-        apiCode: STYLE_CODE_MAP['Joyful Clay'],
-        title: 'Joyful Clay',
-        description: 'Cheerful characters that look like they are made of colorful clay'
-      },
-      {
-        id: 'playful_enamel',
-        apiCode: STYLE_CODE_MAP['Playful Enamel'],
-        title: 'Playful Enamel',
-        description: 'Bright, glossy illustrations with an enamel-like finish'
-      },
-      {
-        id: 'everything_kawaii',
-        apiCode: STYLE_CODE_MAP['Everything Kawaii'],
-        title: 'Everything Kawaii',
-        description: 'Ultra-cute Japanese-inspired style with adorable characters'
+        id: 'paper_diorama',
+        apiCode: 'paper_diorama',
+        title: 'Paper Diorama',
+        description: '3D paper diorama theater scene with layered paper depth'
       }
     ]
   },
   {
-    category: 'Illustrated & Artistic',
-    description: 'Beautiful, artistic styles with rich textures and detail for a classic storybook feel.',
+    category: 'Fantasy & Magical',
+    description: 'Enchanting styles with magical elements and dreamy qualities.',
     styleIds: [
       {
-        id: 'ceramic_lifelike',
-        apiCode: STYLE_CODE_MAP['Ceramic Lifelike'],
-        title: 'Ceramic Lifelike',
-        description: 'Illustrations that have a 3D ceramic quality with smooth textures'
+        id: 'fantasy_storybook',
+        apiCode: 'fantasy_storybook',
+        title: 'Fantasy Storybook',
+        description: 'Richly detailed fantasy with magical elements and lush textures'
       },
       {
-        id: 'colorful_felt',
-        apiCode: STYLE_CODE_MAP['Colorful Felt'],
-        title: 'Colorful Felt',
-        description: 'Textured illustrations that mimic the look of felt crafts'
+        id: 'dreamy_glow',
+        apiCode: 'dreamy_glow',
+        title: 'Dreamy Glow',
+        description: 'Pastel dreamscape with light colors and glowing soft highlights'
       },
       {
-        id: 'sketch_elegance',
-        apiCode: STYLE_CODE_MAP['Sketch Elegance'],
-        title: 'Sketch Elegance',
-        description: 'Beautiful detailed pencil sketches with subtle shading'
+        id: 'magical_light',
+        apiCode: 'magical_light',
+        title: 'Magical Light',
+        description: 'Magical luminous quality with soft glowing highlights'
       },
       {
-        id: 'skyborne_realm',
-        apiCode: STYLE_CODE_MAP['Skyborn Realm'],
-        title: 'Skyborne Realm',
-        description: 'Majestic, airy illustrations with a sense of height and wonder'
-      },
-      {
-        id: 'aquarelle_life',
-        apiCode: STYLE_CODE_MAP['Aquarelle Life'],
-        title: 'Aquarelle Life',
-        description: 'Vibrant watercolor style with flowing colors and rich textures'
-      },
-      {
-        id: 'vivid_tableaux',
-        apiCode: STYLE_CODE_MAP['Vivid Tableaux'],
-        title: 'Vivid Tableaux',
-        description: 'Rich, textured scenes with vibrant colors and detailed compositions'
-      },
-      {
-        id: 'line_and_wash',
-        apiCode: STYLE_CODE_MAP['Line & Wash'],
-        title: 'Line & Wash',
-        description: 'Delicate line drawings with light watercolor washes'
+        id: 'stained_glass',
+        apiCode: 'stained_glass',
+        title: 'Stained Glass',
+        description: 'Stained-glass inspired with bright vibrant color panels'
       }
     ]
   },
   {
-    category: 'Stylized & Modern',
-    description: 'Contemporary designs with bold colors and unique creative approaches.',
+    category: 'Cultural & Historical',
+    description: 'Styles inspired by cultural traditions and historical art movements.',
     styleIds: [
       {
-        id: 'dreamy_3d',
-        apiCode: STYLE_CODE_MAP['Dreamy 3D'],
-        title: 'Dreamy 3D',
-        description: 'Soft 3D rendered illustrations with a dreamy quality'
+        id: 'folk_art',
+        apiCode: 'folk_art',
+        title: 'Folk Art',
+        description: 'Folk-art inspired with bold shapes and traditional motifs'
       },
       {
-        id: 'cutie_3d',
-        apiCode: STYLE_CODE_MAP['Cutie 3D'],
-        title: 'Cutie 3D',
-        description: 'Adorable 3D characters with expressive features'
+        id: 'vintage_midcentury',
+        apiCode: 'vintage_midcentury',
+        title: 'Vintage Midcentury',
+        description: 'Mid-century European style with muted palette and geometric shapes'
       },
       {
-        id: 'shimmering_glow',
-        apiCode: STYLE_CODE_MAP['Shimmering Glow'],
-        title: 'Shimmering Glow',
-        description: 'Illustrations with a magical luminous quality'
+        id: 'retro_70s',
+        apiCode: 'retro_70s',
+        title: 'Retro 70s',
+        description: '1970s retro-style with warm oranges, browns, and golds'
       },
       {
-        id: 'surreal_iridescence',
-        apiCode: STYLE_CODE_MAP['Surreal Iridescence'],
-        title: 'Surreal Iridescence',
-        description: 'Dreamlike scenes with shimmering, rainbow-like colors'
+        id: 'asian_brushwork',
+        apiCode: 'asian_brushwork',
+        title: 'Asian Brushwork',
+        description: 'East Asian brush painting style with ink textures and light accents'
       },
+      {
+        id: 'nordic_cozy',
+        apiCode: 'nordic_cozy',
+        title: 'Nordic Cozy',
+        description: 'Nordic storybook with cool tones and a cozy winter setting'
+      }
+    ]
+  },
+  {
+    category: 'Lighting & Mood',
+    description: 'Styles defined by distinctive lighting effects and atmospheric moods.',
+    styleIds: [
       {
         id: 'golden_hour',
-        apiCode: STYLE_CODE_MAP['Golden Hour'],
+        apiCode: 'golden_hour',
         title: 'Golden Hour',
-        description: 'Warm, sunset-toned illustrations with a nostalgic feel'
+        description: 'Warm, golden-lit scene with rich amber tones and soft shadows'
       },
       {
-        id: 'vibrant_impasto',
-        apiCode: STYLE_CODE_MAP['Vibrant Impasto'],
-        title: 'Vibrant Impasto',
-        description: 'Bold paintings with thick, textured brush strokes'
+        id: 'night_glow',
+        apiCode: 'night_glow',
+        title: 'Night Glow',
+        description: 'Glow-in-the-dark style with dark background and soft illumination'
       },
       {
-        id: 'sketchbook_sticker',
-        apiCode: STYLE_CODE_MAP['Sketchbook Sticker'],
-        title: 'Sketchbook Sticker',
-        description: 'Fun, casual illustrations that look like stickers in a sketchbook'
+        id: 'vibrant_scene',
+        apiCode: 'vibrant_scene',
+        title: 'Vibrant Scene',
+        description: 'Rich, vibrant colors with detailed scenes and dramatic lighting'
       }
     ]
   },
   {
-    category: 'Portraits & Characters',
-    description: 'Styles that focus on character details and expressions, ideal for preserving likeness.',
+    category: 'Digital & Modern',
+    description: 'Contemporary digital art styles with modern techniques.',
     styleIds: [
       {
-        id: 'inked_realism',
-        apiCode: STYLE_CODE_MAP['Inked Realism'],
-        title: 'Inked Realism',
-        description: 'Detailed portraits with an ink-drawn quality'
+        id: 'digital_airbrush',
+        apiCode: 'digital_airbrush',
+        title: 'Digital Airbrush',
+        description: 'Smooth airbrushed digital painting with bright colors and soft gradients'
       },
       {
-        id: 'magic_portrait',
-        apiCode: STYLE_CODE_MAP['Magic Portrait'],
-        title: 'Magic Portrait',
-        description: 'Semi-stylized portraits with a magical, fantasy quality'
+        id: 'mixed_media',
+        apiCode: 'mixed_media',
+        title: 'Mixed Media',
+        description: 'Blending watercolor painting and cut-paper collage for layered textures'
       },
       {
-        id: 'warm_portrait',
-        apiCode: STYLE_CODE_MAP['Warm Portrait'],
-        title: 'Warm Portrait',
-        description: 'Realistic portraits with warm lighting and preserved facial features'
-      },
-      {
-        id: 'retro_noir_chromatics',
-        apiCode: STYLE_CODE_MAP['Retro Noir Chromatics'],
-        title: 'Retro Noir Chromatics',
-        description: 'Stylish noir-inspired portraits with bold colors'
-      },
-      {
-        id: 'starlit_fantasy',
-        apiCode: STYLE_CODE_MAP['Starlit Fantasy'],
-        title: 'Starlit Fantasy',
-        description: 'Characters with a dreamy, ethereal quality surrounded by stars'
-      },
-      {
-        id: 'cheerful_storybook',
-        apiCode: STYLE_CODE_MAP['Cheerful Storybook'],
-        title: 'Cheerful Storybook',
-        description: 'Bright, cheerful character illustrations in a classic storybook style'
-      }
-    ]
-  },
-  {
-    category: 'Special Styles',
-    description: 'Unique art styles with distinctive visual techniques for specialized stories.',
-    styleIds: [
-      {
-        id: 'vintage_engraving',
-        apiCode: STYLE_CODE_MAP['Vintage Engraving'],
-        title: 'Vintage Engraving',
-        description: 'Old-fashioned engraved look with fine lines and details'
-      },
-      {
-        id: 'ancient_china',
-        apiCode: STYLE_CODE_MAP['Ancient China'],
-        title: 'Ancient China',
-        description: 'Traditional Chinese painting style with elegant brushwork'
-      },
-      {
-        id: 'graffiti_splash',
-        apiCode: STYLE_CODE_MAP['Graffiti Splash'],
-        title: 'Graffiti Splash',
-        description: 'Urban street art style with bold colors and spray paint effects'
-      },
-      {
-        id: 'pleasantly_warm',
-        apiCode: STYLE_CODE_MAP['Pleasantly Warm'],
-        title: 'Pleasantly Warm',
-        description: 'Cozy, warm-toned illustrations with a comfortable feeling'
-      },
-      {
-        id: '8bit_arcade',
-        apiCode: STYLE_CODE_MAP['8-Bit Arcade'],
-        title: '8-Bit Arcade',
-        description: 'Retro pixel art style reminiscent of classic video games'
-      },
-      {
-        id: 'impressionist',
-        apiCode: STYLE_CODE_MAP['Impressionist'],
-        title: 'Impressionist',
-        description: 'Artistic style with visible brushstrokes and light effects'
-      },
-      {
-        id: 'zen_spirit',
-        apiCode: STYLE_CODE_MAP['Zen Spirit'],
-        title: 'Zen Spirit',
-        description: 'Tranquil, mindful illustrations with Eastern artistic influences'
+        id: 'default',
+        apiCode: 'default',
+        title: 'Default Style',
+        description: 'Colorful, child-friendly style with clear outlines and appealing characters'
       }
     ]
   }
 ];
 
-// Update the component to display thumbnails
-const ArtStyleCard = ({ styleName, styleData }) => (
-  <div className="art-style-card">
-    <img src={styleData.thumbnail} alt={`${styleName} thumbnail`} className="art-style-thumbnail" />
-    <h3>{styleName}</h3>
-    <p>{styleData.description}</p>
-  </div>
-);
+// Component to display art styles with thumbnails
 
 function ArtStyleStep() {
   const {
