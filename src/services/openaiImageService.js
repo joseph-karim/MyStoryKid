@@ -10,7 +10,15 @@ import axios from 'axios';
  * - The API returns either b64_json or url in the response
  */
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+// Get the OpenAI API key from environment variables
+let OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+
+// Ensure the API key is in the correct format
+if (OPENAI_API_KEY && OPENAI_API_KEY.startsWith('sk-proj-')) {
+  console.log('Using OpenAI API key with sk-proj- prefix');
+} else {
+  console.error('Invalid OpenAI API key format. Expected sk-proj- prefix.');
+}
 const OPENAI_GENERATIONS_URL = 'https://api.openai.com/v1/images/generations';
 const OPENAI_EDITS_URL = 'https://api.openai.com/v1/images/edits';
 
