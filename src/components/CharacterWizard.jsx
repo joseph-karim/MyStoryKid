@@ -2,14 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  // Keep these for backward compatibility and potential fallback
-  createImg2ImgTask,
-  createTxt2ImgTask,
-  getTaskProgress,
-  getStyleNameFromCode,
-  getTaskResult
-} from '../services/dzineService';
+import { getStyleNameFromCode } from '../utils/styleUtils';
 import * as openaiImageService from '../services/openaiImageService';
 
 // Initialize form state with defaults
@@ -1105,7 +1098,7 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
 
        // Generate the character image
        const generatedImage = await openaiImageService.generateCharacterImage(
-         characterData, // Pass the entire character data object
+         { ...characterData, artStyleCode: styleToUse }, // Pass the entire character data object with art style code
          `Use a ${styleDescription} style.`,
          photoReference
        );

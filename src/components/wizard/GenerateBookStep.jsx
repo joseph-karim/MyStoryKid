@@ -710,12 +710,13 @@ const GenerateBookStep = () => {
 
         console.log(`Using ${characterReferenceImageUrls.length} character reference images for cover generation`);
 
-        // Generate cover image using OpenAI with reference images
+        // Generate cover image using OpenAI with reference images and style code
         coverImageUrl = await openaiImageService.generateCoverImage(
           storyData.title,
           characterDescriptions,
           `Use a ${styleDescription} style. ${coverVisualPrompt}`,
-          characterReferenceImageUrls // Pass reference images
+          characterReferenceImageUrls, // Pass reference images
+          storyData.artStyleCode // Pass the art style code for style reference
         );
 
         if (!coverImageUrl) throw new Error("OpenAI cover generation failed.");
@@ -840,7 +841,8 @@ const GenerateBookStep = () => {
                   referenceImageUrl: charInfo.referenceImageUrl, // Use character preview if available
                   outfitDescription: charInfo.outfitDescription || '',
                   hairstyleDescription: charInfo.hairstyleDescription || '',
-                  colorScheme: charInfo.colorScheme || ''
+                  colorScheme: charInfo.colorScheme || '',
+                  storyData: storyData // Pass the story data for style reference
                 };
               } else {
                 // Character has appeared before, use their first appearance as reference
@@ -856,7 +858,8 @@ const GenerateBookStep = () => {
                   firstAppearancePage: charInfo.firstAppearance,
                   outfitDescription: charInfo.outfitDescription || '',
                   hairstyleDescription: charInfo.hairstyleDescription || '',
-                  colorScheme: charInfo.colorScheme || ''
+                  colorScheme: charInfo.colorScheme || '',
+                  storyData: storyData // Pass the story data for style reference
                 };
               }
             });

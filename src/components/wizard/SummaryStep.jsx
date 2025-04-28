@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { getFriendlySceneName, getStyleNameFromCode } from '../../services/dzineService';
+import { getFriendlySceneName, getStyleNameFromCode } from '../../utils/styleUtils';
 import { useNavigate } from 'react-router-dom';
 import { STYLE_CODE_MAP } from './ArtStyleStep';
 
@@ -11,30 +11,30 @@ function SummaryStep() {
   } = useBookStore();
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  
+
   // Get data from the correct location in the store
   const { storyData = {} } = wizardState || {};
   const bookDetails = storyData;
   const characters = storyData.bookCharacters || [];
-  
+
   // New function to safely get field values with fallbacks
   const getFieldValue = (fieldName, alternativeNames = [], defaultValue = 'N/A') => {
     // First check if the primary field exists
     if (bookDetails && bookDetails[fieldName] && bookDetails[fieldName] !== '') {
       return bookDetails[fieldName];
     }
-    
+
     // Then check alternative field names
     for (const altName of alternativeNames) {
       if (bookDetails && bookDetails[altName] && bookDetails[altName] !== '') {
         return bookDetails[altName];
       }
     }
-    
+
     // Return default if nothing found
     return defaultValue;
   };
-  
+
   useEffect(() => {
     // Debug log to see what data we actually have
     console.log("[SummaryStep] wizardState:", wizardState);
@@ -42,15 +42,15 @@ function SummaryStep() {
     console.log("[SummaryStep] extracted bookDetails:", bookDetails);
     console.log("[SummaryStep] characters:", characters);
   }, [wizardState, storyData]);
-  
+
   const handleBack = () => {
     // Go back to the previous step (Story Details)
     setWizardStep(4); // Story Details step number
   };
-  
+
   const handleGenerateClick = () => {
     console.log("[SummaryStep] Generate button clicked. Navigating to generate-book");
-    
+
     // Use direct linking with React Router's navigate
     try {
       // Attempt to navigate to the generate-book route
@@ -61,19 +61,19 @@ function SummaryStep() {
       setError("Failed to navigate to book generation. Please try again.");
     }
   };
-  
+
   // Helper function to get a friendly style name
   const getStyleDisplayName = (styleCode) => {
     return getStyleNameFromCode(styleCode);
   };
-  
+
   // Helper function to get a friendly scene name
   const getSceneDisplayName = (sceneId) => {
     if (!sceneId) return 'Not Selected';
     if (sceneId === 'custom_scene') return 'Custom Setting';
     return getFriendlySceneName(sceneId);
   };
-  
+
   // Get fields with fallbacks using our new helper function
   const storyType = getFieldValue('storyType', [], 'standard');
   const ageRange = getFieldValue('ageRange', ['targetAgeRange'], 'Not specified');
@@ -82,13 +82,13 @@ function SummaryStep() {
   const plotIdea = getFieldValue('mainChallengePlot', ['storyStart', 'plotIdea'], 'Not specified');
   const coreConcept = getFieldValue('coreConcept', ['concept'], 'Not specified');
   const keyItems = getFieldValue('keyObjectsActions', ['keyItems'], 'Not specified');
-  
+
   // Get style and scene names
   const artStyleCode = getFieldValue('artStyleCode', ['styleCode'], '');
   const mainScene = getFieldValue('mainScene', ['scene'], '');
   const selectedStyleName = getStyleDisplayName(artStyleCode);
   const selectedSceneName = getSceneDisplayName(mainScene);
-  
+
   // --- Default Summary UI ---
   return (
     <div className="space-y-6 pb-12">
@@ -96,13 +96,13 @@ function SummaryStep() {
         <h2 className="text-2xl font-bold">Story Summary</h2>
         <p className="text-gray-600">Review your story details before generating your book</p>
       </div>
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
-      
+
       <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
         {/* Story Details - Using our getFieldValue helper */}
         <div className="p-4 border-b border-gray-200">
@@ -117,7 +117,7 @@ function SummaryStep() {
             {storyType === 'board_book' && <p className="md:col-span-2"><span className="font-semibold">Key Items:</span> {keyItems}</p>}
           </div>
         </div>
-        
+
         {/* Main Scene/Setting */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Main Scene/Setting</h3>
@@ -128,7 +128,7 @@ function SummaryStep() {
             )}
           </div>
         </div>
-        
+
         {/* Art Style */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Art Style</h3>
@@ -139,7 +139,7 @@ function SummaryStep() {
             )}
           </div>
         </div>
-        
+
         {/* Characters */}
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-800">Characters</h3>
@@ -164,7 +164,7 @@ function SummaryStep() {
           </div>
         </div>
       </div>
-      
+
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
         <button
@@ -184,4 +184,4 @@ function SummaryStep() {
   );
 }
 
-export default SummaryStep; 
+export default SummaryStep;

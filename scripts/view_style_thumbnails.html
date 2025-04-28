@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art Style Thumbnails</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .category {
+            margin-bottom: 40px;
+        }
+        .category-title {
+            font-size: 1.5rem;
+            color: #444;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .thumbnails {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .thumbnail {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .thumbnail:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+        .thumbnail img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+        .thumbnail-info {
+            padding: 15px;
+        }
+        .thumbnail-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .thumbnail-id {
+            font-size: 0.8rem;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <h1>Art Style Thumbnails</h1>
+    
+    <div class="category">
+        <h2 class="category-title">Traditional/Classic Styles</h2>
+        <div class="thumbnails">
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/watercolor_storybook.png" alt="Watercolor Storybook">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Watercolor Storybook</div>
+                    <div class="thumbnail-id">watercolor_storybook</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/ink_watercolor_wash.png" alt="Ink and Watercolor Wash">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Ink and Watercolor Wash</div>
+                    <div class="thumbnail-id">ink_watercolor_wash</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/pencil_sketch_soft_color.png" alt="Pencil Sketch with Soft Color">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Pencil Sketch with Soft Color</div>
+                    <div class="thumbnail-id">pencil_sketch_soft_color</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/oil_pastel.png" alt="Oil Pastel Illustration">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Oil Pastel Illustration</div>
+                    <div class="thumbnail-id">oil_pastel</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/gouache_painting.png" alt="Gouache Painting Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Gouache Painting Style</div>
+                    <div class="thumbnail-id">gouache_painting</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="category">
+        <h2 class="category-title">Bold, Playful, and Cartoon Styles</h2>
+        <div class="thumbnails">
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/cartoon_semi_realistic.png" alt="Cartoon Character (Semi-Realistic)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Cartoon Character (Semi-Realistic)</div>
+                    <div class="thumbnail-id">cartoon_semi_realistic</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/flat_vector_soft_gradient.png" alt="Flat Vector Art (Soft Gradient)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Flat Vector Art (Soft Gradient)</div>
+                    <div class="thumbnail-id">flat_vector_soft_gradient</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/cut_paper_collage.png" alt="Cut-Paper Collage (Eric Carle Inspired)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Cut-Paper Collage (Eric Carle Inspired)</div>
+                    <div class="thumbnail-id">cut_paper_collage</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/crayon_watercolor.png" alt="Crayon Drawing with Watercolor Wash">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Crayon Drawing with Watercolor Wash</div>
+                    <div class="thumbnail-id">crayon_watercolor</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/claymation.png" alt="3D Claymation Illustration Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">3D Claymation Illustration Style</div>
+                    <div class="thumbnail-id">claymation</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="category">
+        <h2 class="category-title">Whimsical, Dreamy, and Fantasy Styles</h2>
+        <div class="thumbnails">
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/pastel_dreamscape.png" alt="Pastel Dreamscape">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Pastel Dreamscape</div>
+                    <div class="thumbnail-id">pastel_dreamscape</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/storybook_fantasy.png" alt="Storybook Fantasy Style (Detailed)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Storybook Fantasy Style (Detailed)</div>
+                    <div class="thumbnail-id">storybook_fantasy</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/soft_plush_toy.png" alt="Soft Plush Toy Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Soft Plush Toy Style</div>
+                    <div class="thumbnail-id">soft_plush_toy</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/glow_in_dark.png" alt="Glow-In-The-Dark Illustration Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Glow-In-The-Dark Illustration Style</div>
+                    <div class="thumbnail-id">glow_in_dark</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/stained_glass.png" alt="Stained Glass Storybook Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Stained Glass Storybook Style</div>
+                    <div class="thumbnail-id">stained_glass</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="category">
+        <h2 class="category-title">Cultural, Folk, and Retro-Inspired Styles</h2>
+        <div class="thumbnails">
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/folk_art.png" alt="Folk Art Style (Flat, Traditional Motifs)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Folk Art Style (Flat, Traditional Motifs)</div>
+                    <div class="thumbnail-id">folk_art</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/vintage_european.png" alt="Vintage European Storybook (1950s)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Vintage European Storybook (1950s)</div>
+                    <div class="thumbnail-id">vintage_european</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/retro_70s.png" alt="Retro 1970s Children's Book Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Retro 1970s Children's Book Style</div>
+                    <div class="thumbnail-id">retro_70s</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/modern_sumi_e.png" alt="Traditional Japanese Sumi-e with a Modern Twist">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Traditional Japanese Sumi-e with a Modern Twist</div>
+                    <div class="thumbnail-id">modern_sumi_e</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/nordic_storybook.png" alt="Nordic Storybook Style (Winter Cozy)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Nordic Storybook Style (Winter Cozy)</div>
+                    <div class="thumbnail-id">nordic_storybook</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="category">
+        <h2 class="category-title">Mixed Media, Creative, and Experimental Styles</h2>
+        <div class="thumbnails">
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/chalkboard.png" alt="Chalkboard Drawing Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Chalkboard Drawing Style</div>
+                    <div class="thumbnail-id">chalkboard</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/watercolor_collage.png" alt="Watercolor + Collage Hybrid">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Watercolor + Collage Hybrid</div>
+                    <div class="thumbnail-id">watercolor_collage</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/soft_pixel_art.png" alt="Soft Pixel Art Style (Retro Game Inspired)">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Soft Pixel Art Style (Retro Game Inspired)</div>
+                    <div class="thumbnail-id">soft_pixel_art</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/digital_airbrush.png" alt="Digital Airbrush Painting">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Digital Airbrush Painting</div>
+                    <div class="thumbnail-id">digital_airbrush</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/colored_pencil_marker.png" alt="Colored Pencil and Marker Combo Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Colored Pencil and Marker Combo Style</div>
+                    <div class="thumbnail-id">colored_pencil_marker</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/paper_theater.png" alt="Paper Theater Diorama Style">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Paper Theater Diorama Style</div>
+                    <div class="thumbnail-id">paper_theater</div>
+                </div>
+            </div>
+            <div class="thumbnail">
+                <img src="../public/assets/style-thumbnails/minimalist_watercolor.png" alt="Minimalist Line Art + Watercolor Splash">
+                <div class="thumbnail-info">
+                    <div class="thumbnail-name">Minimalist Line Art + Watercolor Splash</div>
+                    <div class="thumbnail-id">minimalist_watercolor</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Add error handling for images that fail to load
+        document.querySelectorAll('.thumbnail img').forEach(img => {
+            img.onerror = function() {
+                this.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22200%22%20height%3D%22200%22%2F%3E%3Ctext%20fill%3D%22%23666%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20dy%3D%22.35em%22%20text-anchor%3D%22middle%22%20x%3D%22100%22%20y%3D%22100%22%3EImage%20not%20found%3C%2Ftext%3E%3C%2Fsvg%3E';
+                this.parentNode.querySelector('.thumbnail-info').innerHTML += '<div style="color: #c00; font-size: 0.8rem; margin-top: 5px;">Image not generated yet</div>';
+            };
+        });
+    </script>
+</body>
+</html>

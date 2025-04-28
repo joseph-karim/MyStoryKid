@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
-import { fetchDzineStyles, STYLE_CODE_MAP } from '../../services/dzineService'; // Removed getKeywordsForDzineStyle
+import { styleCodeMap as STYLE_CODE_MAP } from '../../utils/styleUtils';
 import { motion } from 'framer-motion';
+
+// Export the style code map for use in other components
+export { STYLE_CODE_MAP };
 
 // Style categories for UI organization
 const CATEGORIES = [
@@ -296,20 +299,16 @@ function ArtStyleStep() {
   const [stylePreviewUrls, setStylePreviewUrls] = useState({});
 
   // Load preview URLs for each style
+  // No need to fetch styles from external API anymore
   useEffect(() => {
-    const loadStyles = async () => {
-      try {
-        const styles = await fetchDzineStyles();
-        const previews = {};
-        styles.forEach(style => {
-          previews[style.style_code] = style.cover_url;
-        });
-        setStylePreviewUrls(previews);
-      } catch (error) {
-        console.error('Error fetching styles:', error);
-      }
-    };
-    loadStyles();
+    // Just use our local style map
+    const previews = {};
+    // Set default preview URLs for styles
+    Object.entries(STYLE_CODE_MAP).forEach(([styleName, styleCode]) => {
+      // Use a placeholder URL for all styles
+      previews[styleCode] = `/style-previews/${styleCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}.jpg`;
+    });
+    setStylePreviewUrls(previews);
   }, []);
 
   const handleSelectStyle = (styleCode) => {

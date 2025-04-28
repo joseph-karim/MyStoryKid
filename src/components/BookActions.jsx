@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuthStore } from '../store';
-import { isAnonymousUser, handleBookAction } from '../services/anonymousAuthService';
+import { isAnonymousUser } from '../services/anonymousAuthService';
+import { generateBookPDF } from '../services/digitalDownloadService';
 import LoginPrompt from './LoginPrompt';
 
 /**
@@ -10,14 +10,21 @@ const BookActions = ({ book }) => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [actionType, setActionType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
+  // We use useAuthStore to check authentication status in other parts of the component
 
   // Handle download action
   const handleDownload = async () => {
-    await handleAction('download', () => {
-      // Implement actual download logic here
-      console.log('Downloading book:', book.id);
-      alert('Download started!'); // Replace with actual download implementation
+    await handleAction('download', async () => {
+      try {
+        console.log('Downloading book:', book.id);
+        // Generate PDF using the digitalDownloadService
+        const pdfUrl = await generateBookPDF(book);
+        // Open the PDF in a new tab
+        window.open(pdfUrl, '_blank');
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert(`Error generating PDF: ${error.message}`);
+      }
     });
   };
 
@@ -33,9 +40,14 @@ const BookActions = ({ book }) => {
   // Handle print action
   const handlePrint = async () => {
     await handleAction('print', () => {
-      // Implement actual print logic here
-      console.log('Printing book:', book.id);
-      alert('Print dialog opened!'); // Replace with actual print implementation
+      // Scroll to the BookPurchaseOptions component
+      const purchaseOptions = document.getElementById('book-purchase-options');
+      if (purchaseOptions) {
+        purchaseOptions.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        console.log('Printing book:', book.id);
+        alert('Please use the purchase options below to order a printed copy.');
+      }
     });
   };
 
@@ -45,14 +57,14 @@ const BookActions = ({ book }) => {
     try {
       // Check if user is anonymous
       const anonymous = await isAnonymousUser();
-      
+
       if (anonymous) {
         // Show login prompt for anonymous users
         setActionType(type);
         setShowLoginPrompt(true);
         return;
       }
-      
+
       // User is authenticated, proceed with action
       actionCallback();
     } catch (error) {
@@ -64,20 +76,31 @@ const BookActions = ({ book }) => {
   };
 
   // Handle successful login/action
-  const handleActionSuccess = () => {
+  const handleActionSuccess = async () => {
     // Determine which action to perform based on actionType
     if (actionType === 'download') {
       console.log('Proceeding with download after authentication');
-      // Implement actual download logic
-      alert('Download started!');
+      // Generate PDF using the digitalDownloadService
+      try {
+        const pdfUrl = await generateBookPDF(book);
+        window.open(pdfUrl, '_blank');
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert(`Error generating PDF: ${error.message}`);
+      }
     } else if (actionType === 'save') {
       console.log('Proceeding with save after authentication');
       // Implement actual save logic
       alert('Book saved!');
     } else if (actionType === 'print') {
       console.log('Proceeding with print after authentication');
-      // Implement actual print logic
-      alert('Print dialog opened!');
+      // Scroll to the BookPurchaseOptions component
+      const purchaseOptions = document.getElementById('book-purchase-options');
+      if (purchaseOptions) {
+        purchaseOptions.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        alert('Please use the purchase options below to order a printed copy.');
+      }
     }
   };
 
@@ -90,7 +113,7 @@ const BookActions = ({ book }) => {
       >
         {isLoading ? 'Processing...' : 'Download Book'}
       </button>
-      
+
       <button
         onClick={handleSave}
         disabled={isLoading}
@@ -98,7 +121,7 @@ const BookActions = ({ book }) => {
       >
         {isLoading ? 'Processing...' : 'Save Book'}
       </button>
-      
+
       <button
         onClick={handlePrint}
         disabled={isLoading}
@@ -106,7 +129,7 @@ const BookActions = ({ book }) => {
       >
         {isLoading ? 'Processing...' : 'Print Book'}
       </button>
-      
+
       {showLoginPrompt && (
         <LoginPrompt
           bookId={book.id}
