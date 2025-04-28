@@ -84,15 +84,16 @@ async function getStyleReferenceImage(styleCode) {
     // Try to find a matching style preview image
     // Check multiple possible locations and formats
     const possiblePaths = [
-      // New style thumbnails in SVG format
+      // New style thumbnails in PNG format (preferred)
+      `/assets/style-thumbnails-png/${styleCode}.png`,
+      `/public/assets/style-thumbnails-png/${styleCode}.png`,
+
+      // New style thumbnails in SVG format (fallback)
       `/assets/style-thumbnails/${styleCode}.svg`,
       `/public/assets/style-thumbnails/${styleCode}.svg`,
 
-      // New style thumbnails in PNG format
-      `/assets/style-thumbnails/${styleCode}.png`,
-      `/public/assets/style-thumbnails/${styleCode}.png`,
-
       // Legacy paths in dist/assets
+      `/dist/assets/style-thumbnails/${styleCode}.png`,
       `/dist/assets/${formattedStyleName}.png`,
       `/dist/assets/${styleCode}.png`,
 

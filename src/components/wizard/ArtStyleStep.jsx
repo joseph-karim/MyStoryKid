@@ -299,7 +299,7 @@ function ArtStyleStep() {
   const [stylePreviewUrls, setStylePreviewUrls] = useState({});
 
   // Load preview URLs for each style
-  // Use our SVG placeholder thumbnails
+  // Use PNG thumbnails with SVG fallbacks
   useEffect(() => {
     // Just use our local style map
     const previews = {};
@@ -308,8 +308,9 @@ function ArtStyleStep() {
     ART_STYLE_CATEGORIES_STRUCTURE.forEach(category => {
       category.styleIds.forEach(style => {
         if (style.apiCode) {
-          // Use our SVG placeholder thumbnails
-          previews[style.apiCode] = `/assets/style-thumbnails/${style.apiCode}.svg`;
+          // Try to use PNG thumbnails first, with SVG as fallback
+          // We'll check if the PNG exists in the onError handler of the img tag
+          previews[style.apiCode] = `/assets/style-thumbnails-png/${style.apiCode}.png`;
         }
       });
     });
