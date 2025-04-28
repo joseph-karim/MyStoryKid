@@ -3,28 +3,65 @@
  * Replaces functionality previously provided by dzineService
  */
 
-// Style code mapping (previously in dzineService)
+// Style code mapping with our consolidated art styles
 export const styleCodeMap = {
-  'children_book': 'Children\'s Book Illustration',
-  'watercolor': 'Watercolor Painting',
-  'cartoon': 'Cartoon Style',
-  'pixar': 'Pixar Animation',
-  'anime': 'Anime Style',
-  'disney': 'Disney Animation',
-  'claymation': 'Claymation',
-  'comic_book': 'Comic Book Style',
-  'storybook': 'Storybook Illustration',
-  'hand_drawn': 'Hand-drawn Animation',
-  'papercut': 'Papercut Art',
-  'origami': 'Origami Style',
-  'crayon': 'Crayon Drawing',
-  'collage': 'Paper Collage',
-  'felt': 'Felt Art',
-  'puppet': 'Puppet Style',
-  'stop_motion': 'Stop Motion',
-  'doodle': 'Doodle Art',
-  'pastel': 'Pastel Drawing',
-  'pencil_sketch': 'Pencil Sketch'
+  // Original styles (for backward compatibility)
+  'Storytime Whimsy': 'watercolor_storybook',
+  'Fantasy Hero': 'fantasy_storybook',
+  'Soft Radiance': 'dreamy_glow',
+  'Joyful Clay': 'clay_animation',
+  'Ceramic Lifelike': 'clay_animation',
+  'Colorful Felt': 'felt_craft',
+  'Sketch Elegance': 'pencil_sketch',
+  'Aquarelle Life': 'watercolor_storybook',
+  'Vivid Tableaux': 'vibrant_scene',
+  'Dreamy 3D': 'dreamy_glow',
+  'Cutie 3D': 'clay_animation',
+  'Shimmering Glow': 'magical_light',
+  'Surreal Iridescence': 'magical_light',
+  'Golden Hour': 'golden_hour',
+  'Inked Realism': 'ink_wash',
+  'Magic Portrait': 'magical_light',
+  'Warm Portrait': 'golden_hour',
+  'Vintage Engraving': 'vintage_midcentury',
+  'Ancient China': 'asian_brushwork',
+  'Graffiti Splash': 'digital_airbrush',
+  'Line & Wash': 'ink_wash',
+  'Paper Cutout': 'paper_cutout',
+  'Starlit Fantasy': 'fantasy_storybook',
+  'Cheerful Storybook': 'watercolor_storybook',
+
+  // Consolidated art styles
+  'watercolor_storybook': 'watercolor_storybook',
+  'watercolor_splash': 'watercolor_splash',
+  'gouache_painting': 'gouache_painting',
+  'oil_pastel': 'oil_pastel',
+  'ink_wash': 'ink_wash',
+  'pencil_sketch': 'pencil_sketch',
+  'colored_pencil': 'colored_pencil',
+  'chalk_drawing': 'chalk_drawing',
+  'cartoon_character': 'cartoon_character',
+  'flat_vector': 'flat_vector',
+  'pixel_art': 'pixel_art',
+  'clay_animation': 'clay_animation',
+  'plush_toy': 'plush_toy',
+  'felt_craft': 'felt_craft',
+  'paper_cutout': 'paper_cutout',
+  'paper_diorama': 'paper_diorama',
+  'fantasy_storybook': 'fantasy_storybook',
+  'dreamy_glow': 'dreamy_glow',
+  'magical_light': 'magical_light',
+  'stained_glass': 'stained_glass',
+  'folk_art': 'folk_art',
+  'vintage_midcentury': 'vintage_midcentury',
+  'retro_70s': 'retro_70s',
+  'asian_brushwork': 'asian_brushwork',
+  'nordic_cozy': 'nordic_cozy',
+  'golden_hour': 'golden_hour',
+  'night_glow': 'night_glow',
+  'vibrant_scene': 'vibrant_scene',
+  'digital_airbrush': 'digital_airbrush',
+  'mixed_media': 'mixed_media'
 };
 
 /**
@@ -34,12 +71,12 @@ export const styleCodeMap = {
  */
 export const getStyleNameFromCode = (styleCode) => {
   if (!styleCode) return 'Default Style';
-  
+
   // If the style code is in our map, return the friendly name
   if (styleCodeMap[styleCode]) {
     return styleCodeMap[styleCode];
   }
-  
+
   // Otherwise, make a best effort to format the code as a readable name
   return styleCode
     .replace(/_/g, ' ')
@@ -55,7 +92,7 @@ export const getStyleNameFromCode = (styleCode) => {
  */
 export const getFriendlySceneName = (sceneCode) => {
   if (!sceneCode) return 'Default Scene';
-  
+
   // Format the scene code as a readable name
   return sceneCode
     .replace(/_/g, ' ')

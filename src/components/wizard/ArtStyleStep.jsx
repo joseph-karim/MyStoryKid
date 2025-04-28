@@ -299,21 +299,28 @@ function ArtStyleStep() {
   const [stylePreviewUrls, setStylePreviewUrls] = useState({});
 
   // Load preview URLs for each style
-  // No need to fetch styles from external API anymore
+  // Use our SVG placeholder thumbnails
   useEffect(() => {
     // Just use our local style map
     const previews = {};
-    // Set default preview URLs for styles
-    Object.entries(STYLE_CODE_MAP).forEach(([styleName, styleCode]) => {
-      // Use a placeholder URL for all styles
-      previews[styleCode] = `/style-previews/${styleCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}.jpg`;
+
+    // Process all styles from the categories structure
+    ART_STYLE_CATEGORIES_STRUCTURE.forEach(category => {
+      category.styleIds.forEach(style => {
+        if (style.apiCode) {
+          // Use our SVG placeholder thumbnails
+          previews[style.apiCode] = `/assets/style-thumbnails/${style.apiCode}.svg`;
+        }
+      });
     });
+
+    console.log('Style preview URLs:', previews);
     setStylePreviewUrls(previews);
   }, []);
 
   const handleSelectStyle = (styleCode) => {
+    console.log('Selected style:', styleCode);
     setSelectedStyle(styleCode);
-    // Removed keyword generation: const keywords = getKeywordsForDzineStyle(styleCode);
     updateStoryData({ artStyleCode: styleCode }); // Only update artStyleCode
   };
 
@@ -384,8 +391,27 @@ function ArtStyleStep() {
                         alt={style.title}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          // On error, show a colored placeholder
+                          // On error, show a colored placeholder with the style name
+                          const styleCode = style.apiCode;
+                          const color = `hsl(${styleCode.length * 10 % 360}, 70%, 60%)`;
+                          const parent = e.target.parentNode;
+
+                          // Create a placeholder div
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'w-full h-full flex items-center justify-center';
+                          placeholder.style.backgroundColor = color;
+
+                          // Add style name text
+                          const text = document.createElement('span');
+                          text.className = 'text-white font-bold text-center px-2';
+                          text.textContent = style.title;
+                          placeholder.appendChild(text);
+
+                          // Replace the image with the placeholder
                           e.target.style.display = 'none';
+                          parent.appendChild(placeholder);
+
+                          console.log(`Created placeholder for ${styleCode}`);
                         }}
                       />
                     ) : (
