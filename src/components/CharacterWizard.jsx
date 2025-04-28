@@ -4,6 +4,7 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { getStyleNameFromCode } from '../utils/styleUtils';
 import * as openaiImageService from '../services/openaiImageService';
+import ApiKeyTest from './ApiKeyTest';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
@@ -293,9 +294,12 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       console.log('Checking OpenAI API connectivity...');
 
       // Check if OpenAI API key is available
-      if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey) {
         throw new Error('OpenAI API key not found');
       }
+
+      console.log('API Key (first 10 chars):', apiKey ? apiKey.substring(0, 10) + '...' : 'Not found');
 
       // For now, we'll assume the API is working if the key is present
       // In a production app, you might want to make a test call to verify
@@ -1352,6 +1356,11 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           {error}
          </div>
       )}
+
+      {/* API Key Test Component */}
+      <div className="mt-4">
+        <ApiKeyTest />
+      </div>
 
       {/* Image Preview Modal */}
       <ImagePreviewModal
