@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-// OpenAI API key
-const API_KEY = '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';
+// OpenAI API key - replace with your actual key when running
+const API_KEY = 'YOUR_OPENAI_API_KEY';
 
 // Output directory
 const OUTPUT_DIR = path.join(__dirname, '../public/assets/style-thumbnails');
@@ -48,10 +48,10 @@ const artStyles = [
 function generateImage(styleId, prompt) {
   return new Promise((resolve, reject) => {
     const outputFile = path.join(OUTPUT_DIR, `${styleId}.png`);
-    
+
     console.log(`Generating image for style: ${styleId}`);
     console.log(`Prompt: ${prompt}`);
-    
+
     const data = JSON.stringify({
       model: 'gpt-image-1',
       prompt: prompt,
@@ -60,7 +60,7 @@ function generateImage(styleId, prompt) {
       quality: 'high',
       response_format: 'b64_json'
     });
-    
+
     const options = {
       hostname: 'api.openai.com',
       path: '/v1/images/generations',
@@ -71,25 +71,25 @@ function generateImage(styleId, prompt) {
         'Content-Length': data.length
       }
     };
-    
+
     const req = https.request(options, (res) => {
       let responseData = '';
-      
+
       res.on('data', (chunk) => {
         responseData += chunk;
       });
-      
+
       res.on('end', () => {
         if (res.statusCode === 200) {
           try {
             const parsedData = JSON.parse(responseData);
-            
+
             if (parsedData.data && parsedData.data.length > 0) {
               const imageData = parsedData.data[0].b64_json;
               const buffer = Buffer.from(imageData, 'base64');
-              
+
               fs.writeFileSync(outputFile, buffer);
-              
+
               console.log(`✅ Successfully generated image for ${styleId}`);
               console.log(`   Saved to: ${outputFile}`);
               resolve(true);
@@ -110,12 +110,12 @@ function generateImage(styleId, prompt) {
         }
       });
     });
-    
+
     req.on('error', (error) => {
       console.error(`❌ Error generating image for style ${styleId}:`, error);
       resolve(false);
     });
-    
+
     req.write(data);
     req.end();
   });
@@ -126,21 +126,21 @@ function generateImage(styleId, prompt) {
  */
 async function main() {
   console.log(`Starting generation of ${artStyles.length} art style thumbnails...`);
-  
+
   let successCount = 0;
-  
+
   // Process styles sequentially
   for (const style of artStyles) {
     const success = await generateImage(style.id, style.prompt);
-    
+
     if (success) {
       successCount++;
     }
-    
+
     // Add a delay to avoid rate limiting
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
-  
+
   console.log(`Generation complete! Successfully generated ${successCount}/${artStyles.length} thumbnails.`);
   console.log(`Check the ${OUTPUT_DIR} directory for the generated images.`);
 }

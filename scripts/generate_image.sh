@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Set your OpenAI API key
-API_KEY="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"
+# Set your OpenAI API key - replace with your actual key when running
+API_KEY="YOUR_OPENAI_API_KEY"
 
 # Create the output directory if it doesn't exist
 mkdir -p public/assets/style-thumbnails

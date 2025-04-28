@@ -8,8 +8,8 @@ import base64
 import time
 from openai import OpenAI
 
-# OpenAI API key
-API_KEY = "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"
+# OpenAI API key - replace with your actual key when running
+API_KEY = "YOUR_OPENAI_API_KEY"
 
 # Output directory
 OUTPUT_DIR = "public/assets/style-thumbnails"
@@ -43,10 +43,10 @@ art_styles = [
 def generate_image(style_id, prompt):
     """Generate an image for a style using the OpenAI API"""
     output_file = os.path.join(OUTPUT_DIR, f"{style_id}.png")
-    
+
     print(f"Generating image for style: {style_id}")
     print(f"Prompt: {prompt}")
-    
+
     try:
         # Make the API request
         response = client.images.generate(
@@ -57,19 +57,19 @@ def generate_image(style_id, prompt):
             quality="high",
             response_format="b64_json"
         )
-        
+
         # Get the image data
         image_data = response.data[0].b64_json
         image_bytes = base64.b64decode(image_data)
-        
+
         # Save the image
         with open(output_file, "wb") as f:
             f.write(image_bytes)
-        
+
         print(f"✅ Successfully generated image for {style_id}")
         print(f"   Saved to: {output_file}")
         return True
-    
+
     except Exception as e:
         print(f"❌ Failed to generate image for {style_id}")
         print(f"   Error: {str(e)}")
@@ -78,17 +78,17 @@ def generate_image(style_id, prompt):
 def main():
     """Main function to generate all thumbnails"""
     print(f"Starting generation of {len(art_styles)} art style thumbnails...")
-    
+
     success_count = 0
-    
+
     # Process styles sequentially
     for style in art_styles:
         if generate_image(style["id"], style["prompt"]):
             success_count += 1
-        
+
         # Add a delay to avoid rate limiting
         time.sleep(2)
-    
+
     print(f"Generation complete! Successfully generated {success_count}/{len(art_styles)} thumbnails.")
     print(f"Check the {OUTPUT_DIR} directory for the generated images.")
 

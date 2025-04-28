@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-// OpenAI API key
-const OPENAI_API_KEY = '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';
+// OpenAI API key - replace with your actual key when running
+const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY';
 
 // Directory to save the generated thumbnail
 const OUTPUT_DIR = path.join(__dirname, '../public/assets/style-thumbnails');
@@ -24,7 +24,7 @@ const style = {
 // Generate an image using OpenAI API
 function generateImage() {
   console.log(`Generating image for style: ${style.id}`);
-  
+
   const data = JSON.stringify({
     model: "gpt-image-1",
     prompt: style.prompt,
@@ -33,7 +33,7 @@ function generateImage() {
     quality: "high",
     response_format: "b64_json"
   });
-  
+
   const options = {
     hostname: 'api.openai.com',
     path: '/v1/images/generations',
@@ -44,27 +44,27 @@ function generateImage() {
       'Content-Length': data.length
     }
   };
-  
+
   const req = https.request(options, (res) => {
     let responseData = '';
-    
+
     res.on('data', (chunk) => {
       responseData += chunk;
     });
-    
+
     res.on('end', () => {
       console.log(`Response status code: ${res.statusCode}`);
-      
+
       if (res.statusCode === 200) {
         try {
           const parsedData = JSON.parse(responseData);
           if (parsedData.data && parsedData.data.length > 0) {
             const imageData = parsedData.data[0].b64_json;
             const buffer = Buffer.from(imageData, 'base64');
-            
+
             const filePath = path.join(OUTPUT_DIR, `${style.id}.png`);
             fs.writeFileSync(filePath, buffer);
-            
+
             console.log(`Successfully saved image for style: ${style.id} to ${filePath}`);
           } else {
             console.error(`No image data in response for style: ${style.id}`);
@@ -80,11 +80,11 @@ function generateImage() {
       }
     });
   });
-  
+
   req.on('error', (error) => {
     console.error(`Error generating image for style ${style.id}:`, error);
   });
-  
+
   req.write(data);
   req.end();
 }

@@ -2,8 +2,8 @@
 
 # Simple script to generate art style thumbnails using the OpenAI API
 
-# OpenAI API key
-API_KEY="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"
+# OpenAI API key - replace with your actual key when running
+API_KEY="YOUR_OPENAI_API_KEY"
 
 # Output directory
 OUTPUT_DIR="public/assets/style-thumbnails"
@@ -16,10 +16,10 @@ generate_image() {
   local style_id="$1"
   local prompt="$2"
   local output_file="$OUTPUT_DIR/$style_id.png"
-  
+
   echo "Generating image for style: $style_id"
   echo "Prompt: $prompt"
-  
+
   # Make the API request
   curl -s "https://api.openai.com/v1/images/generations" \
     -H "Content-Type: application/json" \
@@ -32,7 +32,7 @@ generate_image() {
       \"quality\": \"high\",
       \"response_format\": \"b64_json\"
     }" | jq -r '.data[0].b64_json' | base64 --decode > "$output_file"
-  
+
   # Check if the file was created successfully
   if [ -s "$output_file" ]; then
     echo "✅ Successfully generated image for $style_id"
@@ -52,7 +52,7 @@ generate_image() {
         \"response_format\": \"b64_json\"
       }" | jq '.error'
   fi
-  
+
   # Add a delay to avoid rate limiting
   sleep 2
 }
