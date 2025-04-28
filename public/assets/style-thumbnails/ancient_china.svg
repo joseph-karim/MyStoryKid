@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="hsl(268, 98%, 68%)" />
+  <rect x="12" y="12" width="1000" height="1000" fill="white" fill-opacity="0.1" stroke="white" stroke-width="4" />
+  <text x="512" y="480" font-family="Arial, sans-serif" font-size="48" text-anchor="middle" fill="white">Ancient China</text>
+  <text x="512" y="560" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="white">ancient_china</text>
+  <text x="512" y="640" font-family="Arial, sans-serif" font-size="24" text-anchor="middle" fill="white">Art Style Placeholder</text>
+</svg>
