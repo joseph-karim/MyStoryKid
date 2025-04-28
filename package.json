@@ -17,6 +17,8 @@
     "axios": "^1.8.4",
     "framer-motion": "^12.6.2",
     "gsap": "^3.12.7",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "lottie-react": "^2.4.1",
     "openai": "^4.91.0",
     "react": "^19.0.0",

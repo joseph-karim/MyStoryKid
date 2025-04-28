@@ -15,19 +15,19 @@ const authConfig = {
     // The site URL to use for the auth flow
     // This should match the site URL configured in Supabase Auth settings
     site: 'https://mystorykid.com',
-    
+
     // The URL to redirect to after a successful sign-in or sign-up
     redirectTo: 'https://mystorykid.com/dashboard',
-    
+
     // Persist the session in localStorage
     persistSession: true,
-    
+
     // Detect session changes and update the store
     detectSessionInUrl: true,
-    
+
     // Use secure cookies in production
     cookieSecure: import.meta.env.PROD,
-    
+
     // Set the storage mechanism (default is 'localStorage')
     storage: {
       getItem: (key) => localStorage.getItem(key),
@@ -69,7 +69,7 @@ export const uploadImageToSupabase = async (base64Image, bucketName = 'character
     }
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(bucketName)
       .upload(filePath, bytes, {
         contentType,
@@ -90,6 +90,44 @@ export const uploadImageToSupabase = async (base64Image, bucketName = 'character
     return publicUrl;
   } catch (error) {
     console.error('Error in uploadImageToSupabase:', error);
+    throw error;
+  }
+};
+
+/**
+ * Uploads a file to Supabase Storage and returns the public URL
+ * @param {Blob|File} file - The file to upload
+ * @param {string} filePath - The path where the file should be stored
+ * @param {string} bucketName - The name of the storage bucket
+ * @returns {Promise<string>} - Public URL of the uploaded file
+ */
+export const uploadFileToSupabase = async (file, filePath, bucketName = 'digital-downloads') => {
+  if (!file) {
+    throw new Error('Invalid file');
+  }
+
+  try {
+    // Upload to Supabase Storage
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, {
+        upsert: true
+      });
+
+    if (error) {
+      console.error('Error uploading to Supabase Storage:', error);
+      throw new Error(`Supabase Storage upload failed: ${error.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(filePath);
+
+    console.log('File uploaded to Supabase Storage, public URL:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Error in uploadFileToSupabase:', error);
     throw error;
   }
 };
