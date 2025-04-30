@@ -346,38 +346,35 @@ function ArtStyleStep() {
                   <div
                     className="w-full h-32 bg-gray-100 flex items-center justify-center relative overflow-hidden"
                   >
-                    {stylePreviewUrls[style.apiCode] ? (
-                      <img
-                        src={stylePreviewUrls[style.apiCode]}
-                        alt={style.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // On error, show a colored placeholder with the style name
-                          const styleCode = style.apiCode;
-                          const color = `hsl(${styleCode.length * 10 % 360}, 70%, 60%)`;
-                          const parent = e.target.parentNode;
+                    {/* Always render the image with error handling for missing thumbnails */}
+                    <img
+                      src={stylePreviewUrls[style.apiCode] || `/assets/style-thumbnails-png/default.png`}
+                      alt={style.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // On error, show a colored placeholder with the style name
+                        const styleCode = style.apiCode;
+                        const color = `hsl(${styleCode.length * 10 % 360}, 70%, 60%)`;
+                        const parent = e.target.parentNode;
 
-                          // Create a placeholder div
-                          const placeholder = document.createElement('div');
-                          placeholder.className = 'w-full h-full flex items-center justify-center';
-                          placeholder.style.backgroundColor = color;
+                        // Create a placeholder div
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'w-full h-full flex items-center justify-center';
+                        placeholder.style.backgroundColor = color;
 
-                          // Add style name text
-                          const text = document.createElement('span');
-                          text.className = 'text-white font-bold text-center px-2';
-                          text.textContent = style.title;
-                          placeholder.appendChild(text);
+                        // Add style name text
+                        const text = document.createElement('span');
+                        text.className = 'text-white font-bold text-center px-2';
+                        text.textContent = style.title;
+                        placeholder.appendChild(text);
 
-                          // Replace the image with the placeholder
-                          e.target.style.display = 'none';
-                          parent.appendChild(placeholder);
+                        // Replace the image with the placeholder
+                        e.target.style.display = 'none';
+                        parent.appendChild(placeholder);
 
-                          console.log(`Created placeholder for ${styleCode}`);
-                        }}
-                      />
-                    ) : (
-                      <div className="animate-pulse bg-gray-200 w-full h-full"></div>
-                    )}
+                        console.log(`Created placeholder for ${styleCode}`);
+                      }}
+                    />
                   </div>
             <div className="p-3">
                     <p className="text-sm font-medium truncate">{style.title}</p>

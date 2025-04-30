@@ -453,14 +453,18 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
     // Create FormData
     const formData = new FormData();
 
-    // For gpt-image-1, we can provide multiple images as an array
+    // For gpt-image-1, we need to handle the API differently
     if (options.model === 'gpt-image-1') {
-      formData.append('image[]', imageBlob, 'image.png');
+      // For gpt-image-1, we need to use a different approach
+      // The API expects a single 'image' parameter for the main image
+      formData.append('image', imageBlob, 'image.png');
+
       // Add reference images if provided in options
       if (options.referenceImages && Array.isArray(options.referenceImages)) {
         for (let i = 0; i < options.referenceImages.length; i++) {
           const refBlob = await dataUrlToBlob(options.referenceImages[i]);
-          formData.append('image[]', refBlob, `reference_${i}.png`);
+          // Use 'reference_image' parameter for reference images
+          formData.append('reference_image', refBlob, `reference_${i}.png`);
         }
       }
     } else {
