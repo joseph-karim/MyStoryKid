@@ -464,9 +464,6 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
     // Create FormData
     const formData = new FormData();
 
-    // The API expects a single 'image' parameter for the main image
-    formData.append('image', imageBlob, 'image.png');
-    
     // Prepare the prompt - enhance it if we have reference images
     let finalPrompt = prompt;
     if (options.referenceImages && Array.isArray(options.referenceImages) && options.referenceImages.length > 0) {
@@ -475,12 +472,19 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
       console.log(`Using ${options.referenceImages.length} reference images for style guidance via prompt enhancement`);
       console.log(`Enhanced prompt: "${finalPrompt.substring(0, 100)}..."`);
       
-      // Add reference images to the 'image' array parameter
+      formData.append('image[]', imageBlob, 'image.png');
+      console.log(`Added main image using array syntax 'image[]'`);
+      
+      // Add reference images to the 'image[]' array parameter
       for (let i = 0; i < options.referenceImages.length; i++) {
         const refBlob = await dataUrlToBlob(options.referenceImages[i]);
-        formData.append('image', refBlob, `reference_${i}.png`);
-        console.log(`Added reference image ${i+1} to the 'image' array parameter`);
+        formData.append('image[]', refBlob, `reference_${i}.png`);
+        console.log(`Added reference image ${i+1} using array syntax 'image[]'`);
       }
+    } else {
+      // If no reference images, just add the main image as a single parameter
+      formData.append('image', imageBlob, 'image.png');
+      console.log(`Added main image as single 'image' parameter`);
     }
 
     formData.append('prompt', finalPrompt);
