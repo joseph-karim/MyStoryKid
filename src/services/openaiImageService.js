@@ -357,7 +357,14 @@ export const generateImage = async (prompt, options = {}) => {
   }
 
   try {
-    console.log(`Generating image with OpenAI for prompt: "${prompt.substring(0, 100)}..."`);
+    // Enhanced logging for OpenAI image requests (with sensitive data redaction)
+    console.log(`--- OpenAI Image Generation Request ---`);
+    console.log(`Prompt (truncated): "${prompt.substring(0, 100)}..."`);
+    console.log(`Model: ${options.model || 'gpt-image-1'}`);
+    console.log(`Size: ${options.size || '1024x1024'}`);
+    console.log(`Quality: ${options.quality || 'standard'}`);
+    console.log(`Style: ${options.style || 'natural'}`);
+    console.log(`----------------------`);
 
     const defaultOptions = {
       model: "gpt-image-1",
@@ -385,7 +392,11 @@ export const generateImage = async (prompt, options = {}) => {
     if (response.data && response.data.data && response.data.data.length > 0) {
       // Extract the image data - handle both response formats
       const imageData = response.data.data[0].b64_json || response.data.data[0].url;
-      console.log('Successfully generated image with OpenAI');
+      // Enhanced logging for OpenAI image responses (with sensitive data redaction)
+      console.log('--- OpenAI Image Generation Response ---');
+      console.log('Status: Success');
+      console.log('Response type:', imageData && typeof imageData === 'string' && imageData.startsWith('http') ? 'URL' : 'Base64');
+      console.log('----------------------');
 
       // If we got a URL, return it directly
       if (imageData && typeof imageData === 'string' && imageData.startsWith('http')) {
