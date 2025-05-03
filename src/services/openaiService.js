@@ -223,9 +223,13 @@ export const generateStoryPages = async (storyData, numPages = 8) => {
   }
   // Could add logic for early reader chapters here too if needed
 
-  console.log("--- OpenAI Request ---");
+  console.log("--- OpenAI Story Generation Request ---");
   console.log("System Prompt:", systemPrompt);
   console.log("User Prompt:", userPrompt);
+  console.log("Story Type:", storyData.storyType);
+  console.log("Art Style:", storyData.artStyleCode);
+  console.log("Characters:", storyData.bookCharacters.map(c => `${c.name} (${c.id})`).join(', '));
+  console.log("Target Page Count:", targetPageCount);
   console.log("----------------------");
 
   try {
@@ -240,7 +244,11 @@ export const generateStoryPages = async (storyData, numPages = 8) => {
       // max_tokens: Calculate based on desiredLengthWords? More complex.
     });
 
-    console.log("Received raw choice from OpenAI:", completion.choices[0]);
+    console.log("Received response from OpenAI:");
+    console.log("  Model:", completion.model);
+    console.log("  Usage:", completion.usage);
+    console.log("  Response type:", completion.choices[0]?.message?.content ? "Content received" : "No content");
+    console.log("  Content length:", completion.choices[0]?.message?.content?.length || 0);
 
     const responseContent = completion.choices[0]?.message?.content;
     if (!responseContent) {
