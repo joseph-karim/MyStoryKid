@@ -13,17 +13,16 @@ export const getLuluToken = async () => {
   try {
     console.log('[luluService] Getting Lulu API token');
     
-    // In a production environment, these values would come from environment variables
-    const clientKey = process.env.REACT_APP_LULU_CLIENT_KEY;
-    const clientSecret = process.env.REACT_APP_LULU_CLIENT_SECRET;
+    // Get credentials from environment variables
+    const clientKey = import.meta.env.VITE_LULU_CLIENT_KEY;
+    const clientSecret = import.meta.env.VITE_LULU_CLIENT_SECRET;
     
     if (!clientKey || !clientSecret) {
       console.warn('[luluService] Lulu API credentials not configured');
       throw new Error('Lulu API credentials not configured');
     }
     
-    // Create the Authorization header
-    const authString = btoa(`${clientKey}:${clientSecret}`);
+    const authString = import.meta.env.VITE_LULU_BASE64_AUTH || btoa(`${clientKey}:${clientSecret}`);
     
     const response = await fetch('https://api.lulu.com/auth/realms/glasstree/protocol/openid-connect/token', {
       method: 'POST',
@@ -235,7 +234,7 @@ export const createPrintJob = async (bookData, shippingAddress, shippingLevel = 
     
     // Create the print job payload
     const payload = {
-      contact_email: process.env.REACT_APP_LULU_CONTACT_EMAIL || 'contact@mystorykid.com',
+      contact_email: import.meta.env.VITE_LULU_CONTACT_EMAIL || 'contact@mystorykid.com',
       external_id: `mystorykid-${bookData.id}`,
       line_items: [
         {
