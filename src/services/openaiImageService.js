@@ -464,31 +464,23 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
     // Create FormData
     const formData = new FormData();
 
-    // Prepare the prompt - enhance it if we have reference images
-    let finalPrompt = prompt;
-    if (options.referenceImages && Array.isArray(options.referenceImages) && options.referenceImages.length > 0) {
-      // Add a note to the prompt about reference images
-      finalPrompt = `${prompt} (Note: Using reference images for style and character consistency)`;
-      console.log(`Using ${options.referenceImages.length} reference images for style guidance via prompt enhancement`);
-      console.log(`Enhanced prompt: "${finalPrompt.substring(0, 100)}..."`);
-      
-      // Start with the main image as the first item in the array
-      formData.append('image', imageBlob, 'image.png');
-      console.log(`Added main image to 'image' parameter`);
-      
-      // Add reference images to the same 'image' parameter to create an array
-      for (let i = 0; i < options.referenceImages.length; i++) {
-        const refBlob = await dataUrlToBlob(options.referenceImages[i]);
-        formData.append('image', refBlob, `reference_${i}.png`);
-        console.log(`Added reference image ${i+1} to 'image' parameter`);
+    // For gpt-image-1, we need to handle the API differently
+    if (options.model === 'gpt-image-1') {
+      // The API expects all images (main + references) as 'image[]'
+      formData.append('image[]', imageBlob, 'image.png');
+
+      if (options.referenceImages && Array.isArray(options.referenceImages)) {
+        for (let i = 0; i < options.referenceImages.length; i++) {
+          const refBlob = await dataUrlToBlob(options.referenceImages[i]);
+          formData.append('image[]', refBlob, `reference_${i}.png`);
+        }
       }
     } else {
-      // If no reference images, just add the main image as a single parameter
+      // For dall-e-2, only one image is supported
       formData.append('image', imageBlob, 'image.png');
-      console.log(`Added main image as single 'image' parameter`);
     }
 
-    formData.append('prompt', finalPrompt);
+    formData.append('prompt', prompt);
     if (maskBlob) {
       formData.append('mask', maskBlob, 'mask.png');
     }
