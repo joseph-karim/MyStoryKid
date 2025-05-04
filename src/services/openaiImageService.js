@@ -472,14 +472,15 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
       console.log(`Using ${options.referenceImages.length} reference images for style guidance via prompt enhancement`);
       console.log(`Enhanced prompt: "${finalPrompt.substring(0, 100)}..."`);
       
-      formData.append('image[]', imageBlob, 'image.png');
-      console.log(`Added main image using array syntax 'image[]'`);
+      // Start with the main image as the first item in the array
+      formData.append('image', imageBlob, 'image.png');
+      console.log(`Added main image to 'image' parameter`);
       
-      // Add reference images to the 'image[]' array parameter
+      // Add reference images to the same 'image' parameter to create an array
       for (let i = 0; i < options.referenceImages.length; i++) {
         const refBlob = await dataUrlToBlob(options.referenceImages[i]);
-        formData.append('image[]', refBlob, `reference_${i}.png`);
-        console.log(`Added reference image ${i+1} using array syntax 'image[]'`);
+        formData.append('image', refBlob, `reference_${i}.png`);
+        console.log(`Added reference image ${i+1} to 'image' parameter`);
       }
     } else {
       // If no reference images, just add the main image as a single parameter
@@ -535,6 +536,7 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
         model: options.model || 'gpt-image-1',
         promptLength: prompt ? prompt.length : 0,
         hasMask: !!maskDataUrl,
+        referenceImagesCount: options.referenceImages ? options.referenceImages.length : 0,
         options: JSON.stringify(options)
       });
       throw new Error(`OpenAI API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
