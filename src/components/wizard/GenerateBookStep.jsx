@@ -6,7 +6,6 @@ import * as openaiImageService from '../../services/openaiImageService';
 import { getStyleNameFromCode } from '../../utils/styleUtils';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
-import { generateImagesForBookWithReferences } from '../../services/storyGenerator';
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -354,7 +353,7 @@ const generateStoryPages = async (storyData) => {
         }
       }
     } catch (error) {
-      console.warn('Failed to parse outline as JSON, trying manual extraction:', error);
+      console.warn('Failed to parse outline as JSON, trying to extract array manually:', error);
       // Try to extract array with regex
       const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
       if (arrayMatch) {
@@ -656,31 +655,354 @@ const GenerateBookStep = () => {
     // Character style preview is validated
 
     // --- Generation Start ---
+    let storyOutline = []; // Define outline variable outside try block
     try {
-      // Step 1: Generate the book structure (text, prompts, etc.)
-      updateProgressInfo('Generating book structure...');
-      const result = await openaiService.generateCompleteBook(storyData);
-      if (!result || !result.success) {
-        setError(result?.error || 'Failed to generate book structure.');
-        setIsGenerating(false); return;
-      }
-      const book = result.book;
+      const coverProgressAllocation = 15; // % for cover
+      const outlineProgressAllocation = 5; // % for outline
+      const pagesBaseProgress = coverProgressAllocation + outlineProgressAllocation;
 
-      // Step 2: Generate images for the book, updating as each is ready
-      updateProgressInfo('Generating images for book pages...');
-      await generateImagesForBookWithReferences(
-        book,
-        stylePreview,
-        (updatedPages) => {
-          setGeneratedPagesData(updatedPages);
-          setGenerationProgress(Math.round((updatedPages.length / book.pages.length) * 100));
+      // ---------- STEP 1: Generate Story Outline ----------
+      updateProgressInfo('Generating story outline...');
+      setGenerationProgress(outlineProgressAllocation / 2);
+      const outlinePrompt = createOutlinePrompt(storyData, characters);
+      const outlineResponse = await openaiService.generateContent({ prompt: outlinePrompt, temperature: 0.7, max_tokens: 1000 });
+
+      // let storyOutline; // Moved definition outside
+      try {
+        const parsedOutline = JSON.parse(outlineResponse);
+        storyOutline = Array.isArray(parsedOutline) ? parsedOutline : Object.values(parsedOutline).find(Array.isArray);
+        if (!storyOutline) throw new Error('Outline not in expected array format.');
+      } catch (e) {
+         console.warn('Failed to parse outline JSON, trying manual extraction:', e);
+         const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
+         if (arrayMatch) storyOutline = JSON.parse(arrayMatch[0]);
+         else throw new Error('Could not parse story outline from AI response.');
+      }
+      if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
+        throw new Error('Failed to generate a valid story outline');
+      }
+      updateProgressInfo('Story outline generated.');
+      setGenerationProgress(outlineProgressAllocation);
+
+      // ---------- STEP 2: Generate Cover Image ----------
+      updateProgressInfo('Generating cover image...');
+      let coverImageUrl = 'PLACEHOLDER_COVER_URL'; // Default placeholder
+      try {
+        const { coverVisualPrompt } = await generateCoverPrompt(storyData);
+        if (!coverVisualPrompt) throw new Error("Failed to generate cover visual prompt.");
+
+        // --- OpenAI Cover Image Generation ---
+        updateProgressInfo('Generating cover image with OpenAI...');
+        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.5); // Progress update
+
+        // Get style description based on art style code
+        const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
+
+        // Prepare character descriptions for all characters
+        const characterDescriptions = storyData.bookCharacters.map(character => {
+          return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
+        });
+
+        // Collect character reference images for cover generation
+        const characterReferenceImageUrls = storyData.bookCharacters
+          .filter(character => character.stylePreview)
+          .map(character => character.stylePreview);
+
+        console.log(`Using ${characterReferenceImageUrls.length} character reference images for cover generation`);
+
+        // Generate cover image using OpenAI with reference images and style code
+        coverImageUrl = await openaiImageService.generateCoverImage(
+          storyData.title,
+          characterDescriptions,
+          `Use a ${styleDescription} style. ${coverVisualPrompt}`,
+          characterReferenceImageUrls, // Pass reference images
+          storyData.artStyleCode // Pass the art style code for style reference
+        );
+
+        if (!coverImageUrl) throw new Error("OpenAI cover generation failed.");
+        updateProgressInfo('Cover image completed.');
+
+        // Store the generated cover URL
+        setGeneratedCoverUrl(coverImageUrl); // Update state immediately
+
+      } catch (coverError) {
+        console.error("Error generating cover illustration:", coverError);
+        updateProgressInfo(`Error generating cover: ${coverError.message}. Using placeholder.`);
+        setGeneratedCoverUrl(coverImageUrl); // Set placeholder on error
+      }
+      setGenerationProgress(pagesBaseProgress); // Update progress after cover attempt
+
+      // ---------- STEP 3: Generate Pages Sequentially ----------
+      const totalPagesToGenerate = storyOutline.length;
+      const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
+
+      // Character tracking system for reference images
+      const characterReferenceImages = {}; // Store first appearance of each character
+      let previousPageImageUrl = generatedCoverUrl; // Start with cover as reference for style
+      // eslint-disable-next-line no-unused-vars
+      let firstPageImageUrl = null; // Store the first page image as primary reference
+
+      // Initialize character tracking with all book characters
+      storyData.bookCharacters.forEach(character => {
+        characterReferenceImages[character.id] = {
+          name: character.name,
+          firstAppearance: null, // Will be set when character first appears
+          referenceImageUrl: character.stylePreview || null, // Use character preview if available
+          appearedInPages: [], // Track which pages this character appears in
+          appearanceDetails: {}, // Store appearance details for each page
+          outfitDescription: '', // Will be populated after first appearance
+          hairstyleDescription: '', // Will be populated after first appearance
+          colorScheme: '' // Will be populated after first appearance
+        };
+      });
+
+      console.log('Initialized character reference tracking:',
+        Object.keys(characterReferenceImages).map(id => characterReferenceImages[id].name));
+
+      for (let index = 0; index < totalPagesToGenerate; index++) {
+        const currentSpreadOutline = storyOutline[index];
+        const currentPageProgressBase = pagesBaseProgress + (index * progressPerPage);
+        const pageNumber = index + 1; // For logging and display
+
+        let spreadText = `Error generating text for page ${pageNumber}`;
+        let spreadVisualPrompt = `Error generating prompt for page ${pageNumber}`;
+        let finalImageUrl = 'ERROR_MISSING'; // Default for page image
+
+        try {
+          // --- Generate Text & Visual Prompt for Current Spread ---
+          updateProgressInfo(`Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
+          setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.1));
+          const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
+          const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
+
+          let spreadContent;
+          try {
+            spreadContent = JSON.parse(contentResponse);
+          } catch (e) {
+             console.warn(`Failed to parse content JSON for spread ${pageNumber}, trying manual extraction:`, e);
+             const jsonMatch = contentResponse.match(/\{[\s\S]*\}/);
+             if (jsonMatch) spreadContent = JSON.parse(jsonMatch[0]);
+             else throw new Error('Could not parse spread content from AI response.');
+          }
+          spreadText = spreadContent.text || spreadText;
+          spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
+          updateProgressInfo(`Text/prompt for page ${pageNumber} generated.`);
+
+          // --- Analyze which characters appear in this page ---
+          // This is a simple approach - in a more advanced implementation, we could use NLP to detect character mentions
+          const charactersInThisPage = [];
+
+          // Check which characters are mentioned in the text or prompt
+          storyData.bookCharacters.forEach(character => {
+            const characterName = character.name;
+            if (
+              spreadText.includes(characterName) ||
+              spreadVisualPrompt.includes(characterName)
+            ) {
+              charactersInThisPage.push(character.id);
+              // Record that this character appears on this page
+              characterReferenceImages[character.id].appearedInPages.push(pageNumber);
+            }
+          });
+
+          console.log(`Characters detected in page ${pageNumber}:`,
+            charactersInThisPage.map(id => characterReferenceImages[id].name));
+
+          // --- Generate Image for Current Spread (OpenAI) ---
+          try {
+            // OpenAI Scene Generation
+            updateProgressInfo(`Generating image for page ${pageNumber} with OpenAI...`);
+            setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.4));
+            if (!spreadVisualPrompt || spreadVisualPrompt.startsWith('Error:')) throw new Error("Visual prompt is missing or invalid.");
+            if (!storyData.artStyleCode) throw new Error("Missing art style code.");
+
+            // Get style description based on art style code
+            const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
+
+            // Prepare character descriptions for all characters
+            const characterDescriptions = storyData.bookCharacters.map(character => {
+              return `${character.name}, a ${character.age || ''} year old ${character.gender || 'child'} ${character.role === 'main' ? '(main character)' : ''}`;
+            });
+
+            // Build character reference information
+            const characterReferenceInfo = {};
+
+            // For each character in this page
+            charactersInThisPage.forEach(characterId => {
+              const charInfo = characterReferenceImages[characterId];
+
+              // If this is the character's first appearance in the story
+              if (charInfo.appearedInPages.length === 1 && charInfo.appearedInPages[0] === pageNumber) {
+                console.log(`First appearance of character ${charInfo.name} on page ${pageNumber}`);
+                // No reference image yet for this character
+                characterReferenceInfo[characterId] = {
+                  name: charInfo.name,
+                  isFirstAppearance: true,
+                  referenceImageUrl: charInfo.referenceImageUrl, // Use character preview if available
+                  outfitDescription: charInfo.outfitDescription || '',
+                  hairstyleDescription: charInfo.hairstyleDescription || '',
+                  colorScheme: charInfo.colorScheme || '',
+                  storyData: storyData // Pass the story data for style reference
+                };
+              } else {
+                // Character has appeared before, use their first appearance as reference
+                if (!charInfo.firstAppearance && charInfo.appearedInPages.length > 0) {
+                  // Set the first appearance if not already set
+                  charInfo.firstAppearance = charInfo.appearedInPages[0];
+                }
+
+                characterReferenceInfo[characterId] = {
+                  name: charInfo.name,
+                  isFirstAppearance: false,
+                  referenceImageUrl: charInfo.referenceImageUrl,
+                  firstAppearancePage: charInfo.firstAppearance,
+                  outfitDescription: charInfo.outfitDescription || '',
+                  hairstyleDescription: charInfo.hairstyleDescription || '',
+                  colorScheme: charInfo.colorScheme || '',
+                  storyData: storyData // Pass the story data for style reference
+                };
+              }
+            });
+
+            // Determine which reference image to use for style consistency
+            // For first page, no reference
+            // For subsequent pages, use previous page for style consistency
+            const styleReferenceImage = index === 0 ? null : previousPageImageUrl;
+
+            // Log reference image usage
+            console.log(`Using style reference image for page ${pageNumber}: ${styleReferenceImage ? 'Yes' : 'No'}`);
+            console.log(`Character reference info for page ${pageNumber}:`,
+              Object.keys(characterReferenceInfo).map(id => ({
+                name: characterReferenceImages[id].name,
+                isFirstAppearance: characterReferenceInfo[id].isFirstAppearance,
+                hasReference: !!characterReferenceInfo[id].referenceImageUrl,
+                outfitDescription: characterReferenceInfo[id].outfitDescription || 'Not yet defined',
+                hairstyleDescription: characterReferenceInfo[id].hairstyleDescription || 'Not yet defined',
+                colorScheme: characterReferenceInfo[id].colorScheme || 'Not yet defined'
+              })));
+
+            // Generate scene image using OpenAI with reference images and character info
+            finalImageUrl = await openaiImageService.generateSceneImage(
+              spreadVisualPrompt,
+              characterDescriptions,
+              `Use a ${styleDescription} style.`,
+              styleReferenceImage, // Style reference (previous page)
+              pageNumber,
+              characterReferenceInfo // Character-specific reference information
+            );
+
+            if (!finalImageUrl) throw new Error("OpenAI image generation failed.");
+            updateProgressInfo(`Image for page ${pageNumber} completed.`);
+
+            // Store the first page image as our primary reference for style consistency
+            if (index === 0 && finalImageUrl) {
+              firstPageImageUrl = finalImageUrl;
+              console.log('Stored first page image as primary style reference');
+            }
+
+            // Update reference images for characters that appear in this page
+            charactersInThisPage.forEach(characterId => {
+              const charInfo = characterReferenceImages[characterId];
+
+              // If this is the character's first appearance, store this image as their reference
+              if (charInfo.appearedInPages.length === 1 && charInfo.appearedInPages[0] === pageNumber) {
+                charInfo.referenceImageUrl = finalImageUrl;
+                charInfo.firstAppearance = pageNumber;
+
+                // Generate appearance descriptions for the character based on the prompt
+                // These will be used for consistency in future appearances
+                charInfo.outfitDescription = `${charInfo.name} wears the same outfit as shown in their first appearance on page ${pageNumber}`;
+                charInfo.hairstyleDescription = `${charInfo.name} has the same hairstyle as shown in their first appearance on page ${pageNumber}`;
+                charInfo.colorScheme = `${charInfo.name} has the same color scheme as shown in their first appearance on page ${pageNumber}`;
+
+                // Store appearance details for this page
+                charInfo.appearanceDetails[pageNumber] = {
+                  imageUrl: finalImageUrl,
+                  outfitDescription: charInfo.outfitDescription,
+                  hairstyleDescription: charInfo.hairstyleDescription,
+                  colorScheme: charInfo.colorScheme
+                };
+
+                console.log(`Set reference image and appearance details for character ${charInfo.name} from page ${pageNumber}`);
+              } else {
+                // For subsequent appearances, store the image but don't change the reference
+                charInfo.appearanceDetails[pageNumber] = {
+                  imageUrl: finalImageUrl
+                };
+              }
+            });
+
+            // Update the previous page image reference for the next iteration
+            previousPageImageUrl = finalImageUrl;
+
+          } catch (imageGenError) {
+            console.error(`Error generating image for page ${index + 1}:`, imageGenError);
+            updateProgressInfo(`Error generating image for page ${index + 1}: ${imageGenError.message}`);
+            finalImageUrl = 'ERROR_IMAGE_GEN'; // Mark image as error
+          }
+        } catch (pageGenError) {
+           console.error(`Error processing page ${index + 1}:`, pageGenError);
+           updateProgressInfo(`Error processing page ${index + 1}: ${pageGenError.message}`);
+           // Keep default error values for text/image
         }
-      );
-      updateProgressInfo('All images generated!');
-      setIsGenerating(false);
-    } catch (err) {
-      setError(err.message || 'An error occurred during book generation.');
-      setIsGenerating(false);
+
+        // --- Update State with Completed Page ---
+        const newPageObject = {
+          id: `page-${index + 1}`,
+          type: 'content',
+          text: spreadText,
+          // visualPrompt: spreadVisualPrompt, // Optional: Keep prompt for debugging/regen?
+          imageUrl: finalImageUrl,
+          spreadIndex: index
+        };
+        // Update state progressively
+        setGeneratedPagesData(prev => [...prev, newPageObject]);
+        setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage)); // Mark page as fully done
+
+      } // End loop through pages
+
+      // ---------- STEP 4: Assemble Final Book Object ----------
+      updateProgressInfo('Assembling final book...');
+      // Use the state variables populated during the sequential generation
+      const finalBookData = {
+        id: uuidv4(),
+        title: storyData.title || 'My Custom Story',
+        status: 'draft',
+        childName: mainCharacter.name,
+        category: storyData.category,
+        artStyleCode: storyData.artStyleCode,
+        characters: storyData.bookCharacters,
+        pages: [
+          { id: 'page-cover', type: 'cover', text: storyData.title, imageUrl: generatedCoverUrl || 'PLACEHOLDER_COVER_URL' },
+          { id: 'page-title', type: 'title', text: `${storyData.title}\n\nA story about ${mainCharacter.name}${supportingCharacters.length > 0 ? ' and ' + supportingCharacters.map(c => c.name).join(', ') : ''}`, imageUrl: '' },
+          ...generatedPagesData, // Use the progressively generated pages array from state
+          { id: 'page-back', type: 'back-cover', text: `The End\n\nCreated with love for ${mainCharacter.name}${supportingCharacters.length > 0 ? ' and ' + supportingCharacters.map(c => c.name).join(', ') : ''}`, imageUrl: '' }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        setting: storyData.setting,
+        ageRange: storyData.ageRange,
+      };
+
+      setGeneratedBook(finalBookData); // Set the final book object
+      storeCurrentBookId(finalBookData.id);
+      console.log(`[GenerateBookStep] Stored book ID ${finalBookData.id} for potential claiming`);
+      if (typeof addBook === 'function') addBook(finalBookData);
+      else console.error("[GenerateBookStep] Error: addBook function not available");
+      if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(finalBookData.id);
+      else console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function not available");
+
+      updateProgressInfo('Book generation complete!');
+      setGenerationProgress(100);
+
+    } catch (error) {
+      console.error('Book generation failed:', error);
+      setError(`Generation failed: ${error.message}`);
+      updateProgressInfo(`Error: ${error.message}`);
+      setGenerationProgress(100); // End progress on error
+    } finally {
+      setIsGenerating(false); // Set generating to false now that all steps are done or failed
+      console.log("Full book generation process finished.");
     }
   };
   // --- End of REFACTORED generateBook Function ---
