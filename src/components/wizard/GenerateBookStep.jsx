@@ -6,6 +6,7 @@ import * as openaiImageService from '../../services/openaiImageService';
 import { getStyleNameFromCode } from '../../utils/styleUtils';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
+import fetchAndConvertToBase64 from '../CharacterWizard.jsx'; // Import the helper for base64 conversion
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -704,11 +705,27 @@ const GenerateBookStep = () => {
         });
 
         // Collect character reference images for cover generation
-        const characterReferenceImageUrls = storyData.bookCharacters
-          .filter(character => character.stylePreview)
-          .map(character => character.stylePreview);
-
-        console.log(`Using ${characterReferenceImageUrls.length} character reference images for cover generation`);
+        let characterReferenceImageUrls = await Promise.all(
+          storyData.bookCharacters
+            .filter(character => character.stylePreview)
+            .map(async character => {
+              const img = character.stylePreview;
+              if (img.startsWith('data:image')) return img;
+              if (img.startsWith('http')) {
+                const base64 = await fetchAndConvertToBase64(img);
+                if (base64 && base64.startsWith('data:image')) return base64;
+                return null;
+              }
+              return null;
+            })
+        );
+        characterReferenceImageUrls = characterReferenceImageUrls.filter(Boolean);
+        console.log('Filtered/converted character reference images:', characterReferenceImageUrls);
+        if (characterReferenceImageUrls.length === 0) {
+          setError('No valid character preview images available for cover generation. Please generate a character preview first.');
+          setIsGenerating(false);
+          return;
+        }
 
         // Generate cover image using OpenAI with reference images and style code
         coverImageUrl = await openaiImageService.generateCoverImage(
