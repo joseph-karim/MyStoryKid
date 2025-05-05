@@ -9,6 +9,8 @@
 // Import OpenAI integration
 import { generateOutlineFromPrompt, generateSpreadContentFromPrompt } from './openaiService';
 import { v4 as uuidv4 } from 'uuid';
+import * as openaiImageService from './openaiImageService';
+import { uploadImageAndGetUrl } from './imageUploadService';
 
 /**
  * Step 1: Generate the Story Outline
@@ -967,4 +969,79 @@ function processTemplateText(text) {
     });
 
   return simplified;
+}
+
+/**
+ * Generate images for a book using the character preview and style reference for consistency
+ * @param {Object} book - The book object with pages and metadata
+ * @param {string} mainCharacterPreviewImage - Base64 data URL of the main character's preview image
+ * @param {function} [onProgress] - Optional callback called after each page image is generated, receives (updatedPages)
+ * @returns {Promise<Object>} - The updated book object with imageUrl fields filled in
+ */
+export async function generateImagesForBookWithReferences(book, mainCharacterPreviewImage, onProgress) {
+  if (!book || !book.pages || !mainCharacterPreviewImage) {
+    throw new Error('Book, pages, and main character preview image are required');
+  }
+
+  // Get style code and description
+  const styleCode = book.artStyleCode;
+  const styleDescription = book.customStyleDescription || '';
+
+  // Get style reference image
+  let styleReferenceImage = null;
+  if (styleCode) {
+    try {
+      styleReferenceImage = await openaiImageService.getStyleReferenceImage(styleCode);
+    } catch (e) {
+      styleReferenceImage = null;
+    }
+  }
+
+  // Prepare references array (main character preview, style reference)
+  const characterReferenceImages = [mainCharacterPreviewImage];
+  if (styleReferenceImage) characterReferenceImages.push(styleReferenceImage);
+
+  // Generate images for each page, updating as we go
+  const updatedPages = [];
+  for (const page of book.pages) {
+    let imageUrl = null;
+    try {
+      if (page.type === 'cover') {
+        imageUrl = await openaiImageService.generateCoverImage(
+          book.title,
+          book.characters.map(c => c.name),
+          styleDescription,
+          characterReferenceImages,
+          styleCode
+        );
+      } else if (page.type === 'content') {
+        imageUrl = await openaiImageService.generateSceneImage(
+          page.imagePrompt,
+          book.characters.map(c => c.name),
+          styleDescription,
+          styleReferenceImage,
+          page.pageNumber,
+          {
+            // For now, only main character reference; extend for multi-character later
+            [book.characters[0]?.id || 'main']: {
+              name: book.characters[0]?.name,
+              referenceImageUrl: mainCharacterPreviewImage,
+              isFirstAppearance: false
+            }
+          }
+        );
+      }
+      // Optionally upload the image and get a persistent URL
+      if (imageUrl && imageUrl.startsWith('data:image')) {
+        imageUrl = await uploadImageAndGetUrl(imageUrl);
+      }
+    } catch (e) {
+      imageUrl = null;
+    }
+    updatedPages.push({ ...page, imageUrl });
+    if (typeof onProgress === 'function') {
+      onProgress([...updatedPages]);
+    }
+  }
+  return { ...book, pages: updatedPages };
 }
