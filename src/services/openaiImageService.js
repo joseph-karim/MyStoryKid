@@ -849,7 +849,7 @@ export const generateSceneImage = async (
   if (Object.keys(characterReferenceInfo).length > 0) {
     // Get characters with reference images
     const charactersWithReferences = Object.entries(characterReferenceInfo)
-      .filter(([_, info]) => info.referenceImageUrl && !info.isFirstAppearance)
+      .filter(([_, info]) => info.referenceImageUrl)
       .map(([characterId, info]) => characterId);
 
     // Get characters appearing for the first time
@@ -862,7 +862,7 @@ export const generateSceneImage = async (
       const charInfo = characterReferenceInfo[id];
       if (charInfo.referenceImageUrl && charInfo.referenceImageUrl.startsWith('data:image')) {
         referenceImages.push(charInfo.referenceImageUrl);
-        console.log(`Added reference image for ${charInfo.name}`);
+        console.log(`Added reference image for ${charInfo.name} (${charInfo.isFirstAppearance ? 'first appearance' : 'subsequent appearance'})`);
       }
 
       // Add appearance details if available
