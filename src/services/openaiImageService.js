@@ -359,11 +359,24 @@ export const generateImage = async (prompt, options = {}) => {
   try {
     // Enhanced logging for OpenAI image requests (with sensitive data redaction)
     console.log(`--- OpenAI Image Generation Request ---`);
-    console.log(`Prompt (truncated): "${prompt.substring(0, 100)}..."`);
+    console.log(`Prompt (first 200): ${prompt.substring(0, 200)}`);
     console.log(`Model: ${options.model || 'gpt-image-1'}`);
     console.log(`Size: ${options.size || '1024x1024'}`);
     console.log(`Quality: ${options.quality || 'standard'}`);
-    console.log(`Style: ${options.style || 'natural'}`);
+    if (options.referenceImages) {
+      console.log(`Reference images count: ${options.referenceImages.length}`);
+      options.referenceImages.forEach((img, idx) => {
+        if (typeof img === 'string') {
+          console.log(`Reference image[${idx}] base64 prefix: ${img.substring(0, 100)}`);
+          try {
+            const size = atob(img.split(',')[1] || '').length;
+            console.log(`Reference image[${idx}] size: ${size} bytes`);
+          } catch (e) {
+            console.log(`Reference image[${idx}] size: error calculating size`);
+          }
+        }
+      });
+    }
     console.log(`----------------------`);
 
     const defaultOptions = {
@@ -452,7 +465,36 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
   }
 
   try {
-    console.log(`Generating image edit with OpenAI for prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`--- OpenAI Image Edit Request ---`);
+    console.log(`Prompt (first 200): ${prompt.substring(0, 200)}`);
+    console.log(`Model: ${options.model || 'gpt-image-1'}`);
+    console.log(`Size: ${options.size}`);
+    console.log(`Quality: ${options.quality}`);
+    // Log main image
+    if (typeof imageDataUrl === 'string') {
+      console.log(`Main image base64 prefix: ${imageDataUrl.substring(0, 100)}`);
+      try {
+        const size = atob(imageDataUrl.split(',')[1] || '').length;
+        console.log(`Main image size: ${size} bytes`);
+      } catch (e) {
+        console.log(`Main image size: error calculating size`);
+      }
+    }
+    // Log reference images
+    if (options.referenceImages && Array.isArray(options.referenceImages)) {
+      console.log(`Reference images count: ${options.referenceImages.length}`);
+      options.referenceImages.forEach((img, idx) => {
+        if (typeof img === 'string') {
+          console.log(`Reference image[${idx}] base64 prefix: ${img.substring(0, 100)}`);
+          try {
+            const size = atob(img.split(',')[1] || '').length;
+            console.log(`Reference image[${idx}] size: ${size} bytes`);
+          } catch (e) {
+            console.log(`Reference image[${idx}] size: error calculating size`);
+          }
+        }
+      });
+    }
 
     // Convert data URLs to Blobs
     const imageBlob = await dataUrlToBlob(imageDataUrl);
@@ -491,13 +533,29 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
     if (options.model) formData.append('model', options.model || 'gpt-image-1');
     // Note: response_format is not supported for the edits endpoint with gpt-image-1
 
-    const response = await axios.post(OPENAI_EDITS_URL, formData, {
+    // Log FormData keys
+    if (typeof formData.forEach === 'function') {
+      console.log('FormData keys:');
+      formData.forEach((value, key) => {
+        if (typeof value === 'object' && value instanceof Blob) {
+          console.log(`  ${key}: [Blob, size: ${value.size}]`);
+        } else {
+          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) : value}`);
+        }
+      });
+    }
+
+    // Log Axios config
+    const axiosConfig = {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'multipart/form-data'
       },
       timeout: 60000 // 60 second timeout
-    });
+    };
+    console.log('Axios config:', JSON.stringify(axiosConfig, null, 2));
+
+    const response = await axios.post(OPENAI_EDITS_URL, formData, axiosConfig);
 
     if (response.data && response.data.data && response.data.data.length > 0) {
       // Extract the base64 image data - handle both response formats
