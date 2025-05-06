@@ -892,19 +892,6 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
   // Get style-specific prompt guidance
   const stylePromptGuidance = getStylePromptGuidance(styleCode);
 
-  // Try to get a style reference image
-  let styleReferenceImage = null;
-  if (styleCode) {
-    try {
-      styleReferenceImage = await getStyleReferenceImage(styleCode);
-      if (styleReferenceImage) {
-        console.log(`Found style reference image for style code: ${styleCode}`);
-      }
-    } catch (error) {
-      console.error('Error getting style reference image:', error);
-    }
-  }
-
   // Enhanced style guidance for consistency
   const enhancedStyleGuidance = `
     Create the cover with these specific style characteristics:
@@ -921,38 +908,22 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
     ${styleDescription ? `Additional style notes: ${styleDescription}` : ''}
   `;
 
-  const prompt = `Create a children's book cover for "${title}" featuring ${characterPrompt}. The cover should be vibrant, engaging, and appropriate for young children.
-
-  ${enhancedStyleGuidance}`;
+  const prompt = `Create a children's book cover for "${title}" featuring ${characterPrompt}. The cover should be vibrant, engaging, and appropriate for young children.\n\n${enhancedStyleGuidance}`;
 
   console.log('Generating cover image with enhanced style guidance');
 
-  // Collect all reference images
-  const referenceImages = [];
-
-  // Add character reference images
+  // Use only the first valid character reference image (the main character preview)
   const validCharacterReferences = characterReferenceImages
-    .filter(img => img && img.startsWith('data:image'))
-    .slice(0, 3); // Limit to 3 reference images to avoid API limits
+    .filter(img => img && img.startsWith('data:image'));
+  const referenceImages = validCharacterReferences.length > 0 ? [validCharacterReferences[0]] : [];
+  console.log(`Number of character reference images available: ${referenceImages.length}`);
 
-  referenceImages.push(...validCharacterReferences);
-  console.log(`Number of character reference images available: ${validCharacterReferences.length}`);
-
-  // Add style reference image if available and we don't have too many references already
-  if (styleReferenceImage && referenceImages.length < 4) {
-    referenceImages.push(styleReferenceImage);
-    console.log('Added style reference image for cover');
-  }
-
-  // If we have reference images, use image edit capabilities
+  // If we have a reference image, use image edit capabilities
   if (referenceImages.length > 0) {
-    console.log(`Using image-to-image generation with ${referenceImages.length} reference images for cover`);
-
+    console.log(`Using image-to-image generation with 1 reference image for cover`);
     try {
-      // Use the first reference as the primary image and others as additional references
+      // Use the main character preview as the primary image
       const primaryImage = referenceImages[0];
-      const additionalReferences = referenceImages.slice(1);
-
       // Use gpt-image-1 with image edit for best character consistency
       return await generateImageEdit(
         primaryImage,
@@ -960,7 +931,7 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
         null, // No mask
         {
           model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
-          referenceImages: additionalReferences,
+          referenceImages: [], // No additional references
           size: "1024x1536", // Portrait format for book covers
           quality: "high"
         }
