@@ -651,6 +651,53 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
     }
   }
 
+  // Collect all reference images
+  const referenceImages = [];
+  if (photoReference && photoReference.startsWith('data:image')) {
+    referenceImages.push(photoReference);
+    console.log('Using photo reference for character generation');
+  }
+  if (styleReferenceImage) {
+    referenceImages.push(styleReferenceImage);
+    console.log('Using style reference image for character generation');
+  }
+
+  // --- DETAILED LOGGING FOR CHARACTER PREVIEW ---
+  console.log('--- Character Preview Generation ---');
+  console.log('Prompt (first 200):', characterDescription.substring(0, 200));
+  console.log('Art style code:', styleCode);
+  console.log('Style prompt guidance:', stylePromptGuidance);
+  if (styleReferenceImage) {
+    console.log('Style reference image base64 prefix:', styleReferenceImage.substring(0, 100));
+    try {
+      const size = atob(styleReferenceImage.split(',')[1] || '').length;
+      console.log('Style reference image size:', size, 'bytes');
+    } catch (e) {
+      console.log('Style reference image size: error calculating size');
+    }
+  }
+  if (photoReference) {
+    console.log('Photo reference base64 prefix:', photoReference.substring(0, 100));
+    try {
+      const size = atob(photoReference.split(',')[1] || '').length;
+      console.log('Photo reference size:', size, 'bytes');
+    } catch (e) {
+      console.log('Photo reference size: error calculating size');
+    }
+  }
+  referenceImages.forEach((img, idx) => {
+    if (typeof img === 'string') {
+      console.log(`Reference image[${idx}] base64 prefix: ${img.substring(0, 100)}`);
+      try {
+        const size = atob(img.split(',')[1] || '').length;
+        console.log(`Reference image[${idx}] size: ${size} bytes`);
+      } catch (e) {
+        console.log(`Reference image[${idx}] size: error calculating size`);
+      }
+    }
+  });
+  console.log('--- End Character Preview Logging ---');
+
   // Enhanced style guidance for consistency
   const enhancedStyleGuidance = `
     Create the character with these specific style characteristics:
@@ -673,25 +720,6 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
   ${enhancedStyleGuidance}`;
 
   console.log('Generating character image with enhanced style guidance');
-
-  // Collect all reference images
-  const referenceImages = [];
-
-  // Add photo reference if available
-  if (photoReference && photoReference.startsWith('data:image')) {
-    referenceImages.push(photoReference);
-    console.log('Using photo reference for character generation');
-  }
-
-  // Add style reference if available
-  if (styleReferenceImage) {
-    if (referenceImages.length === 0) {
-      referenceImages.push(styleReferenceImage);
-    } else {
-      referenceImages.push(styleReferenceImage);
-    }
-    console.log('Using style reference image for character generation');
-  }
 
   // If we have reference images, use image edit capabilities
   if (referenceImages.length > 0) {
