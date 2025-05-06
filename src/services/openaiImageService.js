@@ -918,6 +918,8 @@ export const generateSceneImage = async (
       const primaryImage = referenceImages[0];
       const additionalReferences = referenceImages.slice(1);
 
+      console.log(`Using primary image and ${additionalReferences.length} additional reference images for scene generation`);
+      
       // Use gpt-image-1 with image edit for best character consistency
       return await generateImageEdit(
         primaryImage,
@@ -927,7 +929,8 @@ export const generateSceneImage = async (
           model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
           referenceImages: additionalReferences,
           size: "1536x1024", // Landscape format for scenes
-          quality: "high"
+          quality: "high",
+          timeout: 120000 // Increase timeout to 2 minutes for complex scene generation
         }
       );
     } catch (error) {
@@ -1011,15 +1014,36 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
       // Use the main character preview as the primary image
       const primaryImage = referenceImages[0];
       // Use gpt-image-1 with image edit for best character consistency
+      // Get style reference image if available
+      let styleReferenceImage = null;
+      if (styleCode) {
+        try {
+          styleReferenceImage = await getStyleReferenceImage(styleCode);
+          if (styleReferenceImage) {
+            console.log(`Found style reference image for style code: ${styleCode}`);
+          }
+        } catch (error) {
+          console.error('Error getting style reference image:', error);
+        }
+      }
+      
+      // Add style reference to additional references if available
+      const additionalReferences = [];
+      if (styleReferenceImage && styleReferenceImage.startsWith('data:image')) {
+        additionalReferences.push(styleReferenceImage);
+        console.log('Added style reference image to cover generation');
+      }
+      
       return await generateImageEdit(
         primaryImage,
         prompt,
         null, // No mask
         {
           model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
-          referenceImages: [], // No additional references
+          referenceImages: additionalReferences, // Include style reference image
           size: "1024x1536", // Portrait format for book covers
-          quality: "high"
+          quality: "high",
+          timeout: 120000 // Increase timeout to 2 minutes for complex cover generation
         }
       );
     } catch (error) {
