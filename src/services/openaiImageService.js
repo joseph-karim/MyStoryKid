@@ -399,7 +399,7 @@ export const generateImage = async (prompt, options = {}) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
-      timeout: 60000 // 60 second timeout
+      timeout: options.timeout || 60000 // Use timeout from options or default to 60 seconds
     });
 
     if (response.data && response.data.data && response.data.data.length > 0) {
@@ -551,7 +551,7 @@ export const generateImageEdit = async (imageDataUrl, prompt, maskDataUrl = null
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'multipart/form-data'
       },
-      timeout: 60000 // 60 second timeout
+      timeout: options.timeout || 60000 // Use timeout from options or default to 60 seconds
     };
     console.log('Axios config:', JSON.stringify(axiosConfig, null, 2));
 
