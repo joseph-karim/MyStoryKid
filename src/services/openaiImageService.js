@@ -739,7 +739,8 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
           model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
           referenceImages: additionalReferences,
           size: "1024x1024", // Square format for character portraits
-          quality: "high"
+          quality: "medium", // Use medium quality to reduce token usage for subsequent operations
+          timeout: 120000 // Increase timeout to 2 minutes for character generation
         }
       );
     } catch (error) {
@@ -749,7 +750,8 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
       return generateImage(prompt, {
         model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
         size: "1024x1024", // Square format for character portraits
-        quality: "high"
+        quality: "medium", // Use medium quality to reduce token usage for subsequent operations
+        timeout: 120000 // Increase timeout to 2 minutes for character generation
       });
     }
   } else {
@@ -757,7 +759,8 @@ export const generateCharacterImage = async (characterData, styleDescription, ph
     return generateImage(prompt, {
       model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
       size: "1024x1024", // Square format for character portraits
-      quality: "high"
+      quality: "medium", // Use medium quality to reduce token usage for subsequent operations
+      timeout: 120000 // Increase timeout to 2 minutes for character generation
     });
   }
 };
@@ -919,7 +922,7 @@ export const generateSceneImage = async (
       const additionalReferences = referenceImages.slice(1);
 
       console.log(`Using primary image and ${additionalReferences.length} additional reference images for scene generation`);
-      
+
       // Use gpt-image-1 with image edit for best character consistency
       return await generateImageEdit(
         primaryImage,
@@ -1011,9 +1014,6 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
   if (referenceImages.length > 0) {
     console.log(`Using image-to-image generation with 1 reference image for cover`);
     try {
-      // Use the main character preview as the primary image
-      const primaryImage = referenceImages[0];
-      // Use gpt-image-1 with image edit for best character consistency
       // Get style reference image if available
       let styleReferenceImage = null;
       if (styleCode) {
@@ -1026,6 +1026,9 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
           console.error('Error getting style reference image:', error);
         }
       }
+
+      // Use the main character preview as the primary image
+      const primaryImage = referenceImages[0];
       
       // Add style reference to additional references if available
       const additionalReferences = [];
@@ -1053,7 +1056,8 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
       return generateImage(prompt, {
         model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
         size: "1024x1536", // Portrait format for book covers
-        quality: "high"
+        quality: "high",
+        timeout: 120000 // Increase timeout to 2 minutes for complex cover generation
       });
     }
   } else {
@@ -1061,7 +1065,8 @@ export const generateCoverImage = async (title, characterDescriptions, styleDesc
     return generateImage(prompt, {
       model: "gpt-image-1", // Explicitly use gpt-image-1 for best quality
       size: "1024x1536", // Portrait format for book covers
-      quality: "high"
+      quality: "high",
+      timeout: 120000 // Increase timeout to 2 minutes for complex cover generation
     });
   }
 };
