@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { isAnonymousUser } from '../services/anonymousAuthService';
 import { generateBookPDF } from '../services/digitalDownloadService';
-import LoginPrompt from './LoginPrompt';
+import AuthModal from './AuthModal';
+import useAuthStore from '../store/useAuthStore';
 
 /**
  * Component for book actions (download, save, print) that handles authentication requirements
  */
 const BookActions = ({ book }) => {
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [actionType, setActionType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  // We use useAuthStore to check authentication status in other parts of the component
+  const { isAuthenticated, isAnonymous } = useAuthStore();
 
   // Handle download action
   const handleDownload = async () => {
@@ -55,13 +56,12 @@ const BookActions = ({ book }) => {
   const handleAction = async (type, actionCallback) => {
     setIsLoading(true);
     try {
-      // Check if user is anonymous
-      const anonymous = await isAnonymousUser();
-
-      if (anonymous) {
-        // Show login prompt for anonymous users
+      // Check if user is authenticated and not anonymous
+      if (!isAuthenticated || isAnonymous) {
+        // Show auth modal for unauthenticated or anonymous users
         setActionType(type);
-        setShowLoginPrompt(true);
+        setShowAuthModal(true);
+        setIsLoading(false);
         return;
       }
 
@@ -130,14 +130,15 @@ const BookActions = ({ book }) => {
         {isLoading ? 'Processing...' : 'Print Book'}
       </button>
 
-      {showLoginPrompt && (
-        <LoginPrompt
-          bookId={book.id}
-          actionType={actionType}
-          onClose={() => setShowLoginPrompt(false)}
-          onSuccess={handleActionSuccess}
-        />
-      )}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          handleActionSuccess();
+        }}
+        mode="signin"
+      />
     </div>
   );
 };
