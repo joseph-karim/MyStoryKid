@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCheckoutUrl } from '../services/shopifyService';
+import { createCheckoutSession, validateShopifyConfig } from '../services/shopifyService';
 import { generateBookPDF } from '../services/digitalDownloadService';
 import { 
   analyzeBookImages, 
@@ -21,10 +21,11 @@ const BookPurchaseOptions = ({ book }) => {
   const [imageAnalysis, setImageAnalysis] = useState(null);
   const [enhancementCost, setEnhancementCost] = useState(null);
   const [enhancementServiceStatus, setEnhancementServiceStatus] = useState(null);
+  const [shopifyConfig, setShopifyConfig] = useState(null);
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
-  // Analyze images for print quality on component mount
+  // Analyze images for print quality and check Shopify config on component mount
   useEffect(() => {
     const analyzeImages = async () => {
       try {
@@ -47,8 +48,14 @@ const BookPurchaseOptions = ({ book }) => {
       }
     };
 
+    const checkShopifyConfig = () => {
+      const config = validateShopifyConfig();
+      setShopifyConfig(config);
+    };
+
     if (book) {
       analyzeImages();
+      checkShopifyConfig();
     }
   }, [book]);
 
@@ -89,9 +96,9 @@ const BookPurchaseOptions = ({ book }) => {
       }
 
       if (selectedOption === 'digital') {
-        // For digital option, redirect to Shopify checkout for digital product
-        const checkoutUrl = getCheckoutUrl(book, 'digital');
-        window.location.href = checkoutUrl;
+        // For digital option, create Shopify checkout session
+        const checkoutSession = await createCheckoutSession(book, 'digital');
+        window.location.href = checkoutSession.checkoutUrl;
       } else {
         // For print option, include enhancement option in the variant
         let variant = shippingOption === 'expedited' ? 'print-expedited' : 'print-standard';
@@ -99,11 +106,11 @@ const BookPurchaseOptions = ({ book }) => {
           variant += '-enhanced';
         }
         
-        const checkoutUrl = getCheckoutUrl(book, variant, {
+        const checkoutSession = await createCheckoutSession(book, variant, {
           printEnhancement,
           enhancementCost: enhancementCost?.totalCost || 0
         });
-        window.location.href = checkoutUrl;
+        window.location.href = checkoutSession.checkoutUrl;
       }
     } catch (error) {
       console.error('Error initiating purchase:', error);
@@ -349,6 +356,13 @@ const BookPurchaseOptions = ({ book }) => {
       {selectedOption === 'print' && enhancementServiceStatus && !enhancementServiceStatus.available && (
         <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
           <strong>Note:</strong> Print enhancement service is currently unavailable. Your book will be printed with standard quality.
+        </div>
+      )}
+
+      {/* Shopify Configuration Status */}
+      {shopifyConfig && !shopifyConfig.isConfigured && (
+        <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-800">
+          <strong>Configuration Required:</strong> Shopify integration is not properly configured. Please contact support to complete your purchase.
         </div>
       )}
     </div>
