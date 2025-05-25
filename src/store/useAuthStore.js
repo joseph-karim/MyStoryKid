@@ -146,6 +146,11 @@ const useAuthStore = create((set, get) => ({
   // Set loading state
   setLoading: (isLoading) => set({ isLoading }),
   
+  // Direct state setters for AuthGuard
+  setUser: (user) => set({ user }),
+  setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+  setIsAnonymous: (isAnonymous) => set({ isAnonymous }),
+  
   // For backward compatibility
   login: (userData) => set({
     user: userData,

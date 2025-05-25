@@ -9,20 +9,40 @@ import PreviewPage from './pages/PreviewPage';
 import DzineStylesList from './scripts/getDzineStylesList';
 import GenerateBookWrapper from './components/wizard/GenerateBookWrapper';
 import DigitalDownloadPage from './pages/DigitalDownloadPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        {/* Public routes */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/create" element={<CreateBookPage />} />
-        <Route path="/edit/:bookId" element={<EditBookPage />} />
         <Route path="/book/:bookId" element={<PreviewPage />} />
         <Route path="/styles" element={<DzineStylesList />} />
         <Route path="/generate-book" element={<GenerateBookWrapper />} />
-        <Route path="/download/:downloadId" element={<DigitalDownloadPage />} />
-        <Route path="/account/downloads" element={<DashboardPage />} />
+        
+        {/* Protected routes - require authentication */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute requireAuth={true} allowGuest={false}>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/edit/:bookId" element={
+          <ProtectedRoute requireAuth={true} allowGuest={false}>
+            <EditBookPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/download/:downloadId" element={
+          <ProtectedRoute requireAuth={true} allowGuest={false}>
+            <DigitalDownloadPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/account/downloads" element={
+          <ProtectedRoute requireAuth={true} allowGuest={false}>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />
