@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
-import * as openaiService from '../../services/openaiService';
-import * as openaiImageService from '../../services/openaiImageService';
+
+import { 
+  generateStoryContent, 
+  generateImage, 
+  generateImageWithReferences, 
+  generateCharacterImage, 
+  generateSceneImage, 
+  generateCoverImage,
+  createStoryOutline,
+  generatePageContent 
+} from '../../services/supabaseService';
 import { getStyleNameFromCode } from '../../utils/styleUtils';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
@@ -333,12 +342,12 @@ const generateStoryPages = async (storyData) => {
     console.log('[generateStoryPages] Generating story outline...');
     const outlinePrompt = createOutlinePrompt(storyData, characters);
 
-    // Use OpenAI to generate the outline
-    const outlineResponse = await openaiService.generateContent({
-      prompt: outlinePrompt,
+    // Use Supabase Edge Function to generate the outline
+    const outlineResult = await generateStoryContent(outlinePrompt, {
       temperature: 0.7,
       max_tokens: 1000
     });
+    const outlineResponse = outlineResult.content;
 
     // Extract and parse the outline
     let storyOutline;
@@ -387,11 +396,11 @@ const generateStoryPages = async (storyData) => {
     const pagesPromises = storyOutline.map(async (spreadOutline, index) => {
       const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, spreadOutline);
 
-      const contentResponse = await openaiService.generateContent({
-        prompt: spreadPrompt,
+      const contentResult = await generateStoryContent(spreadPrompt, {
         temperature: 0.7,
         max_tokens: 800
       });
+      const contentResponse = contentResult.content;
 
       // Parse the response to extract text and image prompt
       let spreadContent;
@@ -533,11 +542,11 @@ const generateCoverPrompt = async (storyData) => {
     }
     `;
 
-    const coverResponse = await openaiService.generateContent({
-      prompt: coverPrompt,
+    const coverResult = await generateStoryContent(coverPrompt, {
       temperature: 0.7,
       max_tokens: 400
     });
+    const coverResponse = coverResult.content;
 
     // Parse the response
     let coverContent;
@@ -677,7 +686,8 @@ const GenerateBookStep = () => {
       // ---------- STEP 1: Generate Story Outline ----------
       updateProgressWithTimeEstimate(outlineProgressAllocation / 2, 'Generating story outline...');
       const outlinePrompt = createOutlinePrompt(storyData, characters);
-      const outlineResponse = await openaiService.generateContent({ prompt: outlinePrompt, temperature: 0.7, max_tokens: 1000 });
+              const outlineResult = await generateStoryContent(outlinePrompt, { temperature: 0.7, max_tokens: 1000 });
+        const outlineResponse = outlineResult.content;
 
       // let storyOutline; // Moved definition outside
       try {
@@ -737,8 +747,8 @@ const GenerateBookStep = () => {
           return;
         }
 
-        // Generate cover image using OpenAI with reference images and style code
-        coverImageUrl = await openaiImageService.generateCoverImage(
+        // Generate cover image using Supabase Edge Function with reference images and style code
+        coverImageUrl = await generateCoverImage(
           storyData.title,
           characterDescriptions,
           `Use a ${styleDescription} style. ${coverVisualPrompt}`,
@@ -799,7 +809,8 @@ const GenerateBookStep = () => {
           // --- Generate Text & Visual Prompt for Current Spread ---
           updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.1), `Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
           const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
-          const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
+          const contentResult = await generateStoryContent(spreadPrompt, { temperature: 0.7, max_tokens: 800 });
+          const contentResponse = contentResult.content;
 
           let spreadContent;
           try {
@@ -907,7 +918,7 @@ const GenerateBookStep = () => {
               })));
 
             // Generate scene image using OpenAI with reference images and character info
-            finalImageUrl = await openaiImageService.generateSceneImage(
+            finalImageUrl = await generateSceneImage(
               spreadVisualPrompt,
               characterDescriptions,
               `Use a ${styleDescription} style.`,

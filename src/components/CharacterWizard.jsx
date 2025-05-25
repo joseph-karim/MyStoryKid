@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { getStyleNameFromCode } from '../utils/styleUtils';
-import * as openaiImageService from '../services/openaiImageService';
+import { generateCharacterImage } from '../services/supabaseService';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
@@ -1131,8 +1131,8 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
        // Use the photo as reference if available
        const photoReference = characterData.photoUrl || null;
 
-       // Generate the character image
-       const generatedImage = await openaiImageService.generateCharacterImage(
+       // Generate the character image using Supabase Edge Function
+       const generatedImage = await generateCharacterImage(
          { ...characterData, artStyleCode: styleToUse }, // Pass the entire character data object with art style code
          `Use a ${styleDescription} style.`,
          photoReference
