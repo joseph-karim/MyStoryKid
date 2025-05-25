@@ -4,6 +4,8 @@ import { useCharacterStore } from '../store';
 import { v4 as uuidv4 } from 'uuid';
 import { getStyleNameFromCode } from '../utils/styleUtils';
 import { generateCharacterImage } from '../services/supabaseService';
+import { useLoading } from '../hooks/useLoading';
+import LoadingModal from '../components/LoadingModal';
 
 // Initialize form state with defaults
 const defaultCharacterData = {
@@ -852,11 +854,23 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
          <h3 className="text-2xl font-semibold text-center text-gray-800">Confirm Character</h3>
          <p className="text-center text-gray-600">Review your character details and the generated style preview.</p>
 
-         {/* Generation Status/Error Display */}
-         {generationStatus === 'processing' && (
-           <div className="flex justify-center items-center flex-col my-4">
-             <div className="w-8 h-8 border-t-2 border-blue-500 border-solid rounded-full animate-spin mb-2"></div>
-             <p className="text-sm text-gray-500">{progressMessage || 'Generating preview...'}</p>
+         {/* Enhanced Loading Display */}
+         {isEnhancedLoading && (
+           <div className="my-6 p-6 bg-purple-50 rounded-lg border border-purple-200">
+             <div className="text-center">
+               <div className="flex justify-center mb-4">
+                 <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+               </div>
+               <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                 Generating {characterData.name || 'Character'} Preview
+               </h3>
+               <p className="text-purple-700 text-sm mb-4">
+                 Creating your character in the selected art style...
+               </p>
+               <div className="text-xs text-purple-600">
+                 This usually takes about 60 seconds
+               </div>
+             </div>
            </div>
          )}
          {/* Display specific generation error if present */}
@@ -865,7 +879,7 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
          )}
          {/* End Generation Status */}
 
-         {displayPreviewUrl && generationStatus !== 'processing' ? ( // Hide preview while processing
+         {displayPreviewUrl && !isEnhancedLoading ? ( // Hide preview while enhanced loading is active
            <div className="flex flex-col items-center space-y-4">
              <div
                className="w-48 h-48 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
@@ -897,8 +911,8 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
               )}
             </div>
           ) : (
-             // Only show placeholder if NOT processing and no preview exists
-             generationStatus !== 'processing' && (
+             // Only show placeholder if NOT enhanced loading and no preview exists
+             !isEnhancedLoading && (
                 <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300 my-4 max-w-md mx-auto">
                   <p className="text-gray-600">Style preview will appear here after generation.</p>
                 </div>
@@ -906,8 +920,8 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           )}
 
         {/* Regenerate Button */}
-        {/* Show button only if generation isn't processing */}
-        {generationStatus !== 'processing' && (
+        {/* Show button only if enhanced loading isn't active */}
+        {!isEnhancedLoading && (
            <div className="text-center"> {/* Center the button */}
              <button
                onClick={() => {
@@ -916,10 +930,10 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
                  const isHumanCharacter = characterData.isHuman;
                  generateCharacterPreview(styleToUse, isHumanCharacter);
                }}
-               // Disable if generating, API not working, OR if required inputs are missing
-               disabled={isGenerating || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)}
+               // Disable if enhanced loading, API not working, OR if required inputs are missing
+               disabled={isEnhancedLoading || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)}
                className={`mt-3 px-4 py-2 text-sm rounded ${
-                 (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isGenerating // Combined disabled condition
+                 (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isEnhancedLoading // Combined disabled condition
                    ? 'bg-gray-400 text-white cursor-not-allowed'
                    : 'bg-blue-600 text-white hover:bg-blue-700'
                }`}
@@ -942,15 +956,15 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
              <button
             onClick={handleBack}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-            disabled={isGenerating} // Use isGenerating
+            disabled={isEnhancedLoading} // Use enhanced loading state
           >
             Back
           </button>
            <button
             onClick={handleComplete}
             // Allow complete if preview exists OR if generation wasn't attempted yet
-            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
-            disabled={(!displayPreviewUrl && generationAttempted) || isGenerating} // Use isGenerating and allow complete if not attempted
+            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
+            disabled={(!displayPreviewUrl && generationAttempted) || isEnhancedLoading} // Use enhanced loading state and allow complete if not attempted
            >
             Complete Character
              </button>
@@ -975,7 +989,9 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
 
 
 
-   // --- generateCharacterPreview function (Using Supabase Edge Functions) ---
+   // --- generateCharacterPreview function (Using Supabase Edge Functions with Enhanced Loading) ---
+   const { startLoading, stopLoading, updateProgress, isLoading: isEnhancedLoading } = useLoading();
+
    const generateCharacterPreview = async (styleApiCode, /* eslint-disable-next-line no-unused-vars */ isHumanCharacter) => {
      console.log('[GeneratePreview] Called with style:', styleApiCode);
 
@@ -996,17 +1012,32 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
 
      // Set placeholder immediately AND set state to processing
      updatePreviewImage(placeholderImage);
-     updateGenerationState('processing', 'Preparing character generation with Supabase Edge Functions...');
+     updateGenerationState('processing', 'Preparing character generation...');
+
+     // Start enhanced loading with character generation preset
+     const loadingId = startLoading('characterGeneration', {
+       title: `Generating ${characterData.name || 'Character'} Preview`,
+       message: 'Creating your character in the selected art style...',
+       estimatedTime: 60, // 60 seconds for character generation
+       steps: [
+         'Analyzing uploaded photo',
+         'Applying art style transformation', 
+         'Generating character preview',
+         'Finalizing image'
+       ]
+     });
 
      try {
        // Get style description from style code
        const styleDescription = getStyleNameFromCode(styleToUse) || 'colorful, child-friendly illustration style';
 
-       // Generate character image using Supabase Edge Functions
-       updateProgressInfo('Generating character with Supabase Edge Functions...');
+       // Update progress through the steps
+       updateProgress(loadingId, 25, 'Analyzing uploaded photo and character details...');
 
        // Use the photo as reference if available
        const photoReference = characterData.photoUrl || null;
+
+       updateProgress(loadingId, 50, `Applying ${styleDescription} art style...`);
 
        // Generate the character image using Supabase Edge Function
        const generatedImage = await generateCharacterImage(
@@ -1015,15 +1046,24 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
          photoReference
        );
 
+       updateProgress(loadingId, 90, 'Finalizing character preview...');
+
        if (generatedImage) {
          // Update the preview with the generated image
          updatePreviewImage(generatedImage);
          updateGenerationState('complete', 'Character preview generated!');
+         
+         // Complete loading with success
+         stopLoading(loadingId, true, 'Character preview generated successfully!');
        } else {
          throw new Error('Failed to generate character image with Supabase Edge Functions.');
        }
      } catch (error) {
        console.error('[GeneratePreview] Error generating character with Supabase Edge Functions:', error);
+       
+       // Stop loading with error
+       stopLoading(loadingId, false, `Generation failed: ${error.message}`);
+       
        handleGenerationError(error, placeholderImage); // Ensure fallback on error
      }
    };
@@ -1137,6 +1177,9 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
         onClose={closeImagePreview}
       />
 
+      {/* Global Loading Modal for other operations */}
+      <LoadingModal />
+
       {/* Navigation Buttons are now inside renderConfirmStep for Step 3 */}
       {/* Add general Next button for steps 1 and 2 */}
       {step < 3 && (
@@ -1145,16 +1188,16 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
              <button
                type="button"
                onClick={handleBack}
-               disabled={step === 1 || isGenerating} // Disable on step 1 or if generating
-               className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 || isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+               disabled={step === 1 || isEnhancedLoading} // Disable on step 1 or if enhanced loading
+               className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 || isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
              >
                Back
              </button>
              <button
                  type="button"
                  onClick={handleNext}
-                 disabled={isGenerating} // Disable if generating
-                 className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 disabled={isEnhancedLoading} // Disable if enhanced loading
+                 className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                >
                  Next
                </button>
