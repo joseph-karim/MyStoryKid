@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCheckoutUrl } from '../services/shopifyService';
 import { generateBookPDF } from '../services/digitalDownloadService';
+import { 
+  analyzeBookImages, 
+  getEnhancementCostEstimate,
+  checkPrintEnhancementService 
+} from '../services/printReadyBookService';
 import useAuthStore from '../store/useAuthStore';
 
 /**
@@ -10,10 +15,42 @@ import useAuthStore from '../store/useAuthStore';
 const BookPurchaseOptions = ({ book }) => {
   const [selectedOption, setSelectedOption] = useState('digital');
   const [shippingOption, setShippingOption] = useState('standard');
+  const [printEnhancement, setPrintEnhancement] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imageAnalysis, setImageAnalysis] = useState(null);
+  const [enhancementCost, setEnhancementCost] = useState(null);
+  const [enhancementServiceStatus, setEnhancementServiceStatus] = useState(null);
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
+
+  // Analyze images for print quality on component mount
+  useEffect(() => {
+    const analyzeImages = async () => {
+      try {
+        const [analysis, costEstimate, serviceStatus] = await Promise.all([
+          analyzeBookImages(book),
+          getEnhancementCostEstimate(book),
+          checkPrintEnhancementService()
+        ]);
+        
+        setImageAnalysis(analysis);
+        setEnhancementCost(costEstimate);
+        setEnhancementServiceStatus(serviceStatus);
+        
+        // Auto-enable enhancement if images need it and service is available
+        if (analysis.imagesNeedingEnhancement > 0 && serviceStatus.available) {
+          setPrintEnhancement(true);
+        }
+      } catch (error) {
+        console.error('Error analyzing images:', error);
+      }
+    };
+
+    if (book) {
+      analyzeImages();
+    }
+  }, [book]);
 
   // Handle option selection
   const handleOptionChange = (option) => {
@@ -23,6 +60,20 @@ const BookPurchaseOptions = ({ book }) => {
   // Handle shipping option selection
   const handleShippingOptionChange = (option) => {
     setShippingOption(option);
+  };
+
+  // Handle print enhancement toggle
+  const handlePrintEnhancementChange = (enabled) => {
+    setPrintEnhancement(enabled);
+  };
+
+  // Calculate total price
+  const calculateTotalPrice = () => {
+    let basePrice = selectedOption === 'digital' ? 10 : 24.99;
+    let shippingCost = selectedOption === 'print' && shippingOption === 'expedited' ? 9.99 : 0;
+    let enhancementCost = selectedOption === 'print' && printEnhancement ? (enhancementCost?.totalCost || 0) : 0;
+    
+    return basePrice + shippingCost + enhancementCost;
   };
 
   // Handle purchase button click
@@ -42,9 +93,16 @@ const BookPurchaseOptions = ({ book }) => {
         const checkoutUrl = getCheckoutUrl(book, 'digital');
         window.location.href = checkoutUrl;
       } else {
-        // For print option, redirect to Shopify checkout for print product
-        const variant = shippingOption === 'expedited' ? 'print-expedited' : 'print-standard';
-        const checkoutUrl = getCheckoutUrl(book, variant);
+        // For print option, include enhancement option in the variant
+        let variant = shippingOption === 'expedited' ? 'print-expedited' : 'print-standard';
+        if (printEnhancement) {
+          variant += '-enhanced';
+        }
+        
+        const checkoutUrl = getCheckoutUrl(book, variant, {
+          printEnhancement,
+          enhancementCost: enhancementCost?.totalCost || 0
+        });
         window.location.href = checkoutUrl;
       }
     } catch (error) {
@@ -148,6 +206,58 @@ const BookPurchaseOptions = ({ book }) => {
         </div>
       </div>
 
+      {/* Print Enhancement Options (only show if print is selected) */}
+      {selectedOption === 'print' && enhancementServiceStatus?.available && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-semibold text-purple-800">🎨 Print Quality Enhancement</h3>
+              <p className="text-sm text-purple-600">AI-powered image enhancement for superior print quality</p>
+            </div>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={printEnhancement}
+                onChange={(e) => handlePrintEnhancementChange(e.target.checked)}
+                className="mr-2 w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+              />
+              <span className="text-sm font-medium text-purple-800">
+                Enable (+${enhancementCost?.totalCost?.toFixed(2) || '0.00'})
+              </span>
+            </label>
+          </div>
+
+          {imageAnalysis && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-white p-3 rounded border">
+                <h4 className="font-medium text-gray-800 mb-2">Image Analysis</h4>
+                <ul className="space-y-1 text-gray-600">
+                  <li>• {imageAnalysis.totalImages} images in book</li>
+                  <li>• {imageAnalysis.imagesNeedingEnhancement} need enhancement</li>
+                  <li>• Est. processing: {Math.ceil(imageAnalysis.estimatedEnhancementTime / 60)} min</li>
+                </ul>
+              </div>
+              
+              <div className="bg-white p-3 rounded border">
+                <h4 className="font-medium text-gray-800 mb-2">Enhancement Benefits</h4>
+                <ul className="space-y-1 text-gray-600">
+                  <li>• 300+ DPI print resolution</li>
+                  <li>• Enhanced color vibrancy</li>
+                  <li>• Sharper details & clarity</li>
+                  <li>• Professional print quality</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {imageAnalysis?.imagesNeedingEnhancement > 0 && (
+            <div className="mt-3 p-2 bg-amber-100 border border-amber-300 rounded text-sm text-amber-800">
+              <strong>Recommendation:</strong> {imageAnalysis.imagesNeedingEnhancement} of your images would benefit from enhancement for optimal print quality.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Shipping Options (only show if print is selected) */}
       {selectedOption === 'print' && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -187,6 +297,35 @@ const BookPurchaseOptions = ({ book }) => {
         </div>
       )}
 
+      {/* Price Summary */}
+      {selectedOption === 'print' && (printEnhancement || shippingOption === 'expedited') && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-semibold mb-3 text-blue-800">Price Summary</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Printed Book</span>
+              <span>$24.99</span>
+            </div>
+            {shippingOption === 'expedited' && (
+              <div className="flex justify-between">
+                <span>Expedited Shipping</span>
+                <span>+$9.99</span>
+              </div>
+            )}
+            {printEnhancement && enhancementCost && (
+              <div className="flex justify-between">
+                <span>Print Enhancement ({enhancementCost.imagesNeedingEnhancement} images)</span>
+                <span>+${enhancementCost.totalCost.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="border-t pt-2 flex justify-between font-semibold text-lg text-blue-800">
+              <span>Total</span>
+              <span>${calculateTotalPrice().toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button
@@ -202,9 +341,16 @@ const BookPurchaseOptions = ({ book }) => {
           disabled={isLoading}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
         >
-          {isLoading ? 'Processing...' : `Buy ${selectedOption === 'digital' ? 'Digital Copy' : 'Printed Book'}`}
+          {isLoading ? 'Processing...' : `Buy ${selectedOption === 'digital' ? 'Digital Copy' : 'Printed Book'} - $${calculateTotalPrice().toFixed(2)}`}
         </button>
       </div>
+
+      {/* Enhancement Service Status */}
+      {selectedOption === 'print' && enhancementServiceStatus && !enhancementServiceStatus.available && (
+        <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
+          <strong>Note:</strong> Print enhancement service is currently unavailable. Your book will be printed with standard quality.
+        </div>
+      )}
     </div>
   );
 };
