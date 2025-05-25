@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 
 /**
  * Generate story content using Supabase Edge Function

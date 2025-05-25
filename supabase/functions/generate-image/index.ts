@@ -108,9 +108,7 @@ Deno.serve(async (req) => {
         model,
         prompt,
         size,
-        quality,
-        n,
-        response_format: 'b64_json'
+        n
       }
       console.log('Using standard image generation endpoint')
     }

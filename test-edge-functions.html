@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Edge Functions</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .setup-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Supabase Edge Functions Test</h1>
+        
+        <div class="setup-section">
+            <h3>⚙️ Setup</h3>
+            <p>Enter your Supabase anon key to test the Edge Functions:</p>
+            <input type="text" id="supabaseKey" placeholder="Your Supabase anon key (eyJ...)">
+            <button onclick="initializeSupabase()">Initialize Supabase</button>
+            <div id="setupResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📖 Story Generation Test</h3>
+            <p>Test the generate-story Edge Function:</p>
+            <button onclick="testStoryGeneration()" id="storyBtn" disabled>Test Story Generation</button>
+            <div id="storyResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎨 Image Generation Test</h3>
+            <p>Test the generate-image Edge Function:</p>
+            <button onclick="testImageGeneration()" id="imageBtn" disabled>Test Image Generation</button>
+            <div id="imageResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎭 Image with References Test</h3>
+            <p>Test image generation with reference images:</p>
+            <button onclick="testImageWithReferences()" id="referencesBtn" disabled>Test Image with References</button>
+            <div id="referencesResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let supabase = null;
+
+        function initializeSupabase() {
+            const key = document.getElementById('supabaseKey').value.trim();
+            const setupResult = document.getElementById('setupResult');
+            
+            if (!key) {
+                setupResult.className = 'result error';
+                setupResult.style.display = 'block';
+                setupResult.textContent = 'Please enter your Supabase anon key';
+                return;
+            }
+
+            try {
+                supabase = window.supabase.createClient(
+                    'https://uvziaiimktymmjwqgknl.supabase.co',
+                    key
+                );
+                
+                setupResult.className = 'result success';
+                setupResult.style.display = 'block';
+                setupResult.textContent = '✅ Supabase initialized successfully!';
+                
+                // Enable test buttons
+                document.getElementById('storyBtn').disabled = false;
+                document.getElementById('imageBtn').disabled = false;
+                document.getElementById('referencesBtn').disabled = false;
+                
+            } catch (error) {
+                setupResult.className = 'result error';
+                setupResult.style.display = 'block';
+                setupResult.textContent = '❌ Failed to initialize Supabase: ' + error.message;
+            }
+        }
+
+        async function testStoryGeneration() {
+            const resultDiv = document.getElementById('storyResult');
+            const btn = document.getElementById('storyBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            
+            resultDiv.className = 'result info';
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '🧪 Testing story generation...';
+
+            try {
+                const { data, error } = await supabase.functions.invoke('generate-story', {
+                    body: {
+                        prompt: 'Write a short story about a brave little mouse.',
+                        temperature: 0.7,
+                        max_tokens: 100,
+                        model: 'gpt-4'
+                    }
+                });
+
+                if (error) {
+                    throw new Error(JSON.stringify(error, null, 2));
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Story generation successful!\n\n📖 Generated content:\n${data?.content?.substring(0, 200)}...\n\n📊 Usage: ${JSON.stringify(data?.usage, null, 2)}`;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Story generation failed:\n${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Story Generation';
+            }
+        }
+
+        async function testImageGeneration() {
+            const resultDiv = document.getElementById('imageResult');
+            const btn = document.getElementById('imageBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            
+            resultDiv.className = 'result info';
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '🎨 Testing image generation...';
+
+            try {
+                const { data, error } = await supabase.functions.invoke('generate-image', {
+                    body: {
+                        prompt: 'A cute cartoon mouse wearing a red cape, children\'s book style',
+                        size: '1024x1024',
+                        quality: 'medium',
+                        model: 'gpt-image-1'
+                    }
+                });
+
+                if (error) {
+                    throw new Error(JSON.stringify(error, null, 2));
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Image generation successful!\n\n🖼️ Generated image URL length: ${data?.imageUrl?.length || 0}\n🖼️ Image URL preview: ${data?.imageUrl?.substring(0, 100)}...`;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Image generation failed:\n${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Image Generation';
+            }
+        }
+
+        async function testImageWithReferences() {
+            const resultDiv = document.getElementById('referencesResult');
+            const btn = document.getElementById('referencesBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            
+            resultDiv.className = 'result info';
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '🎭 Testing image generation with references...';
+
+            try {
+                const { data, error } = await supabase.functions.invoke('generate-image', {
+                    body: {
+                        prompt: 'A cute cartoon mouse wearing a red cape, children\'s book style',
+                        referenceImages: [], // Empty for now
+                        size: '1024x1024',
+                        quality: 'medium',
+                        model: 'gpt-image-1'
+                    }
+                });
+
+                if (error) {
+                    throw new Error(JSON.stringify(error, null, 2));
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ Image generation with references successful!\n\n🖼️ Generated image URL length: ${data?.imageUrl?.length || 0}\n🖼️ Image URL preview: ${data?.imageUrl?.substring(0, 100)}...`;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Image generation with references failed:\n${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Image with References';
+            }
+        }
+    </script>
+</body>
+</html> 
