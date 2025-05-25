@@ -1,0 +1,191 @@
+# MyStoryKid - Product Requirements Document
+
+## Executive Summary
+MyStoryKid is a web application that enables parents to create personalized children's storybooks featuring their own children as the main characters. The application uses AI to generate stories and illustrations based on user inputs, child photos, and selected art styles. The goal is to provide a complete end-to-end experience from story creation to purchasing digital downloads or printed books.
+
+## Current State
+The application currently has:
+- Multi-step wizard for book creation (category, character details, art style, characters, story details)
+- Character creation with photo upload and AI-generated style previews
+- OpenAI integration for story generation and image editing
+- Basic anonymous authentication flow
+- Placeholder payment integration with Shopify and Lulu
+- PDF generation capabilities
+- Partial book generation with image creation
+
+## Key Gaps Identified
+1. **Multiple Children Support**: Currently focused on single child, needs ability to add siblings/other children
+2. **User Experience**: Missing loading states, progress indicators, and clear timing expectations
+3. **Story Randomization**: No quick-start option to auto-generate story elements
+4. **Authentication**: Account creation flow not integrated into book creation process
+5. **Payment Integration**: Checkout and payment processing not fully implemented
+6. **Security**: API keys exposed on client side, need server-side edge functions
+7. **User Dashboard**: No way to view saved books, order history, or shipment tracking
+8. **Image Consistency**: Character preview images not used as references during book generation
+
+## Product Requirements
+
+### 1. Character Management Enhancement
+- **Multiple Children Support**
+  - Allow adding multiple children as main/supporting characters
+  - First character in flow should be designated as main character automatically
+  - Support sibling relationships and roles
+  - Character gallery for selecting previously created characters
+  - Character templates for quick creation
+
+### 2. User Experience Improvements
+- **Loading and Progress States**
+  - Clear progress indicators during book generation
+  - Time estimates displayed prominently ("This will take about 1 minute")
+  - Step-by-step progress updates ("Generating page 3 of 12...")
+  - Background processing with ability to navigate away
+  - Email notification when book is ready
+
+- **Story Randomization Feature**
+  - "Surprise Me!" button on story details page
+  - Auto-populate all story elements with age-appropriate defaults
+  - One-click story generation for quick testing
+  - Ability to modify auto-generated elements before proceeding
+
+### 3. Authentication and Account Management
+- **Account Creation Flow**
+  - Prompt for account creation before book generation starts
+  - Support email/password and social login (Google, Facebook)
+  - Guest checkout option with limited features
+  - Account benefits clearly communicated
+  - Seamless transition from anonymous to authenticated user
+
+- **User Dashboard**
+  - View all created books with thumbnails
+  - Book status indicators (draft, generating, completed)
+  - Download history for digital purchases
+  - Order history with shipment tracking
+  - Re-order functionality for printed books
+  - Book sharing capabilities
+
+### 4. Payment and E-commerce
+- **Checkout Integration**
+  - Secure payment processing via Stripe or similar
+  - Clear pricing display ($10 digital, $24.99 print + shipping)
+  - Multiple payment methods (credit card, PayPal, Apple Pay)
+  - Promo code support
+  - Cart functionality for multiple book purchases
+
+- **Digital Downloads**
+  - Immediate download after payment
+  - High-quality PDF generation
+  - Download link email backup
+  - Limited download attempts (e.g., 5 downloads)
+  - Watermarked preview before purchase
+
+- **Print Fulfillment**
+  - Lulu Direct API integration completion
+  - Shipping options and estimates
+  - Order tracking integration
+  - Quality guarantee and reprint policy
+
+### 5. Security and Infrastructure
+- **API Key Management**
+  - Move all API calls to Supabase Edge Functions
+  - Secure environment variable storage
+  - Rate limiting per user
+  - API usage monitoring
+
+- **Data Security**
+  - Encrypted storage for personal photos
+  - GDPR compliance for EU users
+  - Data retention policies
+  - User data export functionality
+
+### 6. Book Generation Improvements
+- **Image Consistency**
+  - Use character preview images as style references
+  - Maintain consistent character appearance across pages
+  - Style transfer from preview to all book images
+  - Character outfit and appearance persistence
+
+- **Generation Quality**
+  - Higher resolution image outputs
+  - Multiple image generation attempts with best selection
+  - Fallback illustrations for failed generations
+  - Manual image regeneration option
+
+### 7. Additional Features
+- **Book Customization**
+  - Post-generation editing capabilities
+  - Text modification per page
+  - Image regeneration for specific pages
+  - Custom dedication page
+  - Book metadata editing (title, author name)
+
+- **Social Features**
+  - Share book previews on social media
+  - Gift book functionality
+  - Public book gallery (with permission)
+  - User reviews and ratings
+
+## Technical Requirements
+
+### Frontend
+- React with TypeScript migration
+- Responsive design for mobile/tablet
+- Progressive Web App capabilities
+- Offline mode for viewing downloaded books
+- Performance optimization (lazy loading, code splitting)
+
+### Backend
+- Supabase Edge Functions for API calls
+- PostgreSQL database with proper schemas
+- Redis caching for generated content
+- CDN for image delivery
+- Webhook handlers for payment processing
+
+### Infrastructure
+- Auto-scaling for peak loads
+- Backup and disaster recovery
+- Monitoring and alerting
+- A/B testing framework
+- Analytics integration
+
+## Success Metrics
+- User conversion rate (visitor to book creator)
+- Book completion rate
+- Purchase conversion rate
+- Customer satisfaction score
+- Average revenue per user
+- Book generation success rate
+- Page load times
+- API response times
+
+## Timeline and Phases
+
+### Phase 1: Core Functionality (4 weeks)
+- Multiple children support
+- Account creation flow
+- Basic loading states and progress indicators
+- API security migration
+
+### Phase 2: E-commerce Integration (3 weeks)
+- Payment processing
+- Digital download system
+- Order management dashboard
+- Email notifications
+
+### Phase 3: User Experience (3 weeks)
+- Story randomization
+- Enhanced progress indicators
+- Book preview improvements
+- Mobile optimization
+
+### Phase 4: Advanced Features (4 weeks)
+- Book editing capabilities
+- Social sharing
+- Advanced dashboard features
+- Performance optimization
+
+## Risks and Mitigation
+- **API Costs**: Implement caching and generation limits
+- **Image Generation Failures**: Multiple retry logic and fallback options
+- **Payment Processing Issues**: Multiple payment provider support
+- **Scalability**: Cloud infrastructure with auto-scaling
+- **Data Loss**: Regular backups and version control for books 
