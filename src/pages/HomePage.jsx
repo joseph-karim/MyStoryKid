@@ -6,11 +6,14 @@ import toddlerTransformed from '../assets/toddler transformed.png';
 import spaceAdventureCover from '../assets/space-adventure-cover.png';
 import magicalForestCover from '../assets/magical-forest-cover.png';
 import underseaQuestCover from '../assets/undersea-quest-cover.png';
+import GuestFeatureIndicator from '../components/GuestFeatureIndicator';
+import useAuthStore from '../store/useAuthStore';
 
 function HomePage() {
   const [currentArtStyle, setCurrentArtStyle] = useState(0);
   // Store bubble sizes in state to calculate only once
   const [bubbleSizes, setBubbleSizes] = useState([]);
+  const { isAuthenticated, isAnonymous } = useAuthStore();
 
   const characterStyles = [
     {
@@ -185,6 +188,15 @@ function HomePage() {
         <div className="absolute bottom-20 right-10 z-0 text-5xl">🌟</div>
         <div className="absolute top-1/2 right-1/4 z-0 text-3xl">🌈</div>
       </section>
+
+      {/* Guest Feature Indicator */}
+      {(!isAuthenticated || isAnonymous) && (
+        <section className="py-8">
+          <div className="container mx-auto px-4">
+            <GuestFeatureIndicator compact={true} />
+          </div>
+        </section>
+      )}
 
       {/* Features / How to Create Section */}
       <section className="py-16 bg-white">

@@ -4,10 +4,13 @@ import { useBookStore } from '../store';
 import BookPreview from '../components/BookPreview';
 import BookActions from '../components/BookActions';
 import BookPurchaseOptions from '../components/BookPurchaseOptions';
+import GuestFeatureIndicator from '../components/GuestFeatureIndicator';
+import useAuthStore from '../store/useAuthStore';
 
 function PreviewPage() {
   const { bookId } = useParams();
-  const { books, currentBook, setCurrentBook } = useBookStore(); // Keep basic store access
+  const { books, currentBook, setCurrentBook } = useBookStore();
+  const { isAuthenticated, isAnonymous } = useAuthStore();
 
   console.log(`[PreviewPage] Rendering for bookId: ${bookId}`);
 
@@ -20,6 +23,9 @@ function PreviewPage() {
     }
   }, [bookId, books, currentBook, setCurrentBook]);
 
+  // Show guest indicator for anonymous users
+  const showGuestIndicator = !isAuthenticated || isAnonymous;
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -29,6 +35,11 @@ function PreviewPage() {
 
       {currentBook ? (
         <div className="space-y-8">
+          {/* Guest Feature Indicator */}
+          {showGuestIndicator && (
+            <GuestFeatureIndicator compact={true} />
+          )}
+
           {/* Book Preview Component */}
           <BookPreview book={currentBook} isWatermarked={true} />
 
