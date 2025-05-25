@@ -159,7 +159,7 @@ const createColorPlaceholder = (bgColor, text) => {
 };
 // --- End Placeholder Helper Functions ---
 
-function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-line no-unused-vars */ bookCharacters = [], forcedArtStyle = null, initialRole = null }) {
+function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-line no-unused-vars */ bookCharacters = [], forcedArtStyle = null, initialRole = null, existingCharacter = null }) {
   // eslint-disable-next-line no-unused-vars
   const { characters, addCharacter, updateCharacter } = useCharacterStore();
   const [step, setStep] = useState(initialStep);
@@ -177,8 +177,8 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
 
-  // Character data
-  const [characterData, setCharacterData] = useState(defaultCharacterData);
+  // Character data - initialize with existing character if provided
+  const [characterData, setCharacterData] = useState(existingCharacter || defaultCharacterData);
 
   // Add state for image preview modal
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -676,6 +676,26 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           placeholder="e.g., Lily"
         />
       </div>
+      
+      {/* Show relationship type for supporting characters */}
+      {initialRole === 'supporting' && (
+        <div>
+          <label htmlFor="relationshipType" className="block text-sm font-medium text-gray-700">Relationship to Main Character</label>
+          <select
+            id="relationshipType"
+            value={characterData.relationshipType || 'sibling'}
+            onChange={(e) => handleChange('relationshipType', e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="sibling">Sibling</option>
+            <option value="friend">Friend</option>
+            <option value="cousin">Cousin</option>
+            <option value="pet">Pet</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      )}
+      
       <div>
         <label htmlFor="type" className="block text-sm font-medium text-gray-700">Character Type</label>
         <select
@@ -717,7 +737,21 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           <option value="other">Other/Unspecified</option>
         </select>
       </div>
-      {/* Add fields for traits, interests etc. if needed */}
+      
+      {/* Custom role description for "other" relationship type */}
+      {characterData.relationshipType === 'other' && (
+        <div>
+          <label htmlFor="customRole" className="block text-sm font-medium text-gray-700">Describe Relationship</label>
+          <input
+            type="text"
+            id="customRole"
+            value={characterData.customRole || ''}
+            onChange={(e) => handleChange('customRole', e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            placeholder="e.g., Teacher, Neighbor, Grandparent"
+          />
+        </div>
+      )}
     </div>
   );
 

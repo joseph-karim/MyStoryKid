@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
+import { v4 as uuidv4 } from 'uuid';
 
 // Predefined traits for selection
 const TRAITS = [
@@ -124,8 +125,33 @@ function CharacterStep() {
       return;
     }
     
-    // Update store with character data
-    updateStoryData(formData);
+    // Create main character object from the form data
+    const mainCharacter = {
+      id: uuidv4(),
+      name: formData.childName,
+      type: 'child',
+      age: formData.childAge,
+      gender: formData.childGender,
+      traits: formData.childTraits.map(traitId => 
+        TRAITS.find(t => t.id === traitId)?.label || traitId
+      ),
+      interests: formData.childInterests.map(interestId => 
+        INTERESTS.find(i => i.id === interestId)?.label || interestId
+      ),
+      role: 'main', // Explicitly set as main character
+      photoUrl: null,
+      stylePreview: null
+    };
+    
+    // Get existing characters and filter out any existing main character
+    const existingCharacters = wizardState.storyData.bookCharacters || [];
+    const supportingCharacters = existingCharacters.filter(char => char.role !== 'main');
+    
+    // Update store with character data and the main character in bookCharacters
+    updateStoryData({
+      ...formData,
+      bookCharacters: [mainCharacter, ...supportingCharacters] // Main character always first
+    });
     
     // Move to next step
     setWizardStep(3);
@@ -134,8 +160,8 @@ function CharacterStep() {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Personalize the Character</h2>
-        <p className="text-gray-600">Tell us about the child who will star in this story</p>
+        <h2 className="text-2xl font-bold">Main Character Details</h2>
+        <p className="text-gray-600">Tell us about the child who will be the hero of this story</p>
       </div>
       
       <div className="space-y-4">

@@ -2,16 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useBookStore } from '../../store';
 import CharacterWizard from '../CharacterWizard';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 
 // Import the ART_STYLE_CATEGORIES_STRUCTURE for style name lookups
 import { ART_STYLE_CATEGORIES_STRUCTURE } from './ArtStyleStep';
+
+// Character relationship types
+const RELATIONSHIP_TYPES = [
+  { id: 'sibling', label: 'Sibling', icon: UserGroupIcon },
+  { id: 'friend', label: 'Friend', icon: UserPlusIcon },
+  { id: 'cousin', label: 'Cousin', icon: UserGroupIcon },
+  { id: 'pet', label: 'Pet', icon: null },
+  { id: 'other', label: 'Other', icon: null }
+];
 
 function CharactersStep() {
   const { wizardState, updateStoryData, setWizardStep } = useBookStore();
 
   const [showCharacterWizard, setShowCharacterWizard] = useState(false);
   const [currentCharacterRole, setCurrentCharacterRole] = useState('main');
+  const [currentRelationshipType, setCurrentRelationshipType] = useState('sibling');
   const [editingCharacterId, setEditingCharacterId] = useState(null);
   const [error, setError] = useState('');
 
@@ -50,8 +60,9 @@ function CharactersStep() {
     return styleCode.replace('Style-', '').substring(0, 8) + '...';
   };
 
-  const handleAddCharacter = (role = 'supporting') => {
+  const handleAddCharacter = (role = 'supporting', relationshipType = 'sibling') => {
     setCurrentCharacterRole(role);
+    setCurrentRelationshipType(relationshipType);
     setEditingCharacterId(null);
     setShowCharacterWizard(true);
   };
@@ -61,6 +72,7 @@ function CharactersStep() {
     const character = characters.find(c => c.id === characterId);
     if (character) {
       setCurrentCharacterRole(character.role);
+      setCurrentRelationshipType(character.relationshipType || 'sibling');
       setEditingCharacterId(characterId);
       setShowCharacterWizard(true);
     } else {
@@ -92,10 +104,12 @@ function CharactersStep() {
 
     console.log('[CharactersStep] Character completed:', character);
 
-    // Set the role based on current context
+    // Set the role and relationship type based on current context
     const characterWithRole = {
       ...character,
       role: currentCharacterRole,
+      relationshipType: currentCharacterRole === 'main' ? null : currentRelationshipType,
+      customRole: currentRelationshipType === 'other' ? character.customRole : RELATIONSHIP_TYPES.find(r => r.id === currentRelationshipType)?.label,
       // Ensure the art style is explicitly set
       artStyle: character.artStyle || artStyleCode
     };
@@ -137,19 +151,38 @@ function CharactersStep() {
     setWizardStep(2); // Go back to Art Style step
   };
 
-  // Check if we need to show the wizard initially (no character yet)
+  // Check if we need to show the wizard initially (main character should already be created)
   useEffect(() => {
-    if (!mainCharacter) {
+    // Main character should already be created in CharacterStep
+    // Only show wizard if somehow we don't have a main character
+    if (!mainCharacter && characters.length === 0) {
       setCurrentCharacterRole('main');
       setShowCharacterWizard(true);
     }
-  }, [mainCharacter]);
+  }, [mainCharacter, characters.length]);
+
+  // Group supporting characters by relationship type
+  const groupedCharacters = supportingCharacters.reduce((acc, char) => {
+    const type = char.relationshipType || 'other';
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(char);
+    return acc;
+  }, {});
 
   // Character card component for reuse
   const CharacterCard = ({ character, isMain = false }) => (
-    <div className="bg-white rounded-lg shadow-md p-4 relative space-y-2">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-lg shadow-md p-4 relative space-y-2"
+    >
       <div className="flex justify-between items-start">
-        <h3 className="text-lg font-semibold">{character.name}</h3>
+        <div>
+          <h3 className="text-lg font-semibold">{character.name}</h3>
+          {!isMain && character.customRole && (
+            <p className="text-sm text-gray-500">{character.customRole}</p>
+          )}
+        </div>
         <div className="flex space-x-2">
           <button
             onClick={() => handleEditCharacter(character.id)}
@@ -187,18 +220,20 @@ function CharactersStep() {
           <p><span className="font-semibold">Role:</span> {isMain ? 'Main Character' : character.customRole || 'Supporting Character'}</p>
           <p><span className="font-semibold">Age:</span> {character.age || 'Not specified'}</p>
           <p><span className="font-semibold">Gender:</span> {character.gender || 'Not specified'}</p>
-          <p><span className="font-semibold">Type:</span> {character.type || 'Not specified'}</p>
+          {character.traits && character.traits.length > 0 && (
+            <p><span className="font-semibold">Traits:</span> {character.traits.slice(0, 3).join(', ')}{character.traits.length > 3 && '...'}</p>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Characters</h2>
+        <h2 className="text-2xl font-bold">Story Characters</h2>
         <p className="text-gray-600">
-          Create characters for your story
+          Add more characters to join {mainCharacter?.name || 'the main character'} in the adventure
         </p>
       </div>
 
@@ -213,6 +248,7 @@ function CharactersStep() {
           initialRole={currentCharacterRole}
           forcedArtStyle={artStyleCode}
           onComplete={handleCharacterComplete}
+          existingCharacter={editingCharacterId ? characters.find(c => c.id === editingCharacterId) : null}
         />
       ) : (
         <>
@@ -224,16 +260,35 @@ function CharactersStep() {
                 <CharacterCard character={mainCharacter} isMain={true} />
               ) : (
                 <div className="bg-gray-100 p-6 rounded-lg text-center">
-                  <p className="text-gray-500">No main character created yet.</p>
+                  <p className="text-gray-500">Main character should be created in the previous step.</p>
                   <button
-                    onClick={() => handleAddCharacter('main')}
+                    onClick={() => setWizardStep(1)}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
-                    Create Main Character
+                    Go Back to Create Main Character
                   </button>
                 </div>
               )}
             </div>
+
+            {/* Quick Add Buttons */}
+            {mainCharacter && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Quick Add Characters</h4>
+                <div className="flex flex-wrap gap-2">
+                  {RELATIONSHIP_TYPES.slice(0, 4).map(type => (
+                    <button
+                      key={type.id}
+                      onClick={() => handleAddCharacter('supporting', type.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      {type.icon && <type.icon className="h-4 w-4" />}
+                      Add {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Supporting Characters Section */}
             <div>
@@ -249,17 +304,35 @@ function CharactersStep() {
               </div>
 
               {supportingCharacters.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supportingCharacters.map(character => (
-                    <CharacterCard key={character.id} character={character} />
+                <div className="space-y-4">
+                  {/* Group characters by relationship type */}
+                  {Object.entries(groupedCharacters).map(([type, chars]) => (
+                    <div key={type}>
+                      <h4 className="text-sm font-semibold text-gray-600 mb-2 capitalize">
+                        {RELATIONSHIP_TYPES.find(r => r.id === type)?.label || 'Other'} 
+                        {chars.length > 1 && 's'} ({chars.length})
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {chars.map(character => (
+                          <CharacterCard key={character.id} character={character} />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
                 <div className="bg-gray-100 p-4 rounded-lg text-center">
-                  <p className="text-gray-500">No supporting characters yet. Add some to make your story more interesting!</p>
+                  <p className="text-gray-500">No supporting characters yet. Add siblings, friends, or pets to make your story more interesting!</p>
                 </div>
               )}
             </div>
+
+            {/* Character Count Summary */}
+            {characters.length > 1 && (
+              <div className="bg-gray-50 p-3 rounded text-sm text-gray-600">
+                <p>Total characters in story: <span className="font-semibold">{characters.length}</span></p>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
