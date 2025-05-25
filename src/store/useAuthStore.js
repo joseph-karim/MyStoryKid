@@ -94,6 +94,31 @@ const useAuthStore = create((set, get) => ({
     }
   },
   
+  // Sign in with social provider (Google, Facebook, etc.)
+  signInWithProvider: async (provider) => {
+    set({ isLoading: true });
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      
+      if (error) throw error;
+      
+      // OAuth redirects to the provider, so we don't set state here
+      // The auth state change listener will handle the state update
+      return { success: true };
+    } catch (error) {
+      console.error(`Error signing in with ${provider}:`, error);
+      return { success: false, error: error.message };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   // Sign out
   signOut: async () => {
     set({ isLoading: true });

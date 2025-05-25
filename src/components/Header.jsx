@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import { motion } from 'framer-motion';
+import AuthModal from './AuthModal';
 
 function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { isAuthenticated, user, signOut } = useAuthStore();
   const location = useLocation();
   
   // Change header style on scroll
@@ -75,7 +77,7 @@ function Header() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <span className="text-sm font-medium">{user?.displayName || 'User'}</span>
+                  <span className="text-sm font-medium">{user?.email?.split('@')[0] || user?.user_metadata?.name || 'User'}</span>
                   <span className="ml-2">👤</span>
                 </motion.div>
                 
@@ -87,29 +89,27 @@ function Header() {
                     >
                       Dashboard
                     </Link>
-                    <Link 
-                      to="/" 
-                      className="block px-4 py-2 text-gray-800 hover:bg-purple-50"
-                      onClick={() => {
-                        // We'd add logout logic here eventually
+                    <button 
+                      className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-purple-50"
+                      onClick={async () => {
+                        await signOut();
                       }}
                     >
                       Sign Out
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex items-center ml-4">
-                <Link to="/login">
-                  <motion.button 
-                    className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-5 py-2 rounded-full shadow-md"
-                    whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign In
-                  </motion.button>
-                </Link>
+                <motion.button 
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-gradient-to-r from-purple-600 to-blue-500 text-white px-5 py-2 rounded-full shadow-md"
+                  whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Sign In
+                </motion.button>
               </div>
             )}
           </nav>
@@ -159,24 +159,25 @@ function Header() {
             </Link>
             
             {isAuthenticated ? (
-              <Link 
-                to="/"
-                className="text-gray-800 hover:text-purple-600 py-2 font-medium"
-                onClick={() => {
+              <button 
+                className="text-gray-800 hover:text-purple-600 py-2 font-medium text-left"
+                onClick={async () => {
                   setIsMobileMenuOpen(false);
-                  // We'd add logout logic here eventually
+                  await signOut();
                 }}
               >
                 Sign Out
-              </Link>
+              </button>
             ) : (
-              <Link 
-                to="/login"
+              <button 
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setShowAuthModal(true);
+                }}
                 className="bg-gradient-to-r from-purple-600 to-blue-500 text-white py-2 px-4 rounded-full text-center font-medium"
-                onClick={() => setIsMobileMenuOpen(false)}
               >
                 Sign In
-              </Link>
+              </button>
             )}
           </nav>
         </motion.div>
@@ -188,6 +189,14 @@ function Header() {
       {/* Magical sparkles */}
       <div className="hidden md:block absolute top-1/2 left-1/3 -translate-y-1/2 text-lg animate-float-slow">✨</div>
       <div className="hidden md:block absolute top-1/4 right-1/4 text-lg animate-float-slow delay-300">🌟</div>
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => setShowAuthModal(false)}
+        mode="signin"
+      />
     </header>
   );
 }
