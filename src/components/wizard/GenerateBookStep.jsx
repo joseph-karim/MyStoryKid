@@ -20,7 +20,83 @@ import useLoading from '../../hooks/useLoading';
 import { BookGenerationModal } from '../LoadingModal';
 import LoadingSpinner, { SpinnerPresets } from '../LoadingSpinner';
 
-// Helper function to create the outline prompt
+// Helper function to create the complete story prompt (similar to original OpenAI service)
+const createCompleteStoryPrompt = (bookDetails, characters, numSpreads) => {
+  const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
+  const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
+
+  // Format character descriptions for the prompt
+  let characterDescriptions = `Main Character: ${mainCharacter.name}, a ${mainCharacter.age || ''} year old ${mainCharacter.gender || 'child'}. `;
+
+  if (supportingCharacters.length > 0) {
+    characterDescriptions += "Supporting Characters: ";
+    characterDescriptions += supportingCharacters.map(char =>
+      `${char.name}, a ${char.age || ''} year old ${char.gender || 'child'} (${char.customRole || 'friend'})`
+    ).join('; ');
+  }
+
+  // Extract fields with defaults for consistent access
+  const targetAgeRange = bookDetails.ageRange || bookDetails.targetAgeRange || '4-8 years old';
+  const coreTheme = bookDetails.coreTheme || bookDetails.category || 'Friendship, adventure, and discovery';
+  const artStyleReference = bookDetails.artStyleCode?.replace(/_/g, ' ') || 'N/A';
+
+  // Determine text complexity guidance based on age range and book type
+  let textComplexityGuidance = '';
+  const ageParts = targetAgeRange.split('-');
+  const lowestAge = parseInt(ageParts[0]) || 4;
+
+  if (bookDetails.storyType === 'board_book') {
+    textComplexityGuidance = 'Use EXTREMELY simple language with 1-2 very short sentences per page. Focus on basic concepts, repetition, and single-syllable words when possible. Vocabulary should be limited to words a 0-3 year old would understand.';
+  } else if (lowestAge <= 3) {
+    textComplexityGuidance = 'Use very simple language with 1-2 short sentences per page. Vocabulary should be basic and familiar to very young children (ages 0-3).';
+  } else if (lowestAge <= 5) {
+    textComplexityGuidance = 'Use simple language with 2-3 short sentences per page. Vocabulary should be appropriate for preschool/kindergarten children (ages 3-5).';
+  } else if (lowestAge <= 8) {
+    textComplexityGuidance = 'Use moderately complex language with 3-5 sentences per page. Vocabulary can include some challenging words but mostly familiar to early elementary children (ages 6-8).';
+  } else {
+    textComplexityGuidance = 'Use more complex language with 5+ sentences per page. Vocabulary can be more advanced but still appropriate for older elementary children (ages 9+).';
+  }
+
+  return `
+**Goal:** Generate a complete children's book story as a JSON array of page objects.
+
+**Core Book Details:**
+* **Target Reading Age Range:** ${targetAgeRange}
+* **Book Type:** ${bookDetails.storyType || 'standard'}
+* **Characters:** ${characterDescriptions}
+* **Art Style Reference:** ${artStyleReference}
+* **Core Theme:** ${coreTheme}
+* **Number of Pages/Spreads:** ${numSpreads}
+
+**Instructions for AI:**
+1. **Create a Complete Story:** Write a full story with beginning, middle, and end that flows naturally across ${numSpreads} pages/spreads.
+2. **Text Complexity:** ${textComplexityGuidance}
+3. **Story Structure:** Ensure logical progression with character development and a satisfying resolution.
+4. **Include All Characters:** Make sure all characters have meaningful roles in the story.
+
+**CRITICAL OUTPUT FORMAT:**
+Return STRICTLY a JSON array of objects. Each object represents one page/spread and MUST have these exact keys:
+
+- "text": (string) The story text for this page/spread. DO NOT include page numbers, spread numbers, or layout references - only the actual story content that children will read.
+- "visualPrompt": (string) A detailed description for image generation, including the scene, characters, setting, mood, and composition. Include art style keywords like "${artStyleReference}".
+
+**Example format:**
+[
+  {
+    "text": "${mainCharacter.name} woke up excited for the day ahead.",
+    "visualPrompt": "A cheerful bedroom scene with ${mainCharacter.name}, a ${mainCharacter.age || 'young'} ${mainCharacter.gender || 'child'}, stretching and smiling in bed. Warm morning sunlight streams through the window. ${artStyleReference} style illustration."
+  },
+  {
+    "text": "Outside, ${mainCharacter.name} met their friend and they decided to explore.",
+    "visualPrompt": "Two children meeting in a sunny yard, looking excited and ready for adventure. ${artStyleReference} style illustration."
+  }
+]
+
+Ensure the entire output is a single valid JSON array with exactly ${numSpreads} page objects.
+`;
+};
+
+// Helper function to create the outline prompt (kept for reference but not used)
 const createOutlinePrompt = (bookDetails, characters) => {
   const mainCharacter = characters.find(c => c.role === 'main') || characters[0] || {};
   const supportingCharacters = characters.filter(c => c.id !== mainCharacter.id);
@@ -145,10 +221,10 @@ ${customInputInstructions}
 8.  If custom story elements were provided, they MUST be incorporated exactly as specified.
 
 **Output Format:**
-Return a JSON array of strings, where each string describes one spread. Example:
+Return a JSON array of strings, where each string describes one spread. DO NOT include page numbers in the descriptions. Example:
 [
-  "Spread 1 (Pages 2-3): Introduce [Main Character] and [Supporting Character] in [Setting]. They discover [Story Spark].",
-  "Spread 2 (Pages 4-5): [Main Character] and [Supporting Character] encounter [Main Hurdle] and realize it's a problem.",
+  "Introduce [Main Character] and [Supporting Character] in [Setting]. They discover [Story Spark].",
+  "[Main Character] and [Supporting Character] encounter [Main Hurdle] and realize it's a problem.",
   ...and so on for each spread
 ]
 `;
@@ -223,6 +299,7 @@ ${outline.map(item => `${item}`).join('\n')}
 1.  **Generate Page Text:**
     * Write the text that should appear on **Spread ${spreadIndex + 1} / Pages ${(spreadIndex + 1) * 2}-${(spreadIndex + 1) * 2 + 1}**.
     * The text must accurately reflect the action described in the **Outline Snippet for THIS Spread**.
+    * CRITICAL: DO NOT include page numbers, spread numbers, or any layout references in the story text itself. Only include the actual story content.
     * CRITICAL: ${textComplexityGuidance}
     * Include all relevant characters from the character list as appropriate for this spread.
     * Reflect the characters' personalities.
@@ -683,27 +760,37 @@ const GenerateBookStep = () => {
       const outlineProgressAllocation = 5; // % for outline
       const pagesBaseProgress = coverProgressAllocation + outlineProgressAllocation;
 
-      // ---------- STEP 1: Generate Story Outline ----------
-      updateProgressWithTimeEstimate(outlineProgressAllocation / 2, 'Generating story outline...');
-      const outlinePrompt = createOutlinePrompt(storyData, characters);
-              const outlineResult = await generateStoryContent(outlinePrompt, { temperature: 0.7, max_tokens: 1000 });
-        const outlineResponse = outlineResult.content;
+      // ---------- STEP 1: Generate Complete Story Pages ----------
+      updateProgressWithTimeEstimate(outlineProgressAllocation / 2, 'Generating complete story...');
+      
+      // Calculate number of spreads based on book type
+      let numSpreads = 8; // default
+      if (storyData.storyType === 'board_book') {
+        numSpreads = 6; // shorter for board books
+      } else if (storyData.storyType === 'picture_book') {
+        numSpreads = 12; // longer for picture books
+      }
+      
+      const completeStoryPrompt = createCompleteStoryPrompt(storyData, characters, numSpreads);
+      const storyResult = await generateStoryContent(completeStoryPrompt, { temperature: 0.7, max_tokens: 2000 });
+      const storyResponse = storyResult.content;
 
-      // let storyOutline; // Moved definition outside
+      // Parse the complete story response
+      let storyPages;
       try {
-        const parsedOutline = JSON.parse(outlineResponse);
-        storyOutline = Array.isArray(parsedOutline) ? parsedOutline : Object.values(parsedOutline).find(Array.isArray);
-        if (!storyOutline) throw new Error('Outline not in expected array format.');
+        const parsedStory = JSON.parse(storyResponse);
+        storyPages = Array.isArray(parsedStory) ? parsedStory : Object.values(parsedStory).find(Array.isArray);
+        if (!storyPages) throw new Error('Story not in expected array format.');
       } catch (e) {
-         console.warn('Failed to parse outline JSON, trying manual extraction:', e);
-         const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
-         if (arrayMatch) storyOutline = JSON.parse(arrayMatch[0]);
-         else throw new Error('Could not parse story outline from AI response.');
+         console.warn('Failed to parse story JSON, trying manual extraction:', e);
+         const arrayMatch = storyResponse.match(/\[[\s\S]*\]/);
+         if (arrayMatch) storyPages = JSON.parse(arrayMatch[0]);
+         else throw new Error('Could not parse story pages from AI response.');
       }
-      if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
-        throw new Error('Failed to generate a valid story outline');
+      if (!Array.isArray(storyPages) || storyPages.length === 0) {
+        throw new Error('Failed to generate valid story pages');
       }
-      updateProgressWithTimeEstimate(outlineProgressAllocation, 'Story outline generated.');
+      updateProgressWithTimeEstimate(outlineProgressAllocation, 'Complete story generated.');
 
       // ---------- STEP 2: Generate Cover Image ----------
       updateProgressWithTimeEstimate(outlineProgressAllocation + 2, 'Generating cover image...');
@@ -769,8 +856,8 @@ const GenerateBookStep = () => {
       }
       updateProgressWithTimeEstimate(pagesBaseProgress, 'Cover generation complete. Starting page generation...'); // Update progress after cover attempt
 
-      // ---------- STEP 3: Generate Pages Sequentially ----------
-      const totalPagesToGenerate = storyOutline.length;
+      // ---------- STEP 3: Generate Images for Pre-Generated Story Pages ----------
+      const totalPagesToGenerate = storyPages.length;
       const progressPerPage = (100 - pagesBaseProgress) / totalPagesToGenerate; // Remaining progress
 
       // Character tracking system for reference images
@@ -797,33 +884,18 @@ const GenerateBookStep = () => {
         Object.keys(characterReferenceImages).map(id => characterReferenceImages[id].name));
 
       for (let index = 0; index < totalPagesToGenerate; index++) {
-        const currentSpreadOutline = storyOutline[index];
+        const currentPageData = storyPages[index];
         const currentPageProgressBase = pagesBaseProgress + (index * progressPerPage);
         const pageNumber = index + 1; // For logging and display
 
-        let spreadText = `Error generating text for page ${pageNumber}`;
-        let spreadVisualPrompt = `Error generating prompt for page ${pageNumber}`;
+        // Extract text and visual prompt from pre-generated story
+        let spreadText = currentPageData.text || `Error: Missing text for page ${pageNumber}`;
+        let spreadVisualPrompt = currentPageData.visualPrompt || `Error: Missing visual prompt for page ${pageNumber}`;
         let finalImageUrl = 'ERROR_MISSING'; // Default for page image
 
         try {
-          // --- Generate Text & Visual Prompt for Current Spread ---
-          updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.1), `Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
-          const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
-          const contentResult = await generateStoryContent(spreadPrompt, { temperature: 0.7, max_tokens: 800 });
-          const contentResponse = contentResult.content;
-
-          let spreadContent;
-          try {
-            spreadContent = JSON.parse(contentResponse);
-          } catch (e) {
-             console.warn(`Failed to parse content JSON for spread ${pageNumber}, trying manual extraction:`, e);
-             const jsonMatch = contentResponse.match(/\{[\s\S]*\}/);
-             if (jsonMatch) spreadContent = JSON.parse(jsonMatch[0]);
-             else throw new Error('Could not parse spread content from AI response.');
-          }
-          spreadText = spreadContent.text || spreadText;
-          spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
-          updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.2), `Text/prompt for page ${pageNumber} generated.`);
+          // --- Use Pre-Generated Text & Visual Prompt ---
+          updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.2), `Using pre-generated content for page ${pageNumber}/${totalPagesToGenerate}...`);
 
           // --- Analyze which characters appear in this page ---
           // This is a simple approach - in a more advanced implementation, we could use NLP to detect character mentions

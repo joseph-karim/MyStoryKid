@@ -360,8 +360,10 @@ Create a story outline for a children's book with the following details:
 
 Generate a JSON array of ${numSpreads} strings, where each string describes one spread (2 pages) of the book. Each spread should advance the story and include the characters appropriately.
 
+IMPORTANT: Do NOT include spread numbers or page numbers in the descriptions. Focus only on the story content.
+
 Return ONLY a JSON array like:
-["Spread 1: Introduction of characters...", "Spread 2: The adventure begins...", ...]
+["Introduction of characters and setting...", "The adventure begins...", ...]
 `
 
   const content = await generateStoryContent(prompt, {
@@ -426,6 +428,8 @@ ${outline.map((item, index) => `${index + 1}. ${item}`).join('\n')}
 
 Generate content for this specific spread that includes:
 1. Text that will appear on the pages (age-appropriate for ${ageRange})
+   - CRITICAL: DO NOT include page numbers, spread numbers, or any layout references in the story text
+   - Only include the actual story content that children will read
 2. A visual prompt for image generation
 
 Return ONLY a JSON object:
