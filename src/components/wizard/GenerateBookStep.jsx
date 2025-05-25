@@ -7,6 +7,9 @@ import { getStyleNameFromCode } from '../../utils/styleUtils';
 import { ensureAnonymousSession, storeCurrentBookId } from '../../services/anonymousAuthService';
 import { v4 as uuidv4 } from 'uuid';
 import fetchAndConvertToBase64 from '../CharacterWizard.jsx'; // Import the helper for base64 conversion
+import useLoading from '../../hooks/useLoading';
+import { BookGenerationModal } from '../LoadingModal';
+import LoadingSpinner, { SpinnerPresets } from '../LoadingSpinner';
 
 // Helper function to create the outline prompt
 const createOutlinePrompt = (bookDetails, characters) => {
@@ -354,7 +357,7 @@ const generateStoryPages = async (storyData) => {
         }
       }
     } catch (error) {
-      console.warn('Failed to parse outline as JSON, trying to extract array manually:', error);
+      console.warn('Failed to parse outline as JSON, trying manual extraction:', error);
       // Try to extract array with regex
       const arrayMatch = outlineResponse.match(/\[[\s\S]*\]/);
       if (arrayMatch) {
@@ -583,14 +586,23 @@ const GenerateBookStep = () => {
     setLatestGeneratedBookId,
   } = useBookStore();
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [progressInfo, setProgressInfo] = useState('');
-  // const [imageUrls, setImageUrls] = useState({}); // No longer needed for final assembly
+  // Use the new loading system
+  const {
+    isLoading,
+    progress,
+    progressMessage,
+    estimatedTimeRemaining,
+    startLoading,
+    stopLoading,
+    updateProgressWithTimeEstimate,
+    formatTimeRemaining
+  } = useLoading('bookGeneration');
+
   const [generatedBook, setGeneratedBook] = useState(null);
   const [error, setError] = useState(null);
   const [generatedCoverUrl, setGeneratedCoverUrl] = useState(null); // State for cover image URL
   const [generatedPagesData, setGeneratedPagesData] = useState([]); // State for progressively generated pages
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -616,16 +628,10 @@ const GenerateBookStep = () => {
     initializeAndGenerate();
   }, []); // Empty dependency array ensures this runs only once on mount
 
-  const updateProgressInfo = (info) => {
-    console.log('[Progress]', info);
-    setProgressInfo(info);
-  };
-
   // --- REFACTORED generateBook Function ---
   const generateBook = async () => {
-    setIsGenerating(true);
-    setGenerationProgress(0);
-    updateProgressInfo('Starting book generation...');
+    startLoading('Starting book generation...');
+    setShowLoadingModal(true);
     setError(null);
     // Reset progressive states
     setGeneratedCoverUrl(null);
@@ -640,18 +646,24 @@ const GenerateBookStep = () => {
     // --- Validations (Keep these) ---
     if (!mainCharacter) {
       setError("Could not determine the main character.");
-      setIsGenerating(false); return;
+      stopLoading(); 
+      setShowLoadingModal(false);
+      return;
     }
     if (!mainCharacter.stylePreview || typeof mainCharacter.stylePreview !== 'string') {
       setError("Character style preview is missing.");
-      setIsGenerating(false); return;
+      stopLoading();
+      setShowLoadingModal(false);
+      return;
     }
     const stylePreview = mainCharacter.stylePreview;
     // Accept both HTTP URLs and Base64 data URLs for stylePreview
     const isValidUrl = stylePreview.startsWith('http') || stylePreview.startsWith('data:image');
     if (!isValidUrl) {
       setError("Character style preview is in an invalid format.");
-      setIsGenerating(false); return;
+      stopLoading();
+      setShowLoadingModal(false);
+      return;
     }
     // Character style preview is validated
 
@@ -663,8 +675,7 @@ const GenerateBookStep = () => {
       const pagesBaseProgress = coverProgressAllocation + outlineProgressAllocation;
 
       // ---------- STEP 1: Generate Story Outline ----------
-      updateProgressInfo('Generating story outline...');
-      setGenerationProgress(outlineProgressAllocation / 2);
+      updateProgressWithTimeEstimate(outlineProgressAllocation / 2, 'Generating story outline...');
       const outlinePrompt = createOutlinePrompt(storyData, characters);
       const outlineResponse = await openaiService.generateContent({ prompt: outlinePrompt, temperature: 0.7, max_tokens: 1000 });
 
@@ -682,19 +693,17 @@ const GenerateBookStep = () => {
       if (!Array.isArray(storyOutline) || storyOutline.length === 0) {
         throw new Error('Failed to generate a valid story outline');
       }
-      updateProgressInfo('Story outline generated.');
-      setGenerationProgress(outlineProgressAllocation);
+      updateProgressWithTimeEstimate(outlineProgressAllocation, 'Story outline generated.');
 
       // ---------- STEP 2: Generate Cover Image ----------
-      updateProgressInfo('Generating cover image...');
+      updateProgressWithTimeEstimate(outlineProgressAllocation + 2, 'Generating cover image...');
       let coverImageUrl = 'PLACEHOLDER_COVER_URL'; // Default placeholder
       try {
         const { coverVisualPrompt } = await generateCoverPrompt(storyData);
         if (!coverVisualPrompt) throw new Error("Failed to generate cover visual prompt.");
 
         // --- OpenAI Cover Image Generation ---
-        updateProgressInfo('Generating cover image with OpenAI...');
-        setGenerationProgress(outlineProgressAllocation + coverProgressAllocation * 0.5); // Progress update
+        updateProgressWithTimeEstimate(outlineProgressAllocation + coverProgressAllocation * 0.5, 'Generating cover image with OpenAI...');
 
         // Get style description based on art style code
         const styleDescription = getStyleNameFromCode(storyData.artStyleCode) || 'colorful, child-friendly illustration style';
@@ -723,7 +732,8 @@ const GenerateBookStep = () => {
         console.log('Filtered/converted character reference images:', characterReferenceImageUrls);
         if (characterReferenceImageUrls.length === 0) {
           setError('No valid character preview images available for cover generation. Please generate a character preview first.');
-          setIsGenerating(false);
+          stopLoading();
+          setShowLoadingModal(false);
           return;
         }
 
@@ -737,17 +747,17 @@ const GenerateBookStep = () => {
         );
 
         if (!coverImageUrl) throw new Error("OpenAI cover generation failed.");
-        updateProgressInfo('Cover image completed.');
+        updateProgressWithTimeEstimate(pagesBaseProgress - 2, 'Cover image completed.');
 
         // Store the generated cover URL
         setGeneratedCoverUrl(coverImageUrl); // Update state immediately
 
       } catch (coverError) {
         console.error("Error generating cover illustration:", coverError);
-        updateProgressInfo(`Error generating cover: ${coverError.message}. Using placeholder.`);
+        updateProgressWithTimeEstimate(pagesBaseProgress - 1, `Error generating cover: ${coverError.message}. Using placeholder.`);
         setGeneratedCoverUrl(coverImageUrl); // Set placeholder on error
       }
-      setGenerationProgress(pagesBaseProgress); // Update progress after cover attempt
+      updateProgressWithTimeEstimate(pagesBaseProgress, 'Cover generation complete. Starting page generation...'); // Update progress after cover attempt
 
       // ---------- STEP 3: Generate Pages Sequentially ----------
       const totalPagesToGenerate = storyOutline.length;
@@ -787,8 +797,7 @@ const GenerateBookStep = () => {
 
         try {
           // --- Generate Text & Visual Prompt for Current Spread ---
-          updateProgressInfo(`Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
-          setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.1));
+          updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.1), `Generating text/prompt for page ${pageNumber}/${totalPagesToGenerate}...`);
           const spreadPrompt = createSpreadContentPrompt(storyData, characters, storyOutline, index, currentSpreadOutline);
           const contentResponse = await openaiService.generateContent({ prompt: spreadPrompt, temperature: 0.7, max_tokens: 800 });
 
@@ -803,7 +812,7 @@ const GenerateBookStep = () => {
           }
           spreadText = spreadContent.text || spreadText;
           spreadVisualPrompt = spreadContent.visualPrompt || spreadContent.imagePrompt || spreadVisualPrompt;
-          updateProgressInfo(`Text/prompt for page ${pageNumber} generated.`);
+          updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.2), `Text/prompt for page ${pageNumber} generated.`);
 
           // --- Analyze which characters appear in this page ---
           // This is a simple approach - in a more advanced implementation, we could use NLP to detect character mentions
@@ -828,8 +837,7 @@ const GenerateBookStep = () => {
           // --- Generate Image for Current Spread (OpenAI) ---
           try {
             // OpenAI Scene Generation
-            updateProgressInfo(`Generating image for page ${pageNumber} with OpenAI...`);
-            setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage * 0.4));
+            updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.4), `Generating image for page ${pageNumber} with OpenAI...`);
             if (!spreadVisualPrompt || spreadVisualPrompt.startsWith('Error:')) throw new Error("Visual prompt is missing or invalid.");
             if (!storyData.artStyleCode) throw new Error("Missing art style code.");
 
@@ -909,7 +917,7 @@ const GenerateBookStep = () => {
             );
 
             if (!finalImageUrl) throw new Error("OpenAI image generation failed.");
-            updateProgressInfo(`Image for page ${pageNumber} completed.`);
+            updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.9), `Image for page ${pageNumber} completed.`);
 
             // Store the first page image as our primary reference for style consistency
             if (index === 0 && finalImageUrl) {
@@ -954,12 +962,12 @@ const GenerateBookStep = () => {
 
           } catch (imageGenError) {
             console.error(`Error generating image for page ${index + 1}:`, imageGenError);
-            updateProgressInfo(`Error generating image for page ${index + 1}: ${imageGenError.message}`);
+            updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.8), `Error generating image for page ${index + 1}: ${imageGenError.message}`);
             finalImageUrl = 'ERROR_IMAGE_GEN'; // Mark image as error
           }
         } catch (pageGenError) {
            console.error(`Error processing page ${index + 1}:`, pageGenError);
-           updateProgressInfo(`Error processing page ${index + 1}: ${pageGenError.message}`);
+           updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage * 0.5), `Error processing page ${index + 1}: ${pageGenError.message}`);
            // Keep default error values for text/image
         }
 
@@ -974,12 +982,12 @@ const GenerateBookStep = () => {
         };
         // Update state progressively
         setGeneratedPagesData(prev => [...prev, newPageObject]);
-        setGenerationProgress(Math.round(currentPageProgressBase + progressPerPage)); // Mark page as fully done
+        updateProgressWithTimeEstimate(Math.round(currentPageProgressBase + progressPerPage), `Page ${pageNumber} completed.`); // Mark page as fully done
 
       } // End loop through pages
 
       // ---------- STEP 4: Assemble Final Book Object ----------
-      updateProgressInfo('Assembling final book...');
+      updateProgressWithTimeEstimate(95, 'Assembling final book...');
       // Use the state variables populated during the sequential generation
       const finalBookData = {
         id: uuidv4(),
@@ -1009,16 +1017,17 @@ const GenerateBookStep = () => {
       if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(finalBookData.id);
       else console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function not available");
 
-      updateProgressInfo('Book generation complete!');
-      setGenerationProgress(100);
+      updateProgressWithTimeEstimate(100, 'Book generation complete!');
+      setShowLoadingModal(false);
+      stopLoading();
 
     } catch (error) {
       console.error('Book generation failed:', error);
       setError(`Generation failed: ${error.message}`);
-      updateProgressInfo(`Error: ${error.message}`);
-      setGenerationProgress(100); // End progress on error
+      updateProgressWithTimeEstimate(100, `Error: ${error.message}`);
+      setShowLoadingModal(false);
+      stopLoading();
     } finally {
-      setIsGenerating(false); // Set generating to false now that all steps are done or failed
       console.log("Full book generation process finished.");
     }
   };
@@ -1041,22 +1050,34 @@ const GenerateBookStep = () => {
 
   // --- JSX Structure ---
   return (
-    <div className="container mx-auto p-6 max-w-4xl bg-white rounded-lg shadow-xl">
-      <h1 className="text-3xl font-bold text-center mb-6 text-purple-700">Generating Your Book</h1>
+    <>
+      {/* Loading Modal */}
+      <BookGenerationModal 
+        isOpen={showLoadingModal}
+        allowCancel={false}
+      />
+      
+      <div className="container mx-auto p-6 max-w-4xl bg-white rounded-lg shadow-xl">
+        <h1 className="text-3xl font-bold text-center mb-6 text-purple-700">Generating Your Book</h1>
 
-      {isGenerating && (
-        <div className="flex flex-col items-center space-y-4 my-8">
-          <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
-          <p className="text-lg font-medium text-gray-700">{progressInfo || 'Generation in progress...'}</p>
-          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full transition-width duration-300 ease-in-out"
-              style={{ width: `${generationProgress}%` }}>
+        {isLoading && !showLoadingModal && (
+          <div className="flex flex-col items-center space-y-4 my-8">
+            <LoadingSpinner {...SpinnerPresets.bookGeneration} />
+            <p className="text-lg font-medium text-gray-700">{progressMessage || 'Generation in progress...'}</p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-purple-600 h-2.5 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${progress}%` }}>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <span>{Math.round(progress)}% Complete</span>
+              {estimatedTimeRemaining && (
+                <span>~{formatTimeRemaining(estimatedTimeRemaining)} remaining</span>
+              )}
             </div>
           </div>
-          <p className="text-sm text-gray-500">{Math.round(generationProgress)}% Complete</p>
-        </div>
-      )}
+        )}
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative my-4" role="alert">
@@ -1106,7 +1127,7 @@ const GenerateBookStep = () => {
       {/* --- End Display Generated Content --- */}
 
 
-      {!isGenerating && generatedBook && generationProgress === 100 && !error && ( // Added checks for completion and no error
+      {!isLoading && generatedBook && progress === 100 && !error && ( // Added checks for completion and no error
         <div className="mt-8 text-center">
           <h2 className="text-2xl font-semibold text-green-600 mb-4">Book Generation Complete!</h2>
           <p className="mb-6">Your book "{generatedBook.title}" has been created.</p>
@@ -1130,7 +1151,7 @@ const GenerateBookStep = () => {
         </div>
       )}
 
-      {!isGenerating && error && (
+      {!isLoading && error && (
          <div className="mt-8 text-center">
            <p className="text-red-600 mb-4">Generation failed. Please check the error message above.</p>
            <button
@@ -1142,6 +1163,7 @@ const GenerateBookStep = () => {
          </div>
       )}
     </div>
+    </>
   );
 };
 

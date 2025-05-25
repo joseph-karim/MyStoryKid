@@ -2,6 +2,75 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware'; // If you use persistence
 import { v4 as uuidv4 } from 'uuid'; // Needed if wizard uses it
 
+// --- Loading Store ---
+export const useLoadingStore = create((set, get) => ({
+  // Global loading states
+  globalLoading: false,
+  loadingStates: {}, // Object to track multiple loading operations by key
+  progressStates: {}, // Object to track progress for different operations
+  
+  // Set global loading state
+  setGlobalLoading: (isLoading) => set({ globalLoading: isLoading }),
+  
+  // Set loading state for a specific operation
+  setLoading: (key, isLoading, message = '') => set((state) => ({
+    loadingStates: {
+      ...state.loadingStates,
+      [key]: { isLoading, message, startTime: isLoading ? Date.now() : null }
+    }
+  })),
+  
+  // Set progress for a specific operation
+  setProgress: (key, progress, message = '', estimatedTimeRemaining = null) => set((state) => ({
+    progressStates: {
+      ...state.progressStates,
+      [key]: { 
+        progress: Math.max(0, Math.min(100, progress)), // Clamp between 0-100
+        message,
+        estimatedTimeRemaining,
+        lastUpdate: Date.now()
+      }
+    }
+  })),
+  
+  // Clear loading state for a specific operation
+  clearLoading: (key) => set((state) => {
+    const newLoadingStates = { ...state.loadingStates };
+    const newProgressStates = { ...state.progressStates };
+    delete newLoadingStates[key];
+    delete newProgressStates[key];
+    return {
+      loadingStates: newLoadingStates,
+      progressStates: newProgressStates
+    };
+  }),
+  
+  // Clear all loading states
+  clearAllLoading: () => set({
+    globalLoading: false,
+    loadingStates: {},
+    progressStates: {}
+  }),
+  
+  // Get loading state for a specific operation
+  getLoadingState: (key) => {
+    const state = get();
+    return state.loadingStates[key] || { isLoading: false, message: '', startTime: null };
+  },
+  
+  // Get progress state for a specific operation
+  getProgressState: (key) => {
+    const state = get();
+    return state.progressStates[key] || { progress: 0, message: '', estimatedTimeRemaining: null, lastUpdate: null };
+  },
+  
+  // Check if any operation is loading
+  isAnyLoading: () => {
+    const state = get();
+    return state.globalLoading || Object.values(state.loadingStates).some(loading => loading.isLoading);
+  }
+}));
+
 // --- Auth Store --- 
 export const useAuthStore = create(
   persist(
