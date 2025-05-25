@@ -1,69 +1,64 @@
 import React from 'react';
 import { 
-  Circles, 
-  Oval, 
-  ThreeDots, 
-  TailSpin, 
-  Hearts,
-  ColorRing,
-  ProgressBar
-} from 'react-loader-spinner';
+  CircleLoader, 
+  ClipLoader, 
+  BeatLoader, 
+  ClimbingBoxLoader, 
+  HashLoader,
+  RingLoader,
+  BarLoader
+} from 'react-spinners';
 
 /**
  * Loading Spinner Component
  * Provides various loading animations using react-loader-spinner
  */
 const LoadingSpinner = ({ 
-  type = 'Circles', 
+  type = 'CircleLoader', 
   size = 80, 
   color = '#3B82F6', 
   secondaryColor = '#E5E7EB',
-  visible = true,
-  wrapperClass = '',
-  wrapperStyle = {},
-  ariaLabel = 'Loading...',
-  timeout = 0
+  loading = true,
+  cssOverride = {},
+  ariaLabel = 'Loading...'
 }) => {
   const commonProps = {
-    visible,
-    height: size,
-    width: size,
+    loading,
+    size,
     color,
-    ariaLabel,
-    wrapperStyle,
-    wrapperClass,
-    timeout
+    cssOverride: { ...cssOverride, display: 'block', margin: '0 auto' },
+    'aria-label': ariaLabel
   };
 
   const renderSpinner = () => {
     switch (type) {
-      case 'Circles':
-        return <Circles {...commonProps} />;
+      case 'CircleLoader':
+        return <CircleLoader {...commonProps} />;
       
-      case 'Oval':
-        return <Oval {...commonProps} secondaryColor={secondaryColor} strokeWidth={2} strokeWidthSecondary={2} />;
+      case 'ClipLoader':
+        return <ClipLoader {...commonProps} />;
       
-      case 'ThreeDots':
-        return <ThreeDots {...commonProps} radius="9" />;
+      case 'BeatLoader':
+        return <BeatLoader {...commonProps} />;
       
-      case 'TailSpin':
-        return <TailSpin {...commonProps} />;
+      case 'ClimbingBoxLoader':
+        return <ClimbingBoxLoader {...commonProps} />;
       
-      case 'Hearts':
-        return <Hearts {...commonProps} />;
+      case 'HashLoader':
+        return <HashLoader {...commonProps} />;
       
-      case 'ColorRing':
-        return <ColorRing {...commonProps} />;
+      case 'RingLoader':
+        return <RingLoader {...commonProps} />;
       
-      case 'ProgressBar':
-        return <ProgressBar {...commonProps} borderColor={color} barColor={secondaryColor} />;
+      case 'BarLoader':
+        return <BarLoader {...commonProps} width={size * 2} height={size / 10} />;
       
       default:
-        return <Circles {...commonProps} />;
+        return <CircleLoader {...commonProps} />;
     }
   };
 
-  if (!visible) return null;
+  if (!loading) return null;
 
   return (
     <div className="flex items-center justify-center">
@@ -80,28 +75,25 @@ export const SpinnerPresets = {
   medium: { size: 80 },
   large: { size: 120 },
   
-  primary: { color: '#3B82F6', secondaryColor: '#E5E7EB' },
-  success: { color: '#10B981', secondaryColor: '#D1FAE5' },
-  warning: { color: '#F59E0B', secondaryColor: '#FEF3C7' },
-  danger: { color: '#EF4444', secondaryColor: '#FEE2E2' },
+  primary: { color: '#3B82F6' },
+  success: { color: '#10B981' },
+  warning: { color: '#F59E0B' },
+  danger: { color: '#EF4444' },
   
   bookGeneration: { 
-    type: 'Circles', 
+    type: 'CircleLoader', 
     size: 100, 
-    color: '#8B5CF6', 
-    secondaryColor: '#EDE9FE' 
+    color: '#8B5CF6'
   },
   characterCreation: { 
-    type: 'Hearts', 
+    type: 'HashLoader', 
     size: 80, 
-    color: '#EC4899', 
-    secondaryColor: '#FCE7F3' 
+    color: '#EC4899'
   },
   imageProcessing: { 
-    type: 'ColorRing', 
+    type: 'RingLoader', 
     size: 80, 
-    color: '#06B6D4', 
-    secondaryColor: '#CFFAFE' 
+    color: '#06B6D4'
   }
 };
 
@@ -122,7 +114,7 @@ export const LoadingOverlay = ({
       {children}
       {isLoading && (
         <div className={`absolute inset-0 flex flex-col items-center justify-center z-50 ${overlayClassName}`}>
-          <LoadingSpinner {...spinnerProps} />
+          <LoadingSpinner loading={true} {...spinnerProps} />
           {message && (
             <p className="mt-4 text-sm text-gray-600 text-center max-w-xs">
               {message}
@@ -140,12 +132,12 @@ export const LoadingOverlay = ({
  */
 export const InlineLoading = ({ 
   message = 'Loading...', 
-  spinnerProps = { type: 'ThreeDots', size: 24 },
+  spinnerProps = { type: 'BeatLoader', size: 24 },
   className = ''
 }) => {
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <LoadingSpinner {...spinnerProps} />
+      <LoadingSpinner loading={true} {...spinnerProps} />
       <span className="text-sm text-gray-600">{message}</span>
     </div>
   );
