@@ -1,5 +1,14 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { generateCompleteBook } from '../services/storyGenerator.js';
+import { 
+  saveBook, 
+  getBook, 
+  getUserBooks, 
+  updateBookStatus,
+  claimBook as claimBookDB
+} from '../services/databaseService.js';
+import { ensureAnonymousSession, getCurrentBookId, clearCurrentBookId } from '../services/anonymousAuthService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock books data for testing
@@ -172,13 +181,16 @@ const initialWizardState = {
   // generatedBookData: null
 };
 
-// This is an expanded store for book data and creation flow
-const useBookStore = create((set, get) => ({
-  // Book state
-  books: mockBooks, // Start with mock books for testing
-  currentBook: null, // Book being created/edited
-  isLoading: false,
-  latestGeneratedBookId: null, // <-- NEW: Track the last generated ID
+// This is an expanded store for book data and creation flow with database integration
+const useBookStore = create(
+  persist(
+    (set, get) => ({
+      // Book state
+      books: [], // Books loaded from database
+      currentBook: null, // Book being created/edited
+      isLoading: false,
+      latestGeneratedBookId: null, // Track the last generated ID
+      anonymousSessionId: null, // Track anonymous session for book claiming
   
   // Book creation wizard state
   wizardState: initialWizardState,
@@ -449,13 +461,115 @@ const useBookStore = create((set, get) => ({
     }
   },
   
+  // Database integration methods
+  
+  // Initialize anonymous session
+  initializeSession: async () => {
+    try {
+      const { success, session } = await ensureAnonymousSession();
+      if (success && session) {
+        set({ anonymousSessionId: session.user?.id });
+      }
+    } catch (error) {
+      console.error('[useBookStore] Error initializing session:', error);
+    }
+  },
+
+  // Load books from database
+  loadBooks: async () => {
+    set({ isLoading: true });
+    try {
+      const state = get();
+      const { user } = useAuthStore.getState();
+      
+      const books = await getUserBooks(
+        user?.id || null, 
+        state.anonymousSessionId
+      );
+      
+      set({ books, isLoading: false });
+    } catch (error) {
+      console.error('[useBookStore] Error loading books:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  // Save book to database
+  saveBookToDB: async (bookData) => {
+    try {
+      const state = get();
+      const savedBook = await saveBook(bookData, state.anonymousSessionId);
+      
+      // Update local state
+      set(state => ({
+        books: state.books.some(b => b.id === savedBook.id) 
+          ? state.books.map(b => b.id === savedBook.id ? savedBook : b)
+          : [...state.books, savedBook]
+      }));
+      
+      return savedBook;
+    } catch (error) {
+      console.error('[useBookStore] Error saving book:', error);
+      throw error;
+    }
+  },
+
+  // Get book from database
+  getBookFromDB: async (bookId) => {
+    try {
+      const book = await getBook(bookId);
+      
+      // Update current book in state
+      set({ currentBook: book });
+      
+      return book;
+    } catch (error) {
+      console.error('[useBookStore] Error getting book:', error);
+      throw error;
+    }
+  },
+
+  // Update book status
+  updateBookStatus: async (bookId, status) => {
+    try {
+      await updateBookStatus(bookId, status);
+      
+      // Update local state
+      set(state => ({
+        books: state.books.map(book => 
+          book.id === bookId ? { ...book, status } : book
+        ),
+        currentBook: state.currentBook?.id === bookId 
+          ? { ...state.currentBook, status } 
+          : state.currentBook
+      }));
+    } catch (error) {
+      console.error('[useBookStore] Error updating book status:', error);
+      throw error;
+    }
+  },
+
+  // Claim book after authentication
+  claimBook: async (bookId) => {
+    try {
+      const success = await claimBookDB(bookId);
+      if (success) {
+        // Reload books to get updated ownership
+        await get().loadBooks();
+        clearCurrentBookId(); // Clear from localStorage
+      }
+      return success;
+    } catch (error) {
+      console.error('[useBookStore] Error claiming book:', error);
+      throw error;
+    }
+  },
+
   // Generate the complete book based on wizard data
   generateBook: async () => {
     console.log("[DEPRECATED] Old generateBook function called from store. Redirecting to new implementation.");
     
-    // Import the useNavigate hook from react-router-dom
     try {
-      // Get window object and manually navigate (can't use useNavigate in a non-component context)
       if (typeof window !== 'undefined') {
         console.log("[DEPRECATED] Redirecting to /generate-book route");
         window.location.href = '/generate-book';
@@ -468,67 +582,18 @@ const useBookStore = create((set, get) => ({
       console.error('[DEPRECATED] Error redirecting to new generation flow:', error);
       return { success: false, error: error.message || 'Failed to redirect to new book generation flow.' };
     }
-    
-    // Remove or comment out all the old generation logic below
-    /*
-    // Reset latest ID before starting
-    set({ isLoading: true, latestGeneratedBookId: null }); 
-    let result = null;
-    try {
-      const { storyData } = get().wizardState;
-      console.log("[generateBook Store] Calling generateCompleteBook service...");
-      
-      result = await generateCompleteBook(storyData);
-      console.log('[generateBook Store] RAW result from generateCompleteBook service:', JSON.stringify(result)); 
-      
-      if (!result || !result.success) {
-        console.error("[generateBook Store] generateCompleteBook service failed or returned unexpected structure.", result);
-        throw new Error(result?.error || 'Failed to generate book content.');
-      }
-      
-      const { book } = result;
-      const mainCharacter = book.characters.find(c => c.role === 'main');
-      const bookTitle = book.title || `A Story for ${mainCharacter?.name || 'You'}`;
-      
-      const newBook = {
-        ...book,
-        id: book.id, // Use the ID generated by the service
-        title: bookTitle,
-        status: 'draft', 
-        childName: mainCharacter?.name || '',
-        category: storyData.category, 
-        artStyleCode: storyData.artStyleCode, 
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ageRange: storyData.targetAgeRange,
-        storyType: storyData.storyType,
-        wordCount: storyData.desiredLengthWords,
-        generationData: book.generationData 
-      };
-      console.log('[generateBook Store] Assembled newBook object:', newBook);
-      const finalBookId = newBook.id;
-
-      // Add the new book AND set the latestGeneratedBookId
-      set((state) => ({
-        books: [...state.books, newBook],
-        latestGeneratedBookId: finalBookId, // <-- SET the ID here
-        isLoading: false, // Set loading false AFTER success
-      }));
-      
-      // No return value needed anymore
-      console.log('[generateBook Store] Successfully added book and set latestGeneratedBookId:', finalBookId);
-
-    } catch (error) {
-      console.error('Error in generateBook store action:', error);
-      console.error('[generateBook Store] Service Result was:', JSON.stringify(result)); 
-      // Ensure loading is false and latest ID is null on error
-      set({ isLoading: false, latestGeneratedBookId: null }); 
-      // We don't need to re-throw here for the new flow, component will check isLoading
-      // throw error; 
-    }
-    // No finally block needed as set({isLoading: false}) is handled in try/catch
-    */
   },
-}));
+    }),
+    {
+      name: 'book-store',
+      partialize: (state) => ({
+        // Only persist wizard state and anonymous session
+        wizardState: state.wizardState,
+        anonymousSessionId: state.anonymousSessionId,
+        latestGeneratedBookId: state.latestGeneratedBookId
+      })
+    }
+  )
+);
 
 export default useBookStore; 
