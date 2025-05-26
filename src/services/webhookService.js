@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { secureApiService } from './secureApiService';
 
 // Webhook endpoints
 const WEBHOOK_BASE_URL = import.meta.env.VITE_SUPABASE_URL?.replace('/rest/v1', '') + '/functions/v1';
@@ -101,60 +102,12 @@ export const registerShopifyWebhooks = async (shopifyDomain, accessToken) => {
 
 /**
  * Register Lulu Direct webhooks
- * @param {string} luluClientKey - Lulu Direct client key
+ * @param {string} luluClientKey - Lulu Direct client key (no longer used client-side)
  * @returns {Promise<Object>} - Registration results
  */
-export const registerLuluWebhooks = async (luluClientKey) => {
-  try {
-    console.log('[webhookService] Registering Lulu Direct webhooks...');
-    
-    // Use the client key as the API key for webhook registration
-    const response = await fetch('https://api.lulu.com/webhooks/', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${luluClientKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: LULU_WEBHOOK_URL,
-        events: ['print_job.status_changed'],
-        active: true
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Store webhook configuration in database
-      await storeWebhookConfig('lulu', {
-        webhook_id: data.id,
-        url: data.url,
-        events: data.events,
-        registered_at: new Date().toISOString()
-      });
-
-      console.log(`[webhookService] Registered Lulu webhook: ${data.id}`);
-      
-      return {
-        success: true,
-        message: 'Lulu Direct webhook registered successfully',
-        webhookId: data.id,
-        url: data.url
-      };
-    } else {
-      const error = await response.text();
-      console.error('[webhookService] Failed to register Lulu webhook:', error);
-      
-      return {
-        success: false,
-        message: `Failed to register Lulu webhook: HTTP ${response.status}`,
-        error
-      };
-    }
-  } catch (error) {
-    console.error('[webhookService] Error in registerLuluWebhooks:', error);
-    throw error;
-  }
+export const registerLuluWebhooks = async (webhookData) => {
+  // Route through edge function for security
+  return secureApiService.callLuluAPI('/webhooks/', 'POST', webhookData);
 };
 
 /**
@@ -431,50 +384,13 @@ async function unregisterShopifyWebhooks(config, credentials) {
 
 /**
  * Unregister Lulu webhooks
+ * @param {string} webhookId - The webhook ID
+ * @returns {Promise<Object>} - Unregistration results
  */
-async function unregisterLuluWebhooks(config, credentials) {
-  const { apiKey } = credentials;
-  const webhookId = config.config.webhook_id;
-  
-  if (!webhookId) {
-    return {
-      success: false,
-      message: 'No webhook ID found in configuration'
-    };
-  }
-
-  try {
-    const response = await fetch(`https://api.lulu.com/webhooks/${webhookId}/`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
-
-    if (response.ok) {
-      // Remove configuration from database
-      await supabase
-        .from('webhook_configs')
-        .delete()
-        .eq('service', 'lulu');
-
-      return {
-        success: true,
-        message: 'Lulu webhook unregistered successfully'
-      };
-    } else {
-      return {
-        success: false,
-        message: `Failed to unregister Lulu webhook: HTTP ${response.status}`
-      };
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: `Error unregistering Lulu webhook: ${error.message}`
-    };
-  }
-}
+export const unregisterLuluWebhooks = async (webhookId) => {
+  // Route through edge function for security
+  return secureApiService.callLuluAPI(`/webhooks/${webhookId}/`, 'DELETE');
+};
 
 /**
  * Get webhook logs with filtering
