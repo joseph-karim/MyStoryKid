@@ -6,15 +6,14 @@ import {
   EyeIcon, 
   ArrowLeftIcon,
   ShareIcon,
-  ArrowDownTrayIcon,
-  PhotoIcon
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import BookEditor from '../components/BookEditor.jsx';
 import BookViewer from '../components/BookViewer.jsx';
 import useEnhancedBookStore from '../store/useEnhancedBookStore.js';
 import { createBookShare } from '../services/databaseService.js';
 
-function EditBookPage() {
+const BookEditPage = () => {
   const { bookId } = useParams();
   const navigate = useNavigate();
   const [currentBook, setCurrentBook] = useState(null);
@@ -353,6 +352,6 @@ function EditBookPage() {
       )}
     </div>
   );
-}
+};
 
-export default EditBookPage;
+export default BookEditPage; 
