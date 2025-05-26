@@ -1,13 +1,4 @@
-import OpenAI from 'openai';
-
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-// Ensure the key is present. Handle the error appropriately in a real app.
-if (!apiKey) {
-  console.error('OpenAI API key not found. Make sure VITE_OPENAI_API_KEY is set.');
-  // Potentially throw an error or handle this state appropriately
-}
-
-const openai = new OpenAI({ apiKey: apiKey, dangerouslyAllowBrowser: true }); // Enable browser usage (ensure security implications are understood)
+import { supabase } from './supabaseClient';
 
 // --- Helper Function to Construct Prompts ---
 const constructPrompts = (storyData, numPages) => {
@@ -192,152 +183,68 @@ ${storyFlowInstructions}`;
 
 
 /**
- * Generates story pages using OpenAI Chat Completions based on detailed story data.
- * 
+ * Generates story pages using the Supabase Edge Function (generate-story).
  * @param {object} storyData - Contains all story parameters from the wizard.
- * @param {number} numPages - The desired number of page objects in the output array (may not perfectly match AI word count focus).
- * @returns {Promise<Array<{id: string, type: string, text: string, visualPrompt: string, mainCharacterId: string | null}>>} - Array of generated page objects.
+ * @param {number} numPages - The desired number of page objects in the output array.
+ * @returns {Promise<Array<{id: string, type: string, text: string, visualPrompt: string, mainCharacterId: string | null}>>}
  */
 export const generateStoryPages = async (storyData, numPages = 8) => {
-  if (!apiKey) {
-    console.warn('OpenAI API key missing. Returning mock story data.');
-    // Return mock data reflecting the new structure
-    const mockMainCharId = storyData.bookCharacters?.find(c => c.role === 'main')?.id || storyData.bookCharacters?.[0]?.id || null;
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-story', {
+      body: { storyData, numPages }
+    });
+    if (error) throw error;
+    return data.pages;
+  } catch (err) {
+    console.error('[openaiService] Error generating story pages via edge function:', err);
     return Array.from({ length: numPages }, (_, i) => ({
-      id: `mock-page-${i + 1}`,
+      id: `error-page-${i + 1}`,
       type: 'content',
-      text: `This is mock story text for page ${i + 1} based on type: ${storyData.storyType || 'standard'}.`,
-      visualPrompt: `Mock visual prompt for page ${i + 1}, style: ${storyData.artStyleCode || 'default'}`, 
-      mainCharacterId: storyData.storyType === 'board_book' ? null : mockMainCharId 
+      text: `Error generating story text for page ${i + 1}. ${err.message}`,
+      visualPrompt: `Error generating visual prompt for page ${i + 1}`,
+      mainCharacterId: null
     }));
   }
+};
 
-  // --- Use the helper to construct prompts ---
-  const { systemPrompt, userPrompt } = constructPrompts(storyData, numPages);
-  
-  // Determine the target number of pages based on type
-  let targetPageCount = numPages;
-  if (storyData.storyType === 'board_book') {
-     const items = storyData.keyObjectsActions?.split(',').map(s => s.trim()).filter(Boolean) || [];
-     targetPageCount = items.length > 0 ? items.length : 6; // Use item count or default for board book
-  }
-  // Could add logic for early reader chapters here too if needed
-
-  console.log("--- OpenAI Story Generation Request ---");
-  console.log("System Prompt:", systemPrompt);
-  console.log("User Prompt:", userPrompt);
-  console.log("Story Type:", storyData.storyType);
-  console.log("Art Style:", storyData.artStyleCode);
-  console.log("Characters:", storyData.bookCharacters.map(c => `${c.name} (${c.id})`).join(', '));
-  console.log("Target Page Count:", targetPageCount);
-  console.log("----------------------");
-
+/**
+ * Generates a story outline using the Supabase Edge Function (generate-story-outline).
+ * @param {string} prompt - The prompt for outline generation.
+ * @returns {Promise<{success: boolean, outline?: Array<string>, error?: string}>}
+ */
+export const generateOutlineFromPrompt = async (prompt) => {
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", 
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" }, 
-      temperature: 0.7, 
-      // max_tokens: Calculate based on desiredLengthWords? More complex.
+    const { data, error } = await supabase.functions.invoke('generate-story-outline', {
+      body: { prompt }
     });
-
-    console.log("Received response from OpenAI:");
-    console.log("  Model:", completion.model);
-    console.log("  Usage:", completion.usage);
-    console.log("  Response type:", completion.choices[0]?.message?.content ? "Content received" : "No content");
-    console.log("  Content length:", completion.choices[0]?.message?.content?.length || 0);
-
-    const responseContent = completion.choices[0]?.message?.content;
-    if (!responseContent) {
-      throw new Error('OpenAI response content is empty.');
-    }
-
-    // Attempt to parse the JSON response (assuming it's an array possibly within an object)
-    let parsedResponse;
-    try {
-      const potentialJson = JSON.parse(responseContent);
-      const keys = Object.keys(potentialJson);
-      if (keys.length === 1 && Array.isArray(potentialJson[keys[0]])) {
-          parsedResponse = potentialJson[keys[0]];
-      } else if (Array.isArray(potentialJson)) {
-          parsedResponse = potentialJson; 
-      } else {
-          throw new Error('Parsed JSON is not in the expected array format or wrapped object format.');
-      }
-      if (!Array.isArray(parsedResponse)) {
-           throw new Error('Parsed JSON response is not an array.');
-      }
-      console.log(`Parsed ${parsedResponse.length} pages from OpenAI response.`);
-    } catch (parseError) {
-      console.error("Failed to parse OpenAI JSON response:", parseError);
-      console.error("Raw response content:", responseContent);
-      throw new Error(`Failed to parse story structure from OpenAI: ${parseError.message}. Raw content: ${responseContent.substring(0, 500)}`);
-    }
-
-    // Validate and structure the response array
-    const generatedPages = parsedResponse.map((page, index) => {
-      // Basic validation
-      const text = typeof page.text === 'string' ? page.text.trim() : `Error: Missing text for page ${index + 1}`;
-      const visualPrompt = typeof page.visualPrompt === 'string' ? page.visualPrompt.trim() : `Error: Missing visual prompt for page ${index + 1}`;
-      let mainCharacterId = page.mainCharacterId !== undefined ? page.mainCharacterId : null;
-      
-      // Ensure null is used, not undefined string
-      if (mainCharacterId === 'undefined' || mainCharacterId === 'null') {
-          mainCharacterId = null;
-      }
-      
-      // Validate character ID exists if not null
-      const isValidCharId = mainCharacterId === null || storyData.bookCharacters?.some(c => c.id === mainCharacterId);
-      if (mainCharacterId !== null && !isValidCharId) {
-           console.warn(`Invalid mainCharacterId \'${mainCharacterId}\' received for page ${index + 1}. Setting to null.`);
-           mainCharacterId = null;
-      }
-      
-      // Special override for board books if needed
-      if (storyData.storyType === 'board_book') {
-           mainCharacterId = null; // Board books generally don't track a single narrative character ID this way
-      }
-
-      return {
-        id: `gen-page-${index + 1}`, 
-        type: 'content',
-        text: text,
-        visualPrompt: visualPrompt,
-        mainCharacterId: mainCharacterId
-      };
-    });
-
-    // Adjust page count based on targetPageCount (especially for board books)
-    // We still use the AI's output length primarily, but can pad/truncate if necessary
-    if (generatedPages.length < targetPageCount) {
-        console.warn(`OpenAI returned fewer pages (${generatedPages.length}) than expected target (${targetPageCount}). Padding may occur if needed later.`);
-        // Padding logic might be better handled during final book assembly if strict page count is required
-    }
-    if (generatedPages.length > targetPageCount && storyData.storyType === 'board_book') {
-         console.warn(`OpenAI returned more pages (${generatedPages.length}) than board book target (${targetPageCount}). Truncating.`);
-         generatedPages.length = targetPageCount; // Truncate extra pages for board books
-    }
-    // For other types, we might allow variable page counts closer to the word count
-
-    return generatedPages;
-
-  } catch (error) {
-    console.error("Error calling OpenAI API or processing response:", error);
-    // Return mock data on error
-    console.warn('OpenAI API call failed. Returning mock story data.');
-    const mockMainCharId = storyData.bookCharacters?.find(c => c.role === 'main')?.id || storyData.bookCharacters?.[0]?.id || null;
-     return Array.from({ length: numPages }, (_, i) => ({
-       id: `error-page-${i + 1}`,
-       type: 'content',
-       text: `Error generating story text for page ${i + 1}. ${error.message}`,
-       visualPrompt: `Error generating visual prompt for page ${i + 1}`,
-       mainCharacterId: storyData.storyType === 'board_book' ? null : mockMainCharId
-     }));
+    if (error) throw error;
+    return { success: true, outline: data.outline };
+  } catch (err) {
+    console.error('[openaiService] Error generating outline via edge function:', err);
+    return { success: false, error: err.message };
   }
 };
+
+/**
+ * Generates spread content (text and image prompt) using the Supabase Edge Function (generate-spread-content).
+ * @param {string} prompt - The prompt for spread content generation.
+ * @returns {Promise<{success: boolean, content?: {text: string, imagePrompt: string}, error?: string}>}
+ */
+export const generateSpreadContentFromPrompt = async (prompt) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-spread-content', {
+      body: { prompt }
+    });
+    if (error) throw error;
+    return { success: true, content: data.content };
+  } catch (err) {
+    console.error('[openaiService] Error generating spread content via edge function:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+// All OpenAI API calls must go through secure edge functions. No direct OpenAI SDK/API usage is allowed in the client for security reasons.
+
 // Helper function to remove markdown code blocks around JSON
 const cleanMarkdownCodeBlocks = (rawString) => {
   if (!rawString || typeof rawString !== 'string') {
@@ -353,152 +260,8 @@ const cleanMarkdownCodeBlocks = (rawString) => {
   return rawString.trim(); // Return the original string (trimmed) if no blocks found
 };
 
-
 /**
- * Generates a story outline using OpenAI based on a detailed prompt.
- * Expects the prompt to request a JSON array of strings as output.
- */
-export const generateOutlineFromPrompt = async (prompt) => {
-  console.log("[openaiService] Generating outline...");
-  if (!apiKey) return { success: false, error: "OpenAI API key not configured." };
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Or another suitable model like gpt-4-turbo
-      messages: [
-        { role: "system", content: "You are a helpful assistant designed to create structured outlines for children's books. Output ONLY valid JSON." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.6, // Adjust for creativity vs consistency
-      response_format: { type: "json_object" },
-    });
-
-    const responseJsonString = completion.choices[0]?.message?.content;
-    if (!responseJsonString) {
-      throw new Error('No content received from OpenAI for outline.');
-    }
-
-    console.log("[openaiService] Raw outline response string:", responseJsonString);
-
-    // Attempt to parse the JSON response
-    let parsedResponse;
-    try {
-      // Clean potential markdown blocks before parsing
-      const cleanedJsonString = cleanMarkdownCodeBlocks(responseJsonString);
-      parsedResponse = JSON.parse(cleanedJsonString);
-    } catch (parseError) {
-      console.error("[openaiService] Failed to parse outline JSON:", parseError);
-      console.error("[openaiService] Cleaned string was:", cleanedJsonString);
-      console.error("[openaiService] Original raw string was:", responseJsonString);
-      throw new Error(`AI returned invalid JSON format for outline: ${parseError.message}`);
-    }
-
-    // Validate the parsed response structure (expecting an array)
-    // Sometimes the model might wrap the array in a key like {"outline": [...]}
-    let outlineArray = null;
-    if (Array.isArray(parsedResponse)) {
-        outlineArray = parsedResponse;
-    } else if (typeof parsedResponse === 'object' && parsedResponse !== null) {
-        // Check for common key names if it's an object
-        const possibleKeys = ['outline', 'spreads', 'result', 'data'];
-        const key = possibleKeys.find(k => Array.isArray(parsedResponse[k]));
-        if (key) {
-            outlineArray = parsedResponse[key];
-        }
-    }
-
-    if (!outlineArray || !Array.isArray(outlineArray)) {
-         console.error("[openaiService] Parsed outline response is not an array or in expected object wrapper:", parsedResponse);
-        throw new Error('AI response for outline was not in the expected array format.');
-    }
-
-    // Further validation: check if all elements are strings?
-    if (!outlineArray.every(item => typeof item === 'string')) {
-        console.warn("[openaiService] Outline array contains non-string elements:", outlineArray);
-        // Decide how to handle this - maybe try to convert or filter?
-        // For now, let's proceed but be aware.
-    }
-
-    console.log("[openaiService] Successfully parsed outline:", outlineArray);
-    return { success: true, outline: outlineArray };
-
-  } catch (error) {
-    console.error("[openaiService] Error generating outline:", error);
-    return { success: false, error: error.message || 'Failed to generate outline from OpenAI.' };
-  }
-};
-
-/**
- * Generates spread content (text and image prompt) using OpenAI based on a detailed prompt.
- * Expects the prompt to request a JSON object like { "text": "...", "imagePrompt": "..." }.
- */
-export const generateSpreadContentFromPrompt = async (prompt) => {
-  console.log("[openaiService] Generating spread content...");
-  if (!apiKey) return { success: false, error: "OpenAI API key not configured." };
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Or another suitable model
-      messages: [
-        { role: "system", content: "You are a helpful assistant designed to write children's book page text and corresponding image prompts. Output ONLY valid JSON." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7, // Slightly higher for more creative text?
-      response_format: { type: "json_object" },
-    });
-
-    const responseJsonString = completion.choices[0]?.message?.content;
-    if (!responseJsonString) {
-      throw new Error('No content received from OpenAI for spread content.');
-    }
-
-    console.log("[openaiService] Raw spread content response string:", responseJsonString);
-
-    // Attempt to parse the JSON response
-    let parsedResponse;
-    try {
-      // Clean potential markdown blocks before parsing
-      const cleanedJsonString = cleanMarkdownCodeBlocks(responseJsonString);
-      parsedResponse = JSON.parse(cleanedJsonString);
-    } catch (parseError) {
-      console.error("[openaiService] Failed to parse spread content JSON:", parseError);
-      console.error("[openaiService] Cleaned string was:", cleanedJsonString);
-      console.error("[openaiService] Original raw string was:", responseJsonString);
-      throw new Error(`AI returned invalid JSON format for spread content: ${parseError.message}`);
-    }
-
-    // Validate the parsed response structure
-    if (typeof parsedResponse !== 'object' || parsedResponse === null || typeof parsedResponse.text !== 'string' || typeof parsedResponse.imagePrompt !== 'string') {
-      console.error("[openaiService] Parsed spread content response does not match expected format {text: string, imagePrompt: string}:", parsedResponse);
-      // Attempt to find the data if nested?
-       let content = null;
-       if (typeof parsedResponse === 'object' && parsedResponse !== null) {
-           const possibleKeys = ['content', 'spread', 'result', 'data'];
-           const key = possibleKeys.find(k => typeof parsedResponse[k] === 'object' && parsedResponse[k] !== null && typeof parsedResponse[k].text === 'string' && typeof parsedResponse[k].imagePrompt === 'string');
-           if (key) {
-               content = parsedResponse[key];
-           }
-       }
-       if (!content) {
-          throw new Error('AI response for spread content did not match the expected format {text: string, imagePrompt: string}.');
-       }
-       parsedResponse = content; // Use the nested content
-    }
-
-    console.log("[openaiService] Successfully parsed spread content:", parsedResponse);
-    return { success: true, content: parsedResponse };
-
-  } catch (error) {
-    console.error("[openaiService] Error generating spread content:", error);
-    return { success: false, error: error.message || 'Failed to generate spread content from OpenAI.' };
-  }
-};
-
-// Optional: Add any other OpenAI related functions you might need here
-// e.g., function for suggesting titles, themes, etc.
-
-/**
- * Simple utility function to generate content with OpenAI
+ * Simple utility function to generate content with OpenAI via edge function
  * @param {Object} options - Options for content generation
  * @param {string} options.prompt - The prompt to send to OpenAI
  * @param {number} options.temperature - Temperature setting (0-1)
@@ -507,34 +270,14 @@ export const generateSpreadContentFromPrompt = async (prompt) => {
  */
 export const generateContent = async (options) => {
   const { prompt, temperature = 0.7, max_tokens = 1000 } = options;
-  
-  if (!apiKey) {
-    console.warn('OpenAI API key missing. Returning mock content.');
-    return JSON.stringify({ text: "Sample text for this page.", imagePrompt: "Sample image prompt." });
-  }
-  
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", 
-      messages: [
-        { role: "system", content: "You are a creative children's book author." },
-        { role: "user", content: prompt }
-      ],
-      temperature,
-      max_tokens
+    const { data, error } = await supabase.functions.invoke('generate-generic-content', {
+      body: { prompt, temperature, max_tokens }
     });
-    
-    const response = completion.choices[0]?.message?.content;
-    if (!response) {
-      throw new Error('No content received from OpenAI.');
-    }
-    
-    // Clean potential markdown blocks before returning
-    const cleanedResponse = cleanMarkdownCodeBlocks(response);
-    console.log("[generateContent] Returning cleaned response.");
-    return cleanedResponse;
-  } catch (error) {
-    console.error("Error calling OpenAI API:", error);
-    throw new Error(`Failed to generate content: ${error.message}`);
+    if (error) throw error;
+    return data.content;
+  } catch (err) {
+    console.error('[openaiService] Error generating generic content via edge function:', err);
+    return JSON.stringify({ error: err.message || 'Failed to generate content.' });
   }
 };
