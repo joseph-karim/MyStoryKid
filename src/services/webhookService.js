@@ -101,17 +101,18 @@ export const registerShopifyWebhooks = async (shopifyDomain, accessToken) => {
 
 /**
  * Register Lulu Direct webhooks
- * @param {string} luluApiKey - Lulu Direct API key
+ * @param {string} luluClientKey - Lulu Direct client key
  * @returns {Promise<Object>} - Registration results
  */
-export const registerLuluWebhooks = async (luluApiKey) => {
+export const registerLuluWebhooks = async (luluClientKey) => {
   try {
     console.log('[webhookService] Registering Lulu Direct webhooks...');
     
+    // Use the client key as the API key for webhook registration
     const response = await fetch('https://api.lulu.com/webhooks/', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${luluApiKey}`,
+        'Authorization': `Bearer ${luluClientKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

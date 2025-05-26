@@ -9,6 +9,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // External service configurations
 const LULU_API_BASE = Deno.env.get('LULU_API_BASE') || 'https://api.lulu.com';
 const LULU_API_KEY = Deno.env.get('LULU_API_KEY');
+const LULU_CLIENT_KEY = Deno.env.get('LULU_CLIENT_KEY');
+const LULU_CLIENT_SECRET = Deno.env.get('LULU_CLIENT_SECRET');
 const SHOPIFY_API_BASE = Deno.env.get('SHOPIFY_API_BASE');
 const SHOPIFY_ACCESS_TOKEN = Deno.env.get('SHOPIFY_ACCESS_TOKEN');
 
@@ -186,11 +188,11 @@ async function createPrintJob(job: JobRecord): Promise<void> {
     shipping_address: order.order_data?.shipping_address
   };
 
-  // Call Lulu API
+  // Call Lulu API using client key for authentication
   const response = await fetch(`${LULU_API_BASE}/print-jobs/`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LULU_API_KEY}`,
+      'Authorization': `Bearer ${LULU_CLIENT_KEY || LULU_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(printJobData)
@@ -243,7 +245,7 @@ async function processCancellation(job: JobRecord): Promise<void> {
       const response = await fetch(`${LULU_API_BASE}/print-jobs/${luluOrderId}/`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${LULU_API_KEY}`
+          'Authorization': `Bearer ${LULU_CLIENT_KEY || LULU_API_KEY}`
         }
       });
 

@@ -10,6 +10,7 @@ import DzineStylesList from './scripts/getDzineStylesList';
 import GenerateBookWrapper from './components/wizard/GenerateBookWrapper';
 import DigitalDownloadPage from './pages/DigitalDownloadPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import SecureApiTester from './components/SecureApiTester';
 
 function App() {
   return (
@@ -41,6 +42,19 @@ function App() {
         <Route path="/account/downloads" element={
           <ProtectedRoute requireAuth={true} allowGuest={false}>
             <DashboardPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin routes */}
+        <Route path="/admin/api-tester" element={
+          <ProtectedRoute requireAuth={true} allowGuest={false}>
+            <div className="container mx-auto p-6">
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold">API Testing Dashboard</h1>
+                <p className="text-gray-600">Test and monitor secure API connections</p>
+              </div>
+              <SecureApiTester />
+            </div>
           </ProtectedRoute>
         } />
       </Route>

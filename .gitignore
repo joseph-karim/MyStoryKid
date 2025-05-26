@@ -27,6 +27,13 @@
 **/*.key
 **/*.pem
 **/*.cert
+
+# Integration credentials and test files with secrets
+**/test-*-credentials.js
+**/test-*-oauth.js
+**/test-*-token.js
+**/*CREDENTIALS*.md
+**/*SECRETS*.md
 public/generate_thumbnails.html
 
 npm-debug.log*
