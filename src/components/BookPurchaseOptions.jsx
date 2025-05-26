@@ -7,6 +7,7 @@ import {
   getEnhancementCostEstimate,
   checkPrintEnhancementService 
 } from '../services/printReadyBookService';
+import { calculateShippingCosts } from '../services/luluService';
 import useAuthStore from '../store/useAuthStore';
 
 /**
@@ -22,8 +23,20 @@ const BookPurchaseOptions = ({ book }) => {
   const [enhancementCost, setEnhancementCost] = useState(null);
   const [enhancementServiceStatus, setEnhancementServiceStatus] = useState(null);
   const [shopifyConfig, setShopifyConfig] = useState(null);
+  const [shippingCosts, setShippingCosts] = useState(null);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState(null);
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
+
+  // Default shipping address for cost estimation (US-based)
+  const defaultShippingAddress = {
+    city: 'New York',
+    country_code: 'US',
+    postcode: '10001',
+    state_code: 'NY',
+    street1: '123 Main St'
+  };
 
   // Analyze images for print quality and check Shopify config on component mount
   useEffect(() => {
@@ -59,6 +72,42 @@ const BookPurchaseOptions = ({ book }) => {
     }
   }, [book]);
 
+  // Calculate shipping costs when print option is selected
+  useEffect(() => {
+    const calculateShipping = async () => {
+      if (selectedOption !== 'print' || !book) return;
+
+      setIsLoadingShipping(true);
+      setShippingError(null);
+
+      try {
+        // Estimate book specifications for Lulu Direct
+        const pageCount = book.pages?.filter(page => page.type === 'content')?.length || 32;
+        const podPackageId = '0600X0900BWSTDPB060UW444MXX'; // 6"x9" black and white paperback
+
+        const bookData = {
+          pageCount,
+          podPackageId
+        };
+
+        const shippingOptions = await calculateShippingCosts(bookData, defaultShippingAddress);
+        setShippingCosts(shippingOptions);
+      } catch (error) {
+        console.error('Error calculating shipping costs:', error);
+        setShippingError('Unable to calculate shipping costs. Using estimated pricing.');
+        // Set fallback shipping costs
+        setShippingCosts([
+          { level: 'MAIL', price: 0, currency: 'USD', estimated_days: 7, name: 'Standard Shipping' },
+          { level: 'EXPEDITED', price: 9.99, currency: 'USD', estimated_days: 3, name: 'Expedited Shipping' }
+        ]);
+      } finally {
+        setIsLoadingShipping(false);
+      }
+    };
+
+    calculateShipping();
+  }, [selectedOption, book]);
+
   // Handle option selection
   const handleOptionChange = (option) => {
     setSelectedOption(option);
@@ -74,13 +123,28 @@ const BookPurchaseOptions = ({ book }) => {
     setPrintEnhancement(enabled);
   };
 
+  // Get selected shipping cost
+  const getSelectedShippingCost = () => {
+    if (!shippingCosts || selectedOption !== 'print') return 0;
+    
+    const selectedShipping = shippingCosts.find(option => {
+      if (shippingOption === 'standard') {
+        return option.level === 'MAIL' || option.level === 'GROUND';
+      } else {
+        return option.level === 'EXPEDITED' || option.level === 'EXPRESS';
+      }
+    });
+    
+    return selectedShipping?.price || 0;
+  };
+
   // Calculate total price
   const calculateTotalPrice = () => {
     let basePrice = selectedOption === 'digital' ? 10 : 24.99;
-    let shippingCost = selectedOption === 'print' && shippingOption === 'expedited' ? 9.99 : 0;
-    let enhancementCost = selectedOption === 'print' && printEnhancement ? (enhancementCost?.totalCost || 0) : 0;
+    let shippingCost = getSelectedShippingCost();
+    let enhancementCostAmount = selectedOption === 'print' && printEnhancement ? (enhancementCost?.totalCost || 0) : 0;
     
-    return basePrice + shippingCost + enhancementCost;
+    return basePrice + shippingCost + enhancementCostAmount;
   };
 
   // Handle purchase button click
@@ -108,7 +172,8 @@ const BookPurchaseOptions = ({ book }) => {
         
         const checkoutSession = await createCheckoutSession(book, variant, {
           printEnhancement,
-          enhancementCost: enhancementCost?.totalCost || 0
+          enhancementCost: enhancementCost?.totalCost || 0,
+          shippingCost: getSelectedShippingCost()
         });
         window.location.href = checkoutSession.checkoutUrl;
       }
@@ -270,42 +335,55 @@ const BookPurchaseOptions = ({ book }) => {
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-lg font-semibold mb-3">Shipping Options</h3>
 
-          <div className="space-y-3">
-            <div className="flex items-center">
-              <input
-                type="radio"
-                name="shippingOption"
-                id="standard"
-                checked={shippingOption === 'standard'}
-                onChange={() => handleShippingOptionChange('standard')}
-                className="mr-2"
-              />
-              <label htmlFor="standard" className="flex justify-between w-full">
-                <span>Standard Shipping (7-10 days)</span>
-                <span className="font-semibold">Included</span>
-              </label>
+          {isLoadingShipping && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Calculating shipping costs...</span>
             </div>
+          )}
 
-            <div className="flex items-center">
-              <input
-                type="radio"
-                name="shippingOption"
-                id="expedited"
-                checked={shippingOption === 'expedited'}
-                onChange={() => handleShippingOptionChange('expedited')}
-                className="mr-2"
-              />
-              <label htmlFor="expedited" className="flex justify-between w-full">
-                <span>Expedited Shipping (2-3 days)</span>
-                <span className="font-semibold">+$9.99</span>
-              </label>
+          {shippingError && (
+            <div className="mb-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
+              {shippingError}
             </div>
-          </div>
+          )}
+
+          {!isLoadingShipping && shippingCosts && (
+            <div className="space-y-3">
+              {shippingCosts.map((option, index) => {
+                const isStandard = option.level === 'MAIL' || option.level === 'GROUND';
+                const isSelected = (isStandard && shippingOption === 'standard') || 
+                                 (!isStandard && shippingOption === 'expedited');
+                
+                return (
+                  <div key={index} className="flex items-center">
+                    <input
+                      type="radio"
+                      name="shippingOption"
+                      id={`shipping-${index}`}
+                      checked={isSelected}
+                      onChange={() => handleShippingOptionChange(isStandard ? 'standard' : 'expedited')}
+                      className="mr-2"
+                    />
+                    <label htmlFor={`shipping-${index}`} className="flex justify-between w-full">
+                      <span>
+                        {isStandard ? 'Standard Shipping' : 'Expedited Shipping'} 
+                        ({option.estimated_days || (isStandard ? '7-10' : '2-3')} days)
+                      </span>
+                      <span className="font-semibold">
+                        {option.price > 0 ? `+$${option.price.toFixed(2)}` : 'Included'}
+                      </span>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* Price Summary */}
-      {selectedOption === 'print' && (printEnhancement || shippingOption === 'expedited') && (
+      {selectedOption === 'print' && (printEnhancement || getSelectedShippingCost() > 0) && (
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="text-lg font-semibold mb-3 text-blue-800">Price Summary</h3>
           <div className="space-y-2 text-sm">
@@ -313,10 +391,10 @@ const BookPurchaseOptions = ({ book }) => {
               <span>Printed Book</span>
               <span>$24.99</span>
             </div>
-            {shippingOption === 'expedited' && (
+            {getSelectedShippingCost() > 0 && (
               <div className="flex justify-between">
-                <span>Expedited Shipping</span>
-                <span>+$9.99</span>
+                <span>{shippingOption === 'expedited' ? 'Expedited' : 'Standard'} Shipping</span>
+                <span>+${getSelectedShippingCost().toFixed(2)}</span>
               </div>
             )}
             {printEnhancement && enhancementCost && (
@@ -345,7 +423,7 @@ const BookPurchaseOptions = ({ book }) => {
 
         <button
           onClick={handlePurchase}
-          disabled={isLoading}
+          disabled={isLoading || (selectedOption === 'print' && isLoadingShipping)}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
         >
           {isLoading ? 'Processing...' : `Buy ${selectedOption === 'digital' ? 'Digital Copy' : 'Printed Book'} - $${calculateTotalPrice().toFixed(2)}`}
