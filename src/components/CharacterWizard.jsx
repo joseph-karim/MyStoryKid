@@ -18,7 +18,9 @@ const defaultCharacterData = {
   stylePreview: null,
   useTextToImage: false,
   generationPrompt: '',
-  isHuman: true
+  isHuman: true,
+  relationshipType: '', // Add relationship field
+  customRole: '' // For free-form relationship description
 };
 
 // --- ADD HELPER FUNCTION ---
@@ -174,12 +176,23 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
   const [apiStatus, setApiStatus] = useState({ checked: false, working: false, message: '' });
   const fileInputRef = useRef(null);
 
-
   // Add state for tabs based navigation
   const [unlockedSteps, setUnlockedSteps] = useState([1]);
 
   // Character data - initialize with existing character if provided
-  const [characterData, setCharacterData] = useState(existingCharacter || defaultCharacterData);
+  const [characterData, setCharacterData] = useState(() => {
+    if (existingCharacter) {
+      return existingCharacter;
+    }
+    
+    // Set default type based on role
+    const defaultType = initialRole === 'main' ? 'child' : '';
+    
+    return {
+      ...defaultCharacterData,
+      type: defaultType
+    };
+  });
 
   // Add state for image preview modal
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -244,7 +257,6 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       useFallbackImage(fallbackImage);
     }
   };
-
 
   // --- END helper functions ---
 
@@ -327,7 +339,9 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
     if (initialRole) {
       setCharacterData(prevData => ({
         ...prevData,
-        role: initialRole
+        role: initialRole,
+        // Set default type based on role
+        type: prevData.type || (initialRole === 'main' ? 'child' : '')
       }));
     }
 
@@ -340,10 +354,13 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
     checkApiStatus();
   }, [forcedArtStyle, initialRole, initialStep]);
 
-  // Character types
-  // eslint-disable-next-line no-unused-vars
+  // Character types - Updated to include adults
   const CHARACTER_TYPES = [
-    { id: 'child', name: 'Main Character', description: 'The main character of your story' },
+    { id: 'child', name: 'Child', description: 'A young person (ages 0-17)' },
+    { id: 'adult', name: 'Adult', description: 'A grown-up person (ages 18+)' },
+    { id: 'pet', name: 'Pet', description: 'A beloved animal companion' },
+    { id: 'magical', name: 'Magical Creature', description: 'A fairy, wizard, or magical being' },
+    { id: 'animal', name: 'Animal', description: 'A wild or farm animal character' },
   ];
 
   // Character roles (simplified to just main character)
@@ -383,7 +400,7 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
     setCharacterData({
       id: uuidv4(),
     name: '',
-    type: 'child',
+    type: initialRole === 'main' ? 'child' : '', // Default main character to child
     age: '',
     gender: '',
     traits: [],
@@ -393,6 +410,7 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       stylePreview: null, // Reset stylePreview
       description: '',
       customRole: '',
+      relationshipType: '',
       generationPrompt: '',
       useTextToImage: false,
       isHuman: true
@@ -411,6 +429,12 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       return;
     }
 
+      // For non-main characters, require relationship description
+      if (initialRole !== 'main' && !characterData.customRole?.trim()) {
+        setError('Please describe this character\'s relationship to the main character.');
+        return;
+      }
+
       // Explicitly log current stylePreview for debugging
       console.log('Style preview before completion:', characterData.stylePreview);
       console.log('Art style before completion:', characterData.artStyle);
@@ -419,7 +443,7 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       const finalCharacter = {
       ...characterData,
         id: characterData.id || uuidv4(), // Ensure we have an ID
-        type: characterData.type || 'child', // Set a default type
+        type: characterData.type || (initialRole === 'main' ? 'child' : ''), // Set a default type
 
         // CRITICAL: Store the Dzine stylePreview, discard original photoUrl
         stylePreview: characterData.stylePreview, // This should contain the Base64/URL from Dzine
@@ -427,29 +451,17 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
 
         // Ensure artStyle (Dzine code) is stored
         artStyle: characterData.artStyle || forcedArtStyle || null,
+        
+        // Store relationship info for non-main characters
+        relationshipType: initialRole === 'main' ? null : 'other',
+        customRole: initialRole === 'main' ? null : characterData.customRole
       };
 
-      // Validation: Check if stylePreview exists
-      if (!finalCharacter.stylePreview) {
-          // If no style preview, AND we didn't use text-to-image, use photo as fallback?
-          // OR, more safely, show an error if generation didn't happen or failed.
-          if (generationAttempted && !finalCharacter.stylePreview) {
-              setError("Style preview generation failed or wasn't completed. Cannot save character without a style preview.");
-              return;
-          } else if (!generationAttempted && finalCharacter.photoUrl) {
-               // This case should ideally not happen if logic is correct
-               console.warn("Saving character using original photo as preview - generation wasn't attempted or logic error.");
-               // For safety, we might still prevent saving here unless explicitly allowed
-               // setError("Please generate a style preview before saving.");
-               // return;
-               // OR use photoUrl as fallback (less ideal for Segmind)
-               finalCharacter.stylePreview = finalCharacter.photoUrl;
-          }
-          // If no photo and no preview, definitely error out
-          else if (!finalCharacter.photoUrl && !finalCharacter.stylePreview) {
-               setError("Missing character image or style preview. Please upload a photo or describe the character for generation.");
-               return;
-          }
+      // Allow completion without style preview for sync workflow
+      // Validation: Check if stylePreview exists (but allow proceeding without it)
+      if (!finalCharacter.stylePreview && !characterData.photoUrl && !characterData.generationPrompt) {
+        setError("Please upload a photo or describe the character for generation.");
+        return;
       }
 
       console.log('Completing character creation with data:', {
@@ -498,39 +510,25 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
     // Validation for Step 1: Details
     if (step === 1) {
       if (!characterData.name) {
-        setError('Please enter a name for your character.');
+        setError('Please enter a character name.');
         return;
       }
+      
       if (!characterData.type) {
         setError('Please select a character type.');
         return;
       }
-       if (!characterData.age) {
-        setError('Please select an age for your character.');
+
+      // For non-main characters, require relationship description
+      if (initialRole !== 'main' && !characterData.customRole?.trim()) {
+        setError('Please describe this character\'s relationship to the main character.');
         return;
       }
-      if (!characterData.gender) {
-        setError('Please select a gender for your character.');
-        return;
-      }
 
-      // Always go to Step 2 (Appearance) even if art style is forced
-      // This ensures users can upload a photo or provide a description
-      console.log('[NAV] Going to Step 2 (Appearance)');
-
-      // Update the character data with the forced art style if provided
-      if (forcedArtStyle) {
-        setCharacterData(prevData => ({
-          ...prevData,
-          artStyle: forcedArtStyle // Make sure this is set
-        }));
-      }
-
-      // Unlock the next step and navigate to it
+      console.log(`[CharacterWizard] Step 1 validation passed`);
       setUnlockedSteps(prev => [...new Set([...prev, 2])]);
       setStep(2);
     }
-    // Validation for Step 2: Photo & Style
     else if (step === 2) {
       // For photo, we also need a style choice
       if (!characterData.photoUrl && !characterData.useTextToImage) { // Check both photo and text toggle
@@ -551,12 +549,12 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
       console.log(`[CharacterWizard] Selected/Forced art style: ${characterData.artStyle || forcedArtStyle}`);
       setUnlockedSteps(prev => [...new Set([...prev, 3])]);
 
-      // Generate preview image based on selected or forced style
+      // Generate preview image based on selected or forced style (async)
       const styleToUse = forcedArtStyle || characterData.artStyle;
       // Use isHuman state which is now managed by useEffect
       const isHumanCharacter = characterData.isHuman;
 
-      // Generate a preview with the photo and style
+      // Generate a preview with the photo and style (but don't wait for it)
       generateCharacterPreview(styleToUse, isHumanCharacter);
 
       setStep(3);
@@ -668,22 +666,22 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
         />
       </div>
       
-      {/* Show relationship type for supporting characters */}
-      {initialRole === 'supporting' && (
+      {/* Show relationship description for supporting characters */}
+      {initialRole !== 'main' && (
         <div>
-          <label htmlFor="relationshipType" className="block text-sm font-medium text-gray-700">Relationship to Main Character</label>
-          <select
-            id="relationshipType"
-            value={characterData.relationshipType || 'sibling'}
-            onChange={(e) => handleChange('relationshipType', e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          >
-            <option value="sibling">Sibling</option>
-            <option value="friend">Friend</option>
-            <option value="cousin">Cousin</option>
-            <option value="pet">Pet</option>
-            <option value="other">Other</option>
-          </select>
+          <label htmlFor="customRole" className="block text-sm font-medium text-gray-700">
+            Relationship to Main Character <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="customRole"
+            value={characterData.customRole || ''}
+            onChange={(e) => handleChange('customRole', e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            placeholder="e.g., Mom, Dad, Teacher, Best Friend, Grandma, Pet Dog"
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">Describe how this character relates to the main character</p>
         </div>
       )}
       
@@ -694,15 +692,20 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           value={characterData.type}
           onChange={(e) => handleChange('type', e.target.value)}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          disabled={initialRole === 'main'} // Main character must be child
         >
           <option value="" disabled>Select type...</option>
-          <option value="child">Child</option>
-          <option value="pet">Pet</option>
-          <option value="magical">Magical Creature</option>
-          <option value="animal">Animal</option>
-          {/* Add other types as needed */}
+          {CHARACTER_TYPES.map(type => (
+            <option key={type.id} value={type.id}>
+              {type.name} - {type.description}
+            </option>
+          ))}
         </select>
+        {initialRole === 'main' && (
+          <p className="text-xs text-gray-500 mt-1">Main character is preset as a child</p>
+        )}
       </div>
+      
       <div>
         <label htmlFor="age" className="block text-sm font-medium text-gray-700">Age</label>
         <input
@@ -711,9 +714,18 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           value={characterData.age}
           onChange={(e) => handleChange('age', e.target.value)}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          placeholder="e.g., 5"
+          placeholder={characterData.type === 'adult' ? 'e.g., 35' : 'e.g., 5'}
+          min={characterData.type === 'adult' ? '18' : '0'}
+          max={characterData.type === 'adult' ? '100' : '17'}
         />
+        {characterData.type === 'adult' && (
+          <p className="text-xs text-gray-500 mt-1">Adults should be 18 or older</p>
+        )}
+        {characterData.type === 'child' && (
+          <p className="text-xs text-gray-500 mt-1">Children should be 17 or younger</p>
+        )}
       </div>
+      
       <div>
         <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender</label>
         <select
@@ -723,26 +735,11 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           <option value="" disabled>Select gender...</option>
-          <option value="girl">Girl</option>
-          <option value="boy">Boy</option>
+          <option value="girl">Girl/Woman</option>
+          <option value="boy">Boy/Man</option>
           <option value="other">Other/Unspecified</option>
         </select>
       </div>
-      
-      {/* Custom role description for "other" relationship type */}
-      {characterData.relationshipType === 'other' && (
-        <div>
-          <label htmlFor="customRole" className="block text-sm font-medium text-gray-700">Describe Relationship</label>
-          <input
-            type="text"
-            id="customRole"
-            value={characterData.customRole || ''}
-            onChange={(e) => handleChange('customRole', e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            placeholder="e.g., Teacher, Neighbor, Grandparent"
-          />
-        </div>
-      )}
     </div>
   );
 
@@ -852,7 +849,20 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
      return (
        <div className="space-y-6">
          <h3 className="text-2xl font-semibold text-center text-gray-800">Confirm Character</h3>
-         <p className="text-center text-gray-600">Review your character details and the generated style preview.</p>
+         <p className="text-center text-gray-600">Review your character details. You can continue while the preview generates.</p>
+
+         {/* Character Details Card */}
+         <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+           <h4 className="text-lg font-semibold">{characterData.name}</h4>
+           <div className="text-sm text-gray-600 space-y-1">
+             <p><span className="font-medium">Type:</span> {CHARACTER_TYPES.find(t => t.id === characterData.type)?.name || characterData.type}</p>
+             {characterData.age && <p><span className="font-medium">Age:</span> {characterData.age} years old</p>}
+             {characterData.gender && <p><span className="font-medium">Gender:</span> {characterData.gender}</p>}
+             {initialRole !== 'main' && characterData.customRole && (
+               <p><span className="font-medium">Relationship:</span> {characterData.customRole}</p>
+             )}
+           </div>
+         </div>
 
          {/* Enhanced Loading Display */}
          {isEnhancedLoading && (
@@ -868,18 +878,19 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
                  Creating your character in the selected art style...
                </p>
                <div className="text-xs text-purple-600">
-                 This usually takes about 60 seconds
+                 This usually takes about 60 seconds. You can continue with your story while this generates.
                </div>
              </div>
            </div>
          )}
+         
          {/* Display specific generation error if present */}
          {generationStatus === 'error' && error && error.startsWith('Generation failed:') && (
-           <p className="text-sm text-red-600 my-4 text-center">{error}</p> // Centered error
+           <p className="text-sm text-red-600 my-4 text-center">{error}</p>
          )}
-         {/* End Generation Status */}
 
-         {displayPreviewUrl && !isEnhancedLoading ? ( // Hide preview while enhanced loading is active
+         {/* Preview Section */}
+         {displayPreviewUrl && !isEnhancedLoading ? (
            <div className="flex flex-col items-center space-y-4">
              <div
                className="w-48 h-48 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
@@ -896,33 +907,26 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
                  />
                </div>
 
-              <h3 className="text-xl font-bold">{characterData.name}</h3>
-              <p className="text-gray-600 text-sm">
-                {characterData.age && `${characterData.age} years old • `}
-                {characterData.gender && `${characterData.gender} • `}
-                {characterData.type}
-              </p>
-
               {/* Optionally show description if used */}
               {characterData.useTextToImage && characterData.generationPrompt && (
                 <div className="mt-4 w-full p-3 bg-gray-50 rounded-md border border-gray-200 max-w-md">
                   <p className="text-xs italic text-gray-500">Based on: "{characterData.generationPrompt.substring(0, 100)}{characterData.generationPrompt.length > 100 ? '...' : ''}"</p>
-           </div>
+                </div>
               )}
             </div>
           ) : (
-             // Only show placeholder if NOT enhanced loading and no preview exists
-             !isEnhancedLoading && (
+             // Show placeholder if no preview and not loading
+             !isEnhancedLoading && !displayPreviewUrl && (
                 <div className="bg-gray-100 rounded-lg p-6 text-center border border-dashed border-gray-300 my-4 max-w-md mx-auto">
                   <p className="text-gray-600">Style preview will appear here after generation.</p>
+                  <p className="text-xs text-gray-500 mt-2">You can continue without waiting for the preview</p>
                 </div>
              )
           )}
 
         {/* Regenerate Button */}
-        {/* Show button only if enhanced loading isn't active */}
         {!isEnhancedLoading && (
-           <div className="text-center"> {/* Center the button */}
+           <div className="text-center">
              <button
                onClick={() => {
                  console.log('[Retry/Regen] User requested generation');
@@ -930,10 +934,9 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
                  const isHumanCharacter = characterData.isHuman;
                  generateCharacterPreview(styleToUse, isHumanCharacter);
                }}
-               // Disable if enhanced loading, API not working, OR if required inputs are missing
                disabled={isEnhancedLoading || !apiStatus.working || (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage)}
                className={`mt-3 px-4 py-2 text-sm rounded ${
-                 (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isEnhancedLoading // Combined disabled condition
+                 (!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) || !apiStatus.working || isEnhancedLoading
                    ? 'bg-gray-400 text-white cursor-not-allowed'
                    : 'bg-blue-600 text-white hover:bg-blue-700'
                }`}
@@ -943,28 +946,23 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
              {!apiStatus.working && apiStatus.checked && (
                 <p className="text-xs text-red-500 mt-1">API Error: {apiStatus.message}. Preview generation disabled.</p>
              )}
-             {/* Updated condition to check useTextToImage flag */}
              {(!characterData.photoUrl && !characterData.generationPrompt && !characterData.useTextToImage) && (
                 <p className="text-xs text-orange-500 mt-1">Please upload a photo or provide a description in Step 2 to enable preview generation.</p>
              )}
            </div>
          )}
-        {/* End Regenerate Button */}
 
-        {/* Original Buttons */}
+        {/* Action Buttons */}
         <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
              <button
             onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-            disabled={isEnhancedLoading} // Use enhanced loading state
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
           >
             Back
           </button>
            <button
             onClick={handleComplete}
-            // Allow complete if preview exists OR if generation wasn't attempted yet
-            className={`px-6 py-2 bg-green-600 text-white rounded ${(!displayPreviewUrl && generationAttempted) || isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
-            disabled={(!displayPreviewUrl && generationAttempted) || isEnhancedLoading} // Use enhanced loading state and allow complete if not attempted
+            className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
            >
             Complete Character
              </button>
@@ -986,8 +984,6 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
          return renderDetailsStep();
      }
    };
-
-
 
    // --- generateCharacterPreview function (Using Supabase Edge Functions with Enhanced Loading) ---
    const { startLoading, stopLoading, updateProgress, isLoading: isEnhancedLoading } = useLoading();
@@ -1088,125 +1084,123 @@ function CharacterWizard({ onComplete, initialStep = 1, /* eslint-disable-next-l
    };
    // --- End useFallbackImage function ---
 
-
-
    // Cleanup polling on unmount
- // Empty dependency array ensures this runs only on mount and unmount
+   // Empty dependency array ensures this runs only on mount and unmount
 
-  // --- Image Preview Modal Component ---
-  const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
-    if (!isOpen) return null;
+   // --- Image Preview Modal Component ---
+   const ImagePreviewModal = ({ isOpen, imageUrl, onClose }) => {
+     if (!isOpen) return null;
 
-    return (
-      <div
-        className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-        onClick={onClose} // Close on backdrop click
-      >
-        <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.7, opacity: 0 }}
-          className="bg-white p-4 rounded-lg shadow-xl max-w-lg w-full relative"
-          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
-        >
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold"
-            aria-label="Close preview"
-          >
-            &times;
-          </button>
-          <img
-            src={imageUrl}
-            alt="Character Preview Large"
-            className="max-w-full max-h-[80vh] object-contain mx-auto"
-          />
-        </motion.div>
-      </div>
-    );
-  };
-  // --- End Image Preview Modal ---
+     return (
+       <div
+         className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+         onClick={onClose} // Close on backdrop click
+       >
+         <motion.div
+           initial={{ scale: 0.7, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           exit={{ scale: 0.7, opacity: 0 }}
+           className="bg-white p-4 rounded-lg shadow-xl max-w-lg w-full relative"
+           onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+         >
+           <button
+             onClick={onClose}
+             className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold"
+             aria-label="Close preview"
+           >
+             &times;
+           </button>
+           <img
+             src={imageUrl}
+             alt="Character Preview Large"
+             className="max-w-full max-h-[80vh] object-contain mx-auto"
+           />
+         </motion.div>
+       </div>
+     );
+   };
+   // --- End Image Preview Modal ---
 
-  // --- MAIN JSX RETURN ---
-  return (
-    <div className="p-4 md:p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto">
-      {/* Tabs Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-4 md:space-x-8" aria-label="Tabs">
-          {[1, 2, 3].map((stepNum) => ( // Only 3 steps
-            <button
-              key={stepNum}
-              onClick={() => handleTabClick(stepNum)}
-              disabled={!unlockedSteps.includes(stepNum)}
-              className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${
-                step === stepNum
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } ${!unlockedSteps.includes(stepNum) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {getStepTitle(stepNum)}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Step Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3 }}
-        >
-          {renderStep()}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Error Display - Use general error state */}
-      {error && !error.startsWith('Generation failed:') && ( // Don't show general error if it's a generation error shown in step 3
-        <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-          {error}
-         </div>
-      )}
-
-      {/* Image Preview Modal */}
-      <ImagePreviewModal
-        isOpen={showImagePreview}
-        imageUrl={previewImageUrl}
-        onClose={closeImagePreview}
-      />
-
-      {/* Global Loading Modal for other operations */}
-      <LoadingModal />
-
-      {/* Navigation Buttons are now inside renderConfirmStep for Step 3 */}
-      {/* Add general Next button for steps 1 and 2 */}
-      {step < 3 && (
-         <div className="mt-8 pt-5 border-t border-gray-200">
-           <div className="flex justify-between">
+   // --- MAIN JSX RETURN ---
+   return (
+     <div className="p-4 md:p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto">
+       {/* Tabs Navigation */}
+       <div className="mb-6 border-b border-gray-200">
+         <nav className="-mb-px flex space-x-4 md:space-x-8" aria-label="Tabs">
+           {[1, 2, 3].map((stepNum) => ( // Only 3 steps
              <button
-               type="button"
-               onClick={handleBack}
-               disabled={step === 1 || isEnhancedLoading} // Disable on step 1 or if enhanced loading
-               className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 || isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+               key={stepNum}
+               onClick={() => handleTabClick(stepNum)}
+               disabled={!unlockedSteps.includes(stepNum)}
+               className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${
+                 step === stepNum
+                   ? 'border-indigo-500 text-indigo-600'
+                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+               } ${!unlockedSteps.includes(stepNum) ? 'opacity-50 cursor-not-allowed' : ''}`}
              >
-               Back
+               {getStepTitle(stepNum)}
              </button>
-             <button
-                 type="button"
-                 onClick={handleNext}
-                 disabled={isEnhancedLoading} // Disable if enhanced loading
-                 className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-               >
-                 Next
-               </button>
-           </div>
-         </div>
-      )}
+           ))}
+         </nav>
+       </div>
 
-    </div>
-  );
-}
+       {/* Step Content */}
+       <AnimatePresence mode="wait">
+         <motion.div
+           key={step}
+           initial={{ opacity: 0, x: 50 }}
+           animate={{ opacity: 1, x: 0 }}
+           exit={{ opacity: 0, x: -50 }}
+           transition={{ duration: 0.3 }}
+         >
+           {renderStep()}
+         </motion.div>
+       </AnimatePresence>
 
-export default CharacterWizard;
+       {/* Error Display - Use general error state */}
+       {error && !error.startsWith('Generation failed:') && ( // Don't show general error if it's a generation error shown in step 3
+         <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+           {error}
+          </div>
+       )}
+
+       {/* Image Preview Modal */}
+       <ImagePreviewModal
+         isOpen={showImagePreview}
+         imageUrl={previewImageUrl}
+         onClose={closeImagePreview}
+       />
+
+       {/* Global Loading Modal for other operations */}
+       <LoadingModal />
+
+       {/* Navigation Buttons are now inside renderConfirmStep for Step 3 */}
+       {/* Add general Next button for steps 1 and 2 */}
+       {step < 3 && (
+          <div className="mt-8 pt-5 border-t border-gray-200">
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={step === 1 || isEnhancedLoading} // Disable on step 1 or if enhanced loading
+                className={`py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${step === 1 || isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Back
+              </button>
+              <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isEnhancedLoading} // Disable if enhanced loading
+                  className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isEnhancedLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
+            </div>
+          </div>
+       )}
+
+     </div>
+   );
+ }
+
+ export default CharacterWizard;

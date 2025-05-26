@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBookStore } from '../../store';
 import { motion } from 'framer-motion';
+import { generateRandomStoryStructure } from '../../services/randomStoryService';
 
 // Define options for selects
 const storyTypeOptions = [
@@ -300,6 +301,38 @@ function StoryDetailsStep() {
     setWizardStep(3); // Go back to Characters step
   };
 
+  const handleRandomStory = () => {
+    console.log('Generating random story structure...');
+    
+    // Generate random story structure
+    const randomStructure = generateRandomStoryStructure();
+    
+    // Generate a random title if one doesn't exist
+    const randomTitle = formData.title || `${wizardState.storyData.bookCharacters?.[0]?.name || 'My'} Amazing Adventure`;
+    
+    // Update form data with random structure
+    const updatedFormData = {
+      ...formData,
+      title: randomTitle,
+      ...randomStructure
+    };
+    
+    setFormData(updatedFormData);
+    
+    // Reset custom flags since we're using predefined options
+    setIsCustomStoryStart(false);
+    setIsCustomMainHurdle(false);
+    setIsCustomBigTry(false);
+    setIsCustomTurningPoint(false);
+    setIsCustomResolution(false);
+    setIsCustomTakeaway(false);
+    
+    // Clear any error
+    setError('');
+    
+    console.log('Random story structure generated:', randomStructure);
+  };
+
   const handleContinue = () => {
     // Validate required fields
     if (!formData.title) {
@@ -454,10 +487,24 @@ function StoryDetailsStep() {
 
         {/* Story Structure Section Heading */}
         <div className="border-t border-gray-200 pt-6 mt-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Story Structure</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Build your story by choosing key elements for each part of the narrative.
-          </p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Story Structure</h3>
+              <p className="text-sm text-gray-600">
+                Build your story by choosing key elements for each part of the narrative.
+              </p>
+            </div>
+            <motion.button
+              type="button"
+              onClick={handleRandomStory}
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform transition duration-200 hover:scale-105 flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <span className="text-lg">🎲</span>
+              Random Story
+            </motion.button>
+          </div>
         </div>
 
         {/* 1. Story Start */}

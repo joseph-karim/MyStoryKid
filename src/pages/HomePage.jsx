@@ -239,6 +239,8 @@ function HomePage() {
                      </Link>
                  </motion.div>
 
+
+
                  {/* Full Customization */}
                  <motion.div
                    initial={{ opacity: 0, x: 20 }}
