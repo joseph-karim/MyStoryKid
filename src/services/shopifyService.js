@@ -9,6 +9,10 @@ import { generateDigitalPDF, generatePrintInteriorPDF, generatePrintCoverPDF } f
 import { calculateCoverDimensions, createPrintJob } from './luluService';
 import { uploadFileToSupabase } from './supabaseClient';
 import { getShopifyPricing, determinePODPackage } from './printPricingService';
+import { enhanceBookImages } from './printReadyBookService';
+import { createDigitalDownload, getBook } from './databaseService';
+import { sendDigitalDownloadEmail, sendOrderConfirmationEmail } from './emailService';
+import { secureApiService } from './secureApiService';
 
 // Shopify configuration
 const SHOPIFY_STORE_DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN;
@@ -99,122 +103,12 @@ const makeAdminRequest = async (endpoint, options = {}) => {
 };
 
 /**
- * Creates a checkout session for a book
- * @param {Object} book - The book object
- * @param {string} variant - The product variant ('digital', 'print-standard', 'print-expedited', 'print-standard-enhanced', 'print-expedited-enhanced')
- * @param {Object} options - Additional options
- * @returns {Promise<Object>} - Checkout session data
+ * Create a checkout session with Shopify (must be routed through edge function)
+ * @param {Object} checkoutData - Data for the checkout session
+ * @returns {Promise<Object>} - Checkout session result
  */
-export const createCheckoutSession = async (book, variant = 'digital', options = {}) => {
-  try {
-    console.log('[shopifyService] Creating checkout session for book:', book.id, 'variant:', variant);
-
-    // First, ensure the product exists in Shopify
-    const product = await createOrUpdateShopifyProduct(book, options);
-    
-    // Find the appropriate variant
-    const selectedVariant = product.variants.find(v => v.sku === variant);
-    if (!selectedVariant) {
-      throw new Error(`Variant ${variant} not found for product ${product.id}`);
-    }
-
-    // Create checkout using Storefront API
-    const checkoutCreateMutation = `
-      mutation checkoutCreate($input: CheckoutCreateInput!) {
-        checkoutCreate(input: $input) {
-          checkout {
-            id
-            webUrl
-            totalPriceV2 {
-              amount
-              currencyCode
-            }
-            lineItems(first: 10) {
-              edges {
-                node {
-                  id
-                  title
-                  quantity
-                  variant {
-                    id
-                    title
-                    priceV2 {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-          checkoutUserErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
-
-    const checkoutInput = {
-      lineItems: [
-        {
-          variantId: selectedVariant.id,
-          quantity: 1,
-          customAttributes: [
-            {
-              key: 'book_id',
-              value: book.id
-            },
-            {
-              key: 'book_title',
-              value: book.title
-            },
-            {
-              key: 'child_name',
-              value: book.childName || 'Child'
-            }
-          ]
-        }
-      ],
-      allowPartialAddresses: true
-    };
-
-    // Add enhancement cost if applicable
-    if (options.printEnhancement && options.enhancementCost > 0) {
-      checkoutInput.customAttributes = [
-        {
-          key: 'enhancement_cost',
-          value: options.enhancementCost.toString()
-        },
-        {
-          key: 'enhancement_enabled',
-          value: 'true'
-        }
-      ];
-    }
-
-    const result = await makeStorefrontRequest(checkoutCreateMutation, { input: checkoutInput });
-
-    if (result.checkoutCreate.checkoutUserErrors.length > 0) {
-      throw new Error(`Checkout creation failed: ${JSON.stringify(result.checkoutCreate.checkoutUserErrors)}`);
-    }
-
-    const checkout = result.checkoutCreate.checkout;
-    
-    console.log('[shopifyService] Checkout session created successfully:', checkout.id);
-
-    return {
-      checkoutId: checkout.id,
-      checkoutUrl: checkout.webUrl,
-      totalPrice: checkout.totalPriceV2.amount,
-      currency: checkout.totalPriceV2.currencyCode,
-      lineItems: checkout.lineItems.edges.map(edge => edge.node)
-    };
-
-  } catch (error) {
-    console.error('[shopifyService] Error creating checkout session:', error);
-    throw error;
-  }
+export const createCheckoutSession = async (checkoutData) => {
+  return secureApiService.callShopifyAPI('/checkout', 'POST', checkoutData);
 };
 
 /**
@@ -744,34 +638,109 @@ const processDigitalOrder = async (order) => {
   try {
     console.log('[shopifyService] Processing digital order:', order.id);
     
-    // Get the book ID from the order
+    // Get book and user information from the order
     const bookId = order.line_items[0].product_id;
+    const userId = order.customer?.id; // Get user ID from customer
     
-    // In a production environment, we would fetch the book data from the database
-    // For now, we'll assume we have the book data
-    const book = order.book; // This would come from the database in production
+    // Fetch the book data from the database
+    const book = await getBook(bookId); // This should fetch from your database
+    if (!book) {
+      throw new Error(`Book not found for ID: ${bookId}`);
+    }
     
-    // Generate the digital PDF
-    const pdfBuffer = await generateDigitalPDF(book);
+    // --- ENHANCE IMAGES BEFORE GENERATING PDF ---
+    console.log('[shopifyService] Enhancing book images for digital download...');
+    const enhancedBook = await enhanceBookImages(book); // Always enhance after payment
     
-    // Upload the PDF to Supabase or another storage service
-    const filename = `${book.id}_${Date.now()}.pdf`;
+    // Generate the digital PDF using enhanced images
+    console.log('[shopifyService] Generating digital PDF...');
+    const pdfBuffer = await generateDigitalPDF(enhancedBook);
+    
+    // Create unique filename with user folder structure
+    const timestamp = Date.now();
+    const filename = `${book.title.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.pdf`;
+    const filePath = userId ? `${userId}/${filename}` : `anonymous/${filename}`;
+    
+    // Upload the PDF to Supabase storage
+    console.log('[shopifyService] Uploading PDF to secure storage...');
     const pdfUrl = await uploadFileToSupabase(
       new Blob([pdfBuffer], { type: 'application/pdf' }),
-      filename,
+      filePath,
       'digital-downloads'
     );
     
-    // In a production environment, we would store the download link in the database
-    // and associate it with the order and customer
+    // Calculate file size for database record
+    const fileSizeBytes = pdfBuffer.byteLength;
     
-    console.log('[shopifyService] Digital order processed successfully');
+    // Create digital download record in database
+    console.log('[shopifyService] Creating digital download record...');
+    const downloadRecord = await createDigitalDownload({
+      orderId: order.id,
+      userId: userId,
+      bookId: book.id,
+      downloadUrl: pdfUrl,
+      filename: filename,
+      fileSizeBytes: fileSizeBytes,
+      maxDownloads: 5, // Allow 5 downloads
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+    });
+    
+    console.log('[shopifyService] Digital download record created:', downloadRecord.id);
+
+    // --- SEND DOWNLOAD EMAIL ---
+    try {
+      const customerEmail = order.customer?.email || order.email;
+      const customerName = order.customer?.first_name && order.customer?.last_name 
+        ? `${order.customer.first_name} ${order.customer.last_name}`
+        : customerEmail;
+
+      if (customerEmail) {
+        console.log('[shopifyService] Sending download email to:', customerEmail);
+        
+        const emailResult = await sendDigitalDownloadEmail({
+          toEmail: customerEmail,
+          toName: customerName,
+          bookTitle: book.title,
+          downloadUrl: pdfUrl,
+          expiryDate: downloadRecord.expires_at,
+          orderId: order.shopify_order_id || order.id
+        });
+        
+        console.log('[shopifyService] Download email sent successfully:', emailResult.messageId);
+      } else {
+        console.warn('[shopifyService] No customer email found for order:', order.id);
+      }
+    } catch (emailError) {
+      console.error('[shopifyService] Failed to send download email:', emailError);
+      // Don't fail the entire process if email fails - the download is still available
+    }
+    
+    // Send order confirmation email
+    try {
+      if (customerEmail) {
+        await sendOrderConfirmationEmail({
+          toEmail: customerEmail,
+          toName: customerName,
+          orderId: order.shopify_order_id || order.id,
+          orderSummary: `Book: ${book.title}`
+        });
+      }
+    } catch (err) {
+      console.error('[shopifyService] Failed to send order confirmation email:', err.message);
+      // Continue even if email fails
+    }
+    
+    console.log('[shopifyService] Digital order processed successfully, download ID:', downloadRecord.id);
     
     return {
       orderId: order.id,
       type: 'digital',
+      downloadId: downloadRecord.id,
       downloadUrl: pdfUrl,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      filename: filename,
+      fileSizeBytes: fileSizeBytes,
+      maxDownloads: 5,
+      expiresAt: downloadRecord.expires_at
     };
   } catch (error) {
     console.error('[shopifyService] Error processing digital order:', error);
@@ -879,6 +848,25 @@ const processPrintOrder = async (order, isExpedited = false, isEnhanced = false)
     // In a production environment, we would store the print job ID in the database
     // and associate it with the order and customer
     
+    // Send order confirmation email
+    try {
+      const customerEmail = order.customer?.email || order.email;
+      const customerName = order.customer?.first_name && order.customer?.last_name 
+        ? `${order.customer.first_name} ${order.customer.last_name}`
+        : customerEmail;
+      if (customerEmail) {
+        await sendOrderConfirmationEmail({
+          toEmail: customerEmail,
+          toName: customerName,
+          orderId: order.shopify_order_id || order.id,
+          orderSummary: `Print Book: ${book.title}`
+        });
+      }
+    } catch (err) {
+      console.error('[shopifyService] Failed to send print order confirmation email:', err.message);
+      // Continue even if email fails
+    }
+    
     console.log('[shopifyService] Print order processed successfully');
     
     return {
@@ -936,15 +924,9 @@ export const handleShopifyWebhook = async (webhook) => {
 };
 
 /**
- * Validates Shopify configuration
- * @returns {Object} - Configuration status
+ * Validate Shopify configuration (must be routed through edge function)
+ * @returns {Promise<Object>} - Validation result
  */
-export const validateShopifyConfig = () => {
-  return {
-    storeDomain: !!SHOPIFY_STORE_DOMAIN,
-    storefrontToken: !!SHOPIFY_STOREFRONT_ACCESS_TOKEN,
-    adminToken: !!SHOPIFY_ADMIN_ACCESS_TOKEN,
-    isConfigured: !!(SHOPIFY_STORE_DOMAIN && SHOPIFY_STOREFRONT_ACCESS_TOKEN),
-    isFullyConfigured: !!(SHOPIFY_STORE_DOMAIN && SHOPIFY_STOREFRONT_ACCESS_TOKEN && SHOPIFY_ADMIN_ACCESS_TOKEN)
-  };
+export const validateShopifyConfig = async () => {
+  return secureApiService.callShopifyAPI('/validate-config', 'GET');
 };
