@@ -8,16 +8,21 @@
 import { generateDigitalPDF, generatePrintInteriorPDF, generatePrintCoverPDF } from './pdfService';
 import { calculateCoverDimensions, createPrintJob } from './luluService';
 import { uploadFileToSupabase } from './supabaseClient';
+import { getShopifyPricing, determinePODPackage } from './printPricingService';
 
 // Shopify configuration
 const SHOPIFY_STORE_DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_STOREFRONT_ACCESS_TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN;
 const SHOPIFY_ADMIN_ACCESS_TOKEN = import.meta.env.VITE_SHOPIFY_ADMIN_ACCESS_TOKEN;
 
-// Default product prices
-const DEFAULT_DIGITAL_PRICE = 10.00;
-const DEFAULT_PRINT_PRICE = 24.99;
-const DEFAULT_EXPEDITED_SHIPPING_PRICE = 9.99;
+// Default shipping address for pricing calculations
+const DEFAULT_SHIPPING_ADDRESS = {
+  city: 'New York',
+  country_code: 'US',
+  postcode: '10001',
+  state_code: 'NY',
+  street1: '123 Main St'
+};
 
 // Shopify Storefront API endpoint
 const STOREFRONT_API_URL = `https://${SHOPIFY_STORE_DOMAIN}/api/2023-10/graphql.json`;
@@ -222,10 +227,15 @@ export const createOrUpdateShopifyProduct = async (book, options = {}) => {
   try {
     console.log('[shopifyService] Creating/updating Shopify product for book:', book.id);
     
-    const digitalPrice = options.digitalPrice || DEFAULT_DIGITAL_PRICE;
-    const printPrice = options.printPrice || DEFAULT_PRINT_PRICE;
-    const expeditedShippingPrice = options.expeditedShippingPrice || DEFAULT_EXPEDITED_SHIPPING_PRICE;
-    const enhancementCost = options.enhancementCost || 0;
+    // Get accurate pricing based on book specifications
+    const shippingAddress = options.shippingAddress || DEFAULT_SHIPPING_ADDRESS;
+    const pricingResult = await getShopifyPricing(book, shippingAddress);
+    
+    if (!pricingResult.success) {
+      throw new Error(`Failed to calculate pricing: ${pricingResult.error}`);
+    }
+    
+    const { variants, digitalPrice, printPrices, enhancementCost, podPackage } = pricingResult.data;
 
     // Check if product already exists
     let existingProduct = null;
@@ -236,80 +246,30 @@ export const createOrUpdateShopifyProduct = async (book, options = {}) => {
       console.log('[shopifyService] Product does not exist, will create new one');
     }
 
+    // Create product data with accurate pricing and specifications
     const productData = {
       title: `${book.title} - Personalized Story for ${book.childName || 'Child'}`,
       body_html: `<p>A personalized story featuring ${book.childName || 'your child'} as the main character!</p>
                   <p>This magical story is customized just for ${book.childName || 'your child'}, making them the hero of their own adventure.</p>
-                  <p>Available as a digital download or beautiful printed book.</p>`,
+                  <p><strong>Book Specifications:</strong></p>
+                  <ul>
+                    <li>Size: ${podPackage.recommendedSize}</li>
+                    <li>Binding: ${podPackage.bindingType}</li>
+                    <li>Pages: ${book.pages?.filter(p => p.type === 'content')?.length || 20}</li>
+                    <li>Color: ${podPackage.isColor ? 'Full Color' : 'Black & White'}</li>
+                  </ul>
+                  <p>Available as a digital download or beautiful printed book with accurate pricing based on specifications.</p>`,
       vendor: 'MyStoryKid',
       product_type: 'Personalized Book',
       handle: book.id,
-      tags: ['personalized', 'children', 'story', 'custom'],
+      tags: ['personalized', 'children', 'story', 'custom', podPackage.bindingType, podPackage.isColor ? 'color' : 'bw'],
       images: book.coverImageUrl ? [{ src: book.coverImageUrl }] : [],
-      variants: [
-        {
-          title: 'Digital Download',
-          sku: 'digital',
-          price: digitalPrice.toFixed(2),
-          requires_shipping: false,
-          inventory_management: null,
-          inventory_policy: 'continue',
-          fulfillment_service: 'manual',
-          weight: 0,
-          weight_unit: 'lb'
-        },
-        {
-          title: 'Printed Book - Standard Shipping',
-          sku: 'print-standard',
-          price: printPrice.toFixed(2),
-          requires_shipping: true,
-          inventory_management: null,
-          inventory_policy: 'continue',
-          fulfillment_service: 'manual',
-          weight: 0.5,
-          weight_unit: 'lb'
-        },
-        {
-          title: 'Printed Book - Expedited Shipping',
-          sku: 'print-expedited',
-          price: (printPrice + expeditedShippingPrice).toFixed(2),
-          requires_shipping: true,
-          inventory_management: null,
-          inventory_policy: 'continue',
-          fulfillment_service: 'manual',
-          weight: 0.5,
-          weight_unit: 'lb'
-        }
-      ]
+      variants: variants.map(variant => ({
+        ...variant,
+        price: variant.price.toFixed(2),
+        fulfillment_service: 'manual'
+      }))
     };
-
-    // Add enhanced variants if enhancement cost is provided
-    if (enhancementCost > 0) {
-      productData.variants.push(
-        {
-          title: 'Printed Book - Standard Shipping (Enhanced)',
-          sku: 'print-standard-enhanced',
-          price: (printPrice + enhancementCost).toFixed(2),
-          requires_shipping: true,
-          inventory_management: null,
-          inventory_policy: 'continue',
-          fulfillment_service: 'manual',
-          weight: 0.5,
-          weight_unit: 'lb'
-        },
-        {
-          title: 'Printed Book - Expedited Shipping (Enhanced)',
-          sku: 'print-expedited-enhanced',
-          price: (printPrice + expeditedShippingPrice + enhancementCost).toFixed(2),
-          requires_shipping: true,
-          inventory_management: null,
-          inventory_policy: 'continue',
-          fulfillment_service: 'manual',
-          weight: 0.5,
-          weight_unit: 'lb'
-        }
-      );
-    }
 
     let product;
     if (existingProduct) {
@@ -869,9 +829,9 @@ const processPrintOrder = async (order, isExpedited = false, isEnhanced = false)
       phone_number: order.shipping_address.phone
     };
     
-    // Define the POD package ID based on the book specifications
-    // In a production environment, this would be determined based on the book's requirements
-    const podPackageId = '0600X0900BWSTDPB060UW444MXX'; // Example: 6"x9" black and white paperback
+    // Determine the correct POD package based on book specifications
+    const podPackage = determinePODPackage(processedBook);
+    const podPackageId = podPackage.podPackageId;
     
     // Generate the print-ready interior PDF
     const interiorPdfBuffer = await generatePrintInteriorPDF(processedBook);

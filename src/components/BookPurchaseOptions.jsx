@@ -8,6 +8,7 @@ import {
   checkPrintEnhancementService 
 } from '../services/printReadyBookService';
 import { calculateShippingCosts } from '../services/luluService';
+import { calculateComprehensivePricing, determinePODPackage } from '../services/printPricingService';
 import useAuthStore from '../store/useAuthStore';
 
 /**
@@ -26,6 +27,8 @@ const BookPurchaseOptions = ({ book }) => {
   const [shippingCosts, setShippingCosts] = useState(null);
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [shippingError, setShippingError] = useState(null);
+  const [comprehensivePricing, setComprehensivePricing] = useState(null);
+  const [podPackage, setPodPackage] = useState(null);
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
@@ -38,10 +41,36 @@ const BookPurchaseOptions = ({ book }) => {
     street1: '123 Main St'
   };
 
-  // Analyze images for print quality and check Shopify config on component mount
+  // Initialize component with comprehensive pricing and analysis
   useEffect(() => {
-    const analyzeImages = async () => {
+    const initializeComponent = async () => {
       try {
+        // Check Shopify configuration
+        const config = validateShopifyConfig();
+        setShopifyConfig(config);
+
+        // Determine POD package for this book
+        const packageInfo = determinePODPackage(book);
+        setPodPackage(packageInfo);
+
+        // Get comprehensive pricing
+        const pricingResult = await calculateComprehensivePricing(book, defaultShippingAddress, {
+          includeEnhancement: true
+        });
+        
+        if (pricingResult.success) {
+          setComprehensivePricing(pricingResult.data);
+          setShippingCosts(pricingResult.data.breakdown.shippingOptions.map(option => ({
+            id: option.id,
+            level: option.id,
+            name: option.name,
+            price: option.finalCost,
+            currency: option.currency,
+            estimated_days: option.deliveryTime
+          })));
+        }
+
+        // Analyze images for print quality
         const [analysis, costEstimate, serviceStatus] = await Promise.all([
           analyzeBookImages(book),
           getEnhancementCostEstimate(book),
@@ -56,19 +85,14 @@ const BookPurchaseOptions = ({ book }) => {
         if (analysis.imagesNeedingEnhancement > 0 && serviceStatus.available) {
           setPrintEnhancement(true);
         }
+
       } catch (error) {
-        console.error('Error analyzing images:', error);
+        console.error('Error initializing BookPurchaseOptions:', error);
       }
     };
 
-    const checkShopifyConfig = () => {
-      const config = validateShopifyConfig();
-      setShopifyConfig(config);
-    };
-
     if (book) {
-      analyzeImages();
-      checkShopifyConfig();
+      initializeComponent();
     }
   }, [book]);
 
@@ -138,13 +162,31 @@ const BookPurchaseOptions = ({ book }) => {
     return selectedShipping?.price || 0;
   };
 
-  // Calculate total price
+  // Calculate total price using comprehensive pricing
   const calculateTotalPrice = () => {
-    let basePrice = selectedOption === 'digital' ? 10 : 24.99;
-    let shippingCost = getSelectedShippingCost();
-    let enhancementCostAmount = selectedOption === 'print' && printEnhancement ? (enhancementCost?.totalCost || 0) : 0;
-    
-    return basePrice + shippingCost + enhancementCostAmount;
+    if (!comprehensivePricing) {
+      // Fallback to old pricing if comprehensive pricing isn't loaded yet
+      let basePrice = selectedOption === 'digital' ? 10 : 24.99;
+      let shippingCost = getSelectedShippingCost();
+      let enhancementCostAmount = selectedOption === 'print' && printEnhancement ? (enhancementCost?.totalCost || 0) : 0;
+      return basePrice + shippingCost + enhancementCostAmount;
+    }
+
+    if (selectedOption === 'digital') {
+      return comprehensivePricing.pricingOptions.digital.price;
+    }
+
+    // For print option, find the matching print option
+    const printOption = comprehensivePricing.pricingOptions.print.find(option => {
+      const isStandard = option.id.includes('mail') || option.id.includes('standard');
+      return (shippingOption === 'standard' && isStandard) || 
+             (shippingOption === 'expedited' && !isStandard);
+    });
+
+    if (!printOption) return 24.99; // Fallback
+
+    return printEnhancement && printOption.enhancedPrice ? 
+           printOption.enhancedPrice : printOption.basePrice;
   };
 
   // Handle purchase button click
@@ -266,7 +308,18 @@ const BookPurchaseOptions = ({ book }) => {
             <div>
               <h3 className="text-lg font-semibold">Printed Book</h3>
               <p className="text-gray-600 mb-2">Get a beautiful printed copy delivered to your door</p>
-              <p className="text-xl font-bold text-green-600">$24.99</p>
+              {comprehensivePricing && podPackage ? (
+                <>
+                  <p className="text-xl font-bold text-green-600">
+                    From ${comprehensivePricing.pricingOptions.print[0]?.basePrice?.toFixed(2) || '24.99'}
+                  </p>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {podPackage.recommendedSize} • {podPackage.bindingType} • {podPackage.isColor ? 'Full Color' : 'B&W'}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xl font-bold text-green-600">$24.99</p>
+              )}
               <ul className="text-sm text-gray-600 mt-2">
                 <li>• Professional printing</li>
                 <li>• High-quality paper</li>
