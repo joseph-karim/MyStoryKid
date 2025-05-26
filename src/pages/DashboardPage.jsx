@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
+import OrderTracking from '../components/OrderTracking';
 
 function DashboardPage() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -113,12 +114,9 @@ function DashboardPage() {
         )}
       </div>
       
-      {/* Order History Section - simplified for now */}
+      {/* Order Tracking Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Order History</h2>
-        <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-gray-500">Order history will be displayed here.</p>
-        </div>
+        <OrderTracking showAllOrders={true} />
       </div>
     </div>
   );

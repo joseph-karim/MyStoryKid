@@ -352,3 +352,232 @@ export const getPrintJobDetails = async (printJobId) => {
     throw error;
   }
 };
+
+/**
+ * Gets all print jobs for the account
+ * @param {Object} options - Query options
+ * @param {number} options.page - Page number (default: 1)
+ * @param {number} options.size - Page size (default: 25)
+ * @param {string} options.status - Filter by status
+ * @returns {Promise<Object>} - List of print jobs
+ */
+export const getAllPrintJobs = async (options = {}) => {
+  try {
+    console.log('[luluService] Getting all print jobs with options:', options);
+    
+    const token = await getLuluToken();
+    
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (options.page) queryParams.append('page', options.page);
+    if (options.size) queryParams.append('size', options.size);
+    if (options.status) queryParams.append('status', options.status);
+    
+    const url = `https://api.lulu.com/print-jobs/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get print jobs: ${response.statusText}`);
+    }
+    
+    const jobs = await response.json();
+    console.log('[luluService] Print jobs retrieved:', jobs.results?.length || 0);
+    
+    return jobs;
+  } catch (error) {
+    console.error('[luluService] Error getting print jobs:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gets tracking information for a print job
+ * @param {string} printJobId - The print job ID
+ * @returns {Promise<Object>} - Tracking information
+ */
+export const getPrintJobTracking = async (printJobId) => {
+  try {
+    console.log('[luluService] Getting print job tracking:', printJobId);
+    
+    const token = await getLuluToken();
+    
+    const response = await fetch(`https://api.lulu.com/print-jobs/${printJobId}/tracking/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get print job tracking: ${response.statusText}`);
+    }
+    
+    const tracking = await response.json();
+    console.log('[luluService] Print job tracking:', tracking);
+    
+    return tracking;
+  } catch (error) {
+    console.error('[luluService] Error getting print job tracking:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gets shipping information for a print job
+ * @param {string} printJobId - The print job ID
+ * @returns {Promise<Object>} - Shipping information
+ */
+export const getPrintJobShipping = async (printJobId) => {
+  try {
+    console.log('[luluService] Getting print job shipping info:', printJobId);
+    
+    const token = await getLuluToken();
+    
+    const response = await fetch(`https://api.lulu.com/print-jobs/${printJobId}/shipping/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get print job shipping: ${response.statusText}`);
+    }
+    
+    const shipping = await response.json();
+    console.log('[luluService] Print job shipping:', shipping);
+    
+    return shipping;
+  } catch (error) {
+    console.error('[luluService] Error getting print job shipping:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gets comprehensive order information including status, tracking, and shipping
+ * @param {string} printJobId - The print job ID
+ * @returns {Promise<Object>} - Complete order information
+ */
+export const getCompleteOrderInfo = async (printJobId) => {
+  try {
+    console.log('[luluService] Getting complete order info for:', printJobId);
+    
+    // Get all order information in parallel
+    const [details, status, tracking, shipping] = await Promise.allSettled([
+      getPrintJobDetails(printJobId),
+      getPrintJobStatus(printJobId),
+      getPrintJobTracking(printJobId),
+      getPrintJobShipping(printJobId)
+    ]);
+    
+    const orderInfo = {
+      printJobId,
+      details: details.status === 'fulfilled' ? details.value : null,
+      status: status.status === 'fulfilled' ? status.value : null,
+      tracking: tracking.status === 'fulfilled' ? tracking.value : null,
+      shipping: shipping.status === 'fulfilled' ? shipping.value : null,
+      errors: []
+    };
+    
+    // Collect any errors
+    if (details.status === 'rejected') orderInfo.errors.push({ type: 'details', error: details.reason.message });
+    if (status.status === 'rejected') orderInfo.errors.push({ type: 'status', error: status.reason.message });
+    if (tracking.status === 'rejected') orderInfo.errors.push({ type: 'tracking', error: tracking.reason.message });
+    if (shipping.status === 'rejected') orderInfo.errors.push({ type: 'shipping', error: shipping.reason.message });
+    
+    console.log('[luluService] Complete order info retrieved with', orderInfo.errors.length, 'errors');
+    
+    return orderInfo;
+  } catch (error) {
+    console.error('[luluService] Error getting complete order info:', error);
+    throw error;
+  }
+};
+
+/**
+ * Formats order status for display
+ * @param {Object} orderInfo - Complete order information
+ * @returns {Object} - Formatted order status
+ */
+export const formatOrderStatus = (orderInfo) => {
+  if (!orderInfo) return null;
+  
+  const { details, status, tracking, shipping } = orderInfo;
+  
+  // Determine overall status
+  let overallStatus = 'unknown';
+  let statusMessage = 'Status unknown';
+  let estimatedDelivery = null;
+  let trackingNumber = null;
+  let carrier = null;
+  
+  if (status) {
+    overallStatus = status.status?.toLowerCase() || 'unknown';
+    
+    switch (overallStatus) {
+      case 'created':
+        statusMessage = 'Order received and being processed';
+        break;
+      case 'in_production':
+        statusMessage = 'Your book is being printed';
+        break;
+      case 'shipped':
+        statusMessage = 'Your book has been shipped';
+        break;
+      case 'delivered':
+        statusMessage = 'Your book has been delivered';
+        break;
+      case 'cancelled':
+        statusMessage = 'Order has been cancelled';
+        break;
+      case 'rejected':
+        statusMessage = 'Order was rejected - please contact support';
+        break;
+      default:
+        statusMessage = `Order status: ${overallStatus}`;
+    }
+  }
+  
+  // Extract tracking information
+  if (tracking) {
+    trackingNumber = tracking.tracking_number;
+    carrier = tracking.carrier;
+  }
+  
+  // Extract shipping information
+  if (shipping) {
+    estimatedDelivery = shipping.estimated_delivery_date;
+  }
+  
+  // Extract order details
+  const orderDetails = details ? {
+    id: details.id,
+    externalId: details.external_id,
+    createdAt: details.created_at,
+    lineItems: details.line_items || [],
+    shippingAddress: details.shipping_address,
+    contactEmail: details.contact_email
+  } : null;
+  
+  return {
+    printJobId: orderInfo.printJobId,
+    overallStatus,
+    statusMessage,
+    estimatedDelivery,
+    trackingNumber,
+    carrier,
+    orderDetails,
+    lastUpdated: new Date().toISOString(),
+    errors: orderInfo.errors
+  };
+};
