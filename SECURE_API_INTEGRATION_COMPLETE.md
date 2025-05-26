@@ -74,7 +74,7 @@ LULU_OAUTH_ENDPOINT=https://api.lulu.com/auth/realms/glasstree/protocol/openid-c
 
 ### **✅ Frontend Integration**
 - **Admin Dashboard**: `http://localhost:5173/admin/api-tester`
-- **Admin Access**: Only for `josephkarim@gmail.com`
+- **Admin Access**: Only for `joseph@mystorykid.com`
 - **Build Status**: ✅ Successful (no breaking changes)
 
 ---
@@ -149,7 +149,7 @@ SELECT * FROM get_system_api_health(24);
 
 ### **Quick Start**
 1. **Open your browser**: `http://localhost:5173`
-2. **Sign in** with your admin account (`josephkarim@gmail.com`)
+2. **Sign in** with your admin account (`joseph@mystorykid.com`)
 3. **Access Admin Dashboard**: Click "API Dashboard" in Admin Tools
 4. **Test Connections**: Click "Test Connections" button
 5. **View Results**: See ✅ for successful API connections

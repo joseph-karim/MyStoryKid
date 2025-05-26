@@ -54,9 +54,6 @@ function DashboardPage() {
     logout();
     navigate('/');
   };
-
-  // Simple admin check - you can modify this logic as needed
-  const isAdmin = user?.email === 'josephkarim@gmail.com' || user?.user_metadata?.role === 'admin';
   
   return (
     <div className="space-y-8">
@@ -75,24 +72,6 @@ function DashboardPage() {
           </button>
         </div>
       </div>
-
-      {/* Admin Section */}
-      {isAdmin && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-purple-700">Admin Tools</h2>
-              <p className="text-purple-600 mt-1">Manage and monitor system APIs</p>
-            </div>
-            <Link 
-              to="/admin/api-tester" 
-              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-            >
-              API Dashboard
-            </Link>
-          </div>
-        </div>
-      )}
       
       {/* Create New Book CTA */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex justify-between items-center">

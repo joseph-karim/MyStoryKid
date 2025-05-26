@@ -42,7 +42,7 @@
 2. **Open your browser** and go to: `http://localhost:5173`
 
 3. **Sign in with your admin account**:
-   - Email: `josephkarim@gmail.com` (or your admin email)
+   - Email: `joseph@mystorykid.com`
    - The dashboard will show an "Admin Tools" section
 
 4. **Access the API Testing Dashboard**:
