@@ -1,14 +1,54 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
+import useEnhancedBookStore from '../store/useEnhancedBookStore.js';
 import OrderTracking from '../components/OrderTracking';
 
 function DashboardPage() {
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { books, setBooks } = useBookStore();
+  const { books: legacyBooks, setBooks } = useBookStore();
+  const { 
+    books: dbBooks, 
+    isLoading, 
+    error, 
+    loadUserBooks,
+    claimAnonymousBooks 
+  } = useEnhancedBookStore();
   const navigate = useNavigate();
+  const [allBooks, setAllBooks] = useState([]);
   
-  // Removed authentication redirect check for testing
+  // Load books from database on component mount
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        if (isAuthenticated) {
+          // Load user's books from database
+          await loadUserBooks();
+          
+          // Claim any anonymous books if user just logged in
+          await claimAnonymousBooks();
+        }
+      } catch (error) {
+        console.error('[DashboardPage] Error loading books:', error);
+      }
+    };
+
+    loadBooks();
+  }, [isAuthenticated, loadUserBooks, claimAnonymousBooks]);
+
+  // Combine database books with legacy books (for backward compatibility)
+  useEffect(() => {
+    const combinedBooks = [...dbBooks];
+    
+    // Add legacy books that aren't already in database
+    legacyBooks.forEach(legacyBook => {
+      if (!dbBooks.find(dbBook => dbBook.id === legacyBook.id)) {
+        combinedBooks.push(legacyBook);
+      }
+    });
+    
+    setAllBooks(combinedBooks);
+  }, [dbBooks, legacyBooks]);
   
   const handleLogout = () => {
     logout();
@@ -51,7 +91,22 @@ function DashboardPage() {
       <div>
         <h2 className="text-xl font-semibold mb-4">My Books</h2>
         
-        {books.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading your books...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-red-600">Error loading books: {error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-2 text-red-600 hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : allBooks.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <p className="text-gray-500">You don't have any books yet.</p>
             <Link 
@@ -63,7 +118,7 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {books.map((book) => (
+            {allBooks.map((book) => (
               <div key={book.id} className="border rounded-lg overflow-hidden">
                 <div className="h-40 bg-gray-200">
                   {/* Book thumbnail */}

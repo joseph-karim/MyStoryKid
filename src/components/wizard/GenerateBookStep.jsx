@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
+import useEnhancedBookStore from '../../store/useEnhancedBookStore.js';
 
 import { 
   generateStoryContent, 
@@ -1092,13 +1093,30 @@ const GenerateBookStep = () => {
         ageRange: storyData.ageRange,
       };
 
-      setGeneratedBook(finalBookData); // Set the final book object
-      storeCurrentBookId(finalBookData.id);
-      console.log(`[GenerateBookStep] Stored book ID ${finalBookData.id} for potential claiming`);
-      if (typeof addBook === 'function') addBook(finalBookData);
-      else console.error("[GenerateBookStep] Error: addBook function not available");
-      if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(finalBookData.id);
-      else console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function not available");
+      // Save book to database
+      updateProgressWithTimeEstimate(97, 'Saving book to database...');
+      try {
+        const { saveBookToDB } = useEnhancedBookStore.getState();
+        const savedBook = await saveBookToDB(finalBookData);
+        console.log(`[GenerateBookStep] Book saved to database:`, savedBook.id);
+        
+        setGeneratedBook(savedBook); // Set the saved book object
+        storeCurrentBookId(savedBook.id);
+        console.log(`[GenerateBookStep] Stored book ID ${savedBook.id} for potential claiming`);
+        
+        // Update legacy store for compatibility
+        if (typeof addBook === 'function') addBook(savedBook);
+        else console.error("[GenerateBookStep] Error: addBook function not available");
+        if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(savedBook.id);
+        else console.error("[GenerateBookStep] Error: setLatestGeneratedBookId function not available");
+      } catch (dbError) {
+        console.error('[GenerateBookStep] Error saving to database:', dbError);
+        // Fall back to local storage only
+        setGeneratedBook(finalBookData);
+        storeCurrentBookId(finalBookData.id);
+        if (typeof addBook === 'function') addBook(finalBookData);
+        if (typeof setLatestGeneratedBookId === 'function') setLatestGeneratedBookId(finalBookData.id);
+      }
 
       updateProgressWithTimeEstimate(100, 'Book generation complete!');
       setShowLoadingModal(false);

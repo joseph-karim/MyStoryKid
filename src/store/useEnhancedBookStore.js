@@ -228,6 +228,44 @@ const useEnhancedBookStore = create(
         }
       },
 
+      // Load user's books from database
+      loadUserBooks: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const userBooks = await getUserBooks();
+          
+          set({ 
+            books: userBooks, 
+            isLoading: false 
+          });
+          
+          return userBooks;
+        } catch (error) {
+          console.error('[useEnhancedBookStore] Error loading user books:', error);
+          set({ isLoading: false, error: error.message });
+          throw error;
+        }
+      },
+
+      // Claim anonymous books after login
+      claimAnonymousBooks: async () => {
+        try {
+          const { completeAuthFlow } = await import('../services/anonymousAuthService.js');
+          const result = await completeAuthFlow();
+          
+          if (result.success && result.claimed) {
+            console.log('[useEnhancedBookStore] Successfully claimed book:', result.bookId);
+            // Reload books to include the claimed book
+            await get().loadUserBooks();
+          }
+          
+          return result;
+        } catch (error) {
+          console.error('[useEnhancedBookStore] Error claiming anonymous books:', error);
+          throw error;
+        }
+      },
+
       // Update book status
       updateBookStatusDB: async (bookId, status) => {
         try {

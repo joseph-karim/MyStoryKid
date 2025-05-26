@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
+import useEnhancedBookStore from '../../store/useEnhancedBookStore.js';
 import { generateStoryPages } from '../../services/openaiService.js';
 
 // Function to check if a string is a Base64 data URL
@@ -249,13 +250,35 @@ function GeneratingStep() {
           updatedAt: new Date().toISOString(),
         };
 
-        addBook(newBook);
-        setCurrentBook(newBook);
-        setOverallStatus('completed');
+        // Save book to database
+        const saveBookToDatabase = async () => {
+          try {
+            const { saveBookToDB } = useEnhancedBookStore.getState();
+            const savedBook = await saveBookToDB(newBook);
+            console.log('[GeneratingStep] Book saved to database:', savedBook.id);
+            
+            // Update legacy store for compatibility
+            addBook(savedBook);
+            setCurrentBook(savedBook);
+            setOverallStatus('completed');
 
-        setTimeout(() => {
-          navigate(`/edit/${newBook.id}`);
-        }, 500);
+            setTimeout(() => {
+              navigate(`/edit/${savedBook.id}`);
+            }, 500);
+          } catch (dbError) {
+            console.error('[GeneratingStep] Error saving to database:', dbError);
+            // Fall back to local storage only
+            addBook(newBook);
+            setCurrentBook(newBook);
+            setOverallStatus('completed');
+
+            setTimeout(() => {
+              navigate(`/edit/${newBook.id}`);
+            }, 500);
+          }
+        };
+
+        saveBookToDatabase();
      } catch (error) {
          console.error("Error finalizing book structure:", error);
          setErrorMessage(`Failed to assemble the final book: ${error.message}`);
