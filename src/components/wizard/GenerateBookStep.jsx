@@ -20,6 +20,7 @@ import fetchAndConvertToBase64 from '../CharacterWizard.jsx'; // Import the help
 import useLoading from '../../hooks/useLoading';
 import { BookGenerationModal } from '../LoadingModal';
 import LoadingSpinner, { SpinnerPresets } from '../LoadingSpinner';
+import { generateStoryboards } from '../../services/storyboardService';
 
 // Helper function to create the complete story prompt (similar to original OpenAI service)
 const createCompleteStoryPrompt = (bookDetails, characters, numSpreads) => {
@@ -792,6 +793,25 @@ const GenerateBookStep = () => {
         throw new Error('Failed to generate valid story pages');
       }
       updateProgressWithTimeEstimate(outlineProgressAllocation, 'Complete story generated.');
+
+      // ---------- STEP 1.5: Storyboarding with LLM (NEW) ----------
+      let storyboards = [];
+      try {
+        storyboards = await generateStoryboards({
+          pages: storyPages.map((p, i) => ({ text: p.text, pageNum: i + 1 })),
+          characters: storyData.bookCharacters,
+          style: storyData.artStyleCode
+        });
+        // Merge storyboard data into storyPages
+        storyPages = storyPages.map((page, i) => ({
+          ...page,
+          ...(storyboards[i] || {}),
+          visualPrompt: (storyboards[i] && storyboards[i].imagePrompt) || page.visualPrompt
+        }));
+      } catch (err) {
+        console.error('[GenerateBookStep] Error generating storyboards:', err);
+        // Fallback: continue with original storyPages
+      }
 
       // ---------- STEP 2: Generate Cover Image ----------
       updateProgressWithTimeEstimate(outlineProgressAllocation + 2, 'Generating cover image...');
