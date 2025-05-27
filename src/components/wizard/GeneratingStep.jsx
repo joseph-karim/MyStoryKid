@@ -1,3 +1,4 @@
+// This component is now inline and non-blocking.
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookStore } from '../../store';
@@ -33,7 +34,7 @@ async function urlToBase64(url) {
 
 // This component simulates the AI generation process
 // In a real implementation, it would make API calls to OpenAI for text and images
-function GeneratingStep() {
+function GeneratingStep({ inline = true }) {
   const { wizardState, addBook, setCurrentBook } = useBookStore();
   const navigate = useNavigate();
 
@@ -378,46 +379,46 @@ function GeneratingStep() {
 
   const calculatedProgress = calculateProgress();
 
+  // --- UI ---
   return (
-    <div className="text-center space-y-6 py-8">
-      <h2 className="text-2xl font-bold">Creating Your Story</h2>
-
-      <div className="max-w-md mx-auto">
-        <div className="mb-2 flex justify-between text-sm">
+    <div className={`w-full mb-8 ${inline ? '' : 'text-center space-y-6 py-8'}`}>
+      <div className="flex items-center gap-4 mb-2">
+        <h2 className="text-xl font-bold">Creating Your Story</h2>
+        {overallStatus !== 'completed' && overallStatus !== 'error' && (
+          <svg className="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        )}
+        {overallStatus === 'error' && (
+          <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )}
+        {overallStatus === 'completed' && (
+          <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )}
+      </div>
+      <div className="max-w-md w-full mb-2">
+        <div className="flex justify-between text-sm">
           <span>Progress</span>
           <span>{calculatedProgress}%</span>
         </div>
-        <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-500 ${overallStatus === 'error' ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}
             style={{ width: `${calculatedProgress}%` }}
           />
         </div>
       </div>
-
-      <div className="my-8 min-h-[40px] flex items-center justify-center">
-        {overallStatus !== 'completed' && overallStatus !== 'error' && (
-          <svg className="animate-spin h-8 w-8 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        )}
-        {overallStatus === 'error' && (
-          <svg className="h-8 w-8 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )}
-         {overallStatus === 'completed' && (
-          <svg className="h-8 w-8 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-           </svg>
-         )}
-        <span className={`text-lg ${overallStatus === 'error' ? 'text-red-600' : 'text-gray-700'}`}>{getStatusMessage()}</span>
+      <div className="my-2 min-h-[32px] flex items-center text-base">
+        <span className={`ml-2 ${overallStatus === 'error' ? 'text-red-600' : 'text-gray-700'}`}>{getStatusMessage()}</span>
       </div>
-
       {overallStatus !== 'error' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-          <p className="text-blue-700">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 max-w-md">
+          <p className="text-blue-700 text-sm">
             We're creating your personalized book with AI. This might take a few minutes...
           </p>
         </div>
