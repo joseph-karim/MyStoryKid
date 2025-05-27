@@ -56,9 +56,10 @@ function DashboardPage() {
   };
   
   return (
-    <div className="space-y-8">
+    // Main dashboard grid container
+    <div className="grid grid-rows-[auto,auto,1fr,auto] gap-8 md:gap-10 lg:gap-12 max-w-6xl mx-auto px-4 py-8">
       {/* Dashboard Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0 row-start-1">
         <div>
           <h1 className="text-2xl font-bold">My Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.displayName || 'User'}</p>
@@ -74,8 +75,8 @@ function DashboardPage() {
       </div>
       
       {/* Create New Book CTA */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex justify-between items-center">
-        <div>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex flex-col md:flex-row justify-between items-center row-start-2">
+        <div className="mb-4 md:mb-0">
           <h2 className="text-xl font-semibold text-blue-700">Create a New Story</h2>
           <p className="text-blue-600 mt-1">Start the magical journey of creating a personalized book</p>
         </div>
@@ -88,9 +89,8 @@ function DashboardPage() {
       </div>
       
       {/* Books Section */}
-      <div>
+      <div className="row-start-3">
         <h2 className="text-xl font-semibold mb-4">My Books</h2>
-        
         {isLoading ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -117,9 +117,10 @@ function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          // Responsive grid for books
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {allBooks.map((book) => (
-              <div key={book.id} className="border rounded-lg overflow-hidden">
+              <div key={book.id} className="border rounded-lg overflow-hidden flex flex-col bg-white shadow-sm">
                 <div className="h-40 bg-gray-200">
                   {/* Book thumbnail */}
                   <img 
@@ -128,25 +129,27 @@ function DashboardPage() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold">{book.title}</h3>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-gray-500">
-                      {new Date(book.createdAt).toLocaleDateString()}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      book.status === 'draft' 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : book.status === 'purchased_digital'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {book.status === 'draft' 
-                        ? 'Draft' 
-                        : book.status === 'purchased_digital'
-                        ? 'Digital'
-                        : 'Print'}
-                    </span>
+                <div className="p-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-semibold">{book.title}</h3>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-sm text-gray-500">
+                        {new Date(book.createdAt).toLocaleDateString()}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        book.status === 'draft' 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : book.status === 'purchased_digital'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {book.status === 'draft' 
+                          ? 'Draft' 
+                          : book.status === 'purchased_digital'
+                          ? 'Digital'
+                          : 'Print'}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-4 flex space-x-3">
                     <Link 
@@ -170,7 +173,7 @@ function DashboardPage() {
       </div>
       
       {/* Order Tracking Section */}
-      <div>
+      <div className="row-start-4">
         <OrderTracking showAllOrders={true} />
       </div>
     </div>
