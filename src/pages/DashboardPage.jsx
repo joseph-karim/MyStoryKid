@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useBookStore } from '../store';
 import useEnhancedBookStore from '../store/useEnhancedBookStore.js';
 import OrderTracking from '../components/OrderTracking';
+import LazyLoad from 'react-lazyload';
 
 function DashboardPage() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -54,6 +55,81 @@ function DashboardPage() {
     logout();
     navigate('/');
   };
+  
+  /**
+   * BookThumbnail component for displaying the book cover image
+   * @param {Object} props
+   * @param {string} props.src - Image URL
+   * @param {string} props.alt - Alt text
+   */
+  function BookThumbnail({ src, alt }) {
+    return (
+      <div
+        className="h-40 bg-gray-200 flex items-center justify-center transition-transform duration-200 hover:scale-105 hover:shadow-lg focus-within:scale-105 focus-within:shadow-lg rounded cursor-pointer"
+        tabIndex={0}
+        aria-label={alt}
+        title={alt}
+        data-testid="book-thumbnail"
+      >
+        {/* Lazy load the book cover image */}
+        <LazyLoad
+          height={160}
+          offset={100}
+          placeholder={<div className="h-full w-full bg-gray-100 animate-pulse" />}
+          once
+        >
+          <img 
+            src={src || 'https://via.placeholder.com/150'}
+            alt={alt}
+            className="h-full w-full object-cover rounded"
+            onError={e => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150'; }}
+            tabIndex={-1}
+          />
+        </LazyLoad>
+        <noscript>
+          <img 
+            src={src || 'https://via.placeholder.com/150'}
+            alt={alt}
+            className="h-full w-full object-cover rounded"
+            tabIndex={-1}
+          />
+        </noscript>
+      </div>
+    );
+  }
+
+  /**
+   * BookStatusIndicator component for displaying the book status badge
+   * @param {Object} props
+   * @param {string} props.status - Book status (draft, purchased_digital, print)
+   */
+  function BookStatusIndicator({ status }) {
+    let label = 'Print';
+    let className = 'bg-blue-100 text-blue-800';
+    let icon = '📚';
+    let tooltip = 'Print: Printed book';
+    if (status === 'draft') {
+      label = 'Draft';
+      className = 'bg-yellow-100 text-yellow-800';
+      icon = '📝';
+      tooltip = 'Draft: Not yet purchased or finalized';
+    } else if (status === 'purchased_digital') {
+      label = 'Digital';
+      className = 'bg-green-100 text-green-800';
+      icon = '💾';
+      tooltip = 'Digital: Purchased digital download';
+    }
+    return (
+      <span
+        className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${className}`}
+        aria-label={tooltip}
+        title={tooltip}
+        data-testid="book-status-indicator"
+      >
+        <span aria-hidden="true">{icon}</span> {label}
+      </span>
+    );
+  }
   
   return (
     // Main dashboard grid container
@@ -121,14 +197,11 @@ function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {allBooks.map((book) => (
               <div key={book.id} className="border rounded-lg overflow-hidden flex flex-col bg-white shadow-sm">
-                <div className="h-40 bg-gray-200">
-                  {/* Book thumbnail */}
-                  <img 
-                    src={book.thumbnail || book.pages?.[0]?.imageUrl || 'https://via.placeholder.com/150'} 
-                    alt={book.title} 
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+                {/* Book thumbnail */}
+                <BookThumbnail 
+                  src={book.thumbnail || book.pages?.[0]?.imageUrl}
+                  alt={book.title}
+                />
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div>
                     <h3 className="font-semibold">{book.title}</h3>
@@ -136,19 +209,7 @@ function DashboardPage() {
                       <span className="text-sm text-gray-500">
                         {new Date(book.createdAt).toLocaleDateString()}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        book.status === 'draft' 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : book.status === 'purchased_digital'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {book.status === 'draft' 
-                          ? 'Draft' 
-                          : book.status === 'purchased_digital'
-                          ? 'Digital'
-                          : 'Print'}
-                      </span>
+                      <BookStatusIndicator status={book.status} />
                     </div>
                   </div>
                   <div className="mt-4 flex space-x-3">
