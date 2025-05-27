@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: listmonk
+      POSTGRES_USER: listmonk
+      POSTGRES_DB: listmonk
+    volumes:
+      - ./listmonk_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    image: listmonk/listmonk:latest
+    depends_on:
+      - db
+    ports:
+      - "9000:9000"
+    environment:
+      - LISTMONK_app__address=0.0.0.0:9000
+      - LISTMONK_db__host=db
+      - LISTMONK_db__user=listmonk
+      - LISTMONK_db__password=listmonk
+      - LISTMONK_db__database=listmonk
+      - LISTMONK_db__port=5432
+    volumes:
+      - ./listmonk_data:/listmonk/data 

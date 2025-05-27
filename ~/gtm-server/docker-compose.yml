@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  gtm-server:
+    image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+    restart: always
+    environment:
+      - CONTAINER_CONFIG=${GTM_CONTAINER_CONFIG}
+      - PREVIEW_SERVER_URL=http://gtm-preview:8081
+    expose:
+      - "8080"
+    networks:
+      - gtm-net
+
+  gtm-preview:
+    image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+    restart: always
+    environment:
+      - CONTAINER_CONFIG=${GTM_CONTAINER_CONFIG}
+      - RUN_AS_PREVIEW_SERVER=true
+    expose:
+      - "8081"
+    networks:
+      - gtm-net
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gtm-server
+      - gtm-preview
+    networks:
+      - gtm-net
+
+networks:
+  gtm-net:
+    driver: bridge 

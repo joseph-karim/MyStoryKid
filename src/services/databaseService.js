@@ -712,6 +712,194 @@ const transformBookFromDB = (dbBook) => ({
   pages: dbBook.book_pages?.sort((a, b) => a.page_number - b.page_number).map(transformPageFromDB) || []
 });
 
+/**
+ * Get a digital download record by ID
+ * @param {string} downloadId - The download ID
+ * @returns {Promise<Object>} - Download record
+ */
+export const getDigitalDownload = async (downloadId) => {
+  try {
+    const { data, error } = await supabase
+      .from('digital_downloads')
+      .select(`
+        *,
+        orders (
+          id,
+          shopify_order_id,
+          total_amount
+        ),
+        books (
+          id,
+          title,
+          user_id
+        )
+      `)
+      .eq('id', downloadId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[databaseService] Error fetching digital download:', error);
+    throw new Error(`Failed to fetch digital download: ${error.message}`);
+  }
+};
+
+/**
+ * Get digital downloads for a user
+ * @param {string} userId - The user ID
+ * @returns {Promise<Array>} - User's downloads
+ */
+export const getUserDigitalDownloads = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('digital_downloads')
+      .select(`
+        *,
+        orders (
+          id,
+          shopify_order_id,
+          total_amount,
+          created_at as order_created_at
+        ),
+        books (
+          id,
+          title
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[databaseService] Error fetching user downloads:', error);
+    throw new Error(`Failed to fetch user downloads: ${error.message}`);
+  }
+};
+
+/**
+ * Validate a download and check if it's still valid
+ * @param {string} downloadId - The download ID
+ * @param {string} userId - The user ID (optional, for additional validation)
+ * @returns {Promise<Object>} - Validation result with download info
+ */
+export const validateDownload = async (downloadId, userId = null) => {
+  try {
+    const download = await getDigitalDownload(downloadId);
+    
+    if (!download) {
+      return { isValid: false, error: 'Download not found' };
+    }
+
+    // Check if user is authorized for this download (if userId provided)
+    if (userId && download.user_id !== userId) {
+      return { isValid: false, error: 'Unauthorized access' };
+    }
+
+    // Check if download has expired
+    const now = new Date();
+    const expiresAt = new Date(download.expires_at);
+    if (now > expiresAt) {
+      return { isValid: false, error: 'Download has expired' };
+    }
+
+    // Check download count limit
+    if (download.download_count >= download.max_downloads) {
+      return { isValid: false, error: 'Download limit exceeded' };
+    }
+
+    return {
+      isValid: true,
+      download: download
+    };
+  } catch (error) {
+    console.error('[databaseService] Error validating download:', error);
+    return { isValid: false, error: error.message };
+  }
+};
+
+/**
+ * Generate a secure download token (temporary access token)
+ * @param {string} downloadId - The download ID
+ * @param {number} expiresInMinutes - Token expiry in minutes (default: 60)
+ * @returns {Promise<string>} - Secure token
+ */
+export const generateDownloadToken = async (downloadId, expiresInMinutes = 60) => {
+  try {
+    // Create a temporary token with timestamp and random component
+    const timestamp = Date.now();
+    const expiresAt = timestamp + (expiresInMinutes * 60 * 1000);
+    const randomComponent = Math.random().toString(36).substring(2, 15);
+    
+    // Create token string: downloadId:expiresAt:randomComponent
+    const tokenData = `${downloadId}:${expiresAt}:${randomComponent}`;
+    
+    // In a production environment, you might want to encrypt this or store it in the database
+    // For now, we'll use base64 encoding for obfuscation
+    const token = btoa(tokenData);
+    
+    console.log(`[databaseService] Generated download token for ${downloadId}, expires in ${expiresInMinutes} minutes`);
+    
+    return token;
+  } catch (error) {
+    console.error('[databaseService] Error generating download token:', error);
+    throw new Error(`Failed to generate download token: ${error.message}`);
+  }
+};
+
+/**
+ * Validate a download token
+ * @param {string} token - The download token
+ * @returns {Promise<Object>} - Token validation result
+ */
+export const validateDownloadToken = async (token) => {
+  try {
+    if (!token) {
+      return { isValid: false, error: 'No token provided' };
+    }
+
+    // Decode the token
+    let tokenData;
+    try {
+      tokenData = atob(token);
+    } catch (error) {
+      return { isValid: false, error: 'Invalid token format' };
+    }
+
+    // Parse token components
+    const [downloadId, expiresAt, randomComponent] = tokenData.split(':');
+    
+    if (!downloadId || !expiresAt || !randomComponent) {
+      return { isValid: false, error: 'Invalid token structure' };
+    }
+
+    // Check if token has expired
+    const now = Date.now();
+    const tokenExpiry = parseInt(expiresAt, 10);
+    
+    if (now > tokenExpiry) {
+      return { isValid: false, error: 'Token has expired' };
+    }
+
+    // Validate the download itself
+    const downloadValidation = await validateDownload(downloadId);
+    
+    if (!downloadValidation.isValid) {
+      return downloadValidation;
+    }
+
+    return {
+      isValid: true,
+      downloadId: downloadId,
+      download: downloadValidation.download
+    };
+  } catch (error) {
+    console.error('[databaseService] Error validating download token:', error);
+    return { isValid: false, error: error.message };
+  }
+};
+
 export default {
   // Book operations
   saveBook,
@@ -744,5 +932,12 @@ export default {
   getSharedBook,
   
   // User profile operations
-  upsertUserProfile
+  upsertUserProfile,
+
+  // Digital download operations
+  getDigitalDownload,
+  getUserDigitalDownloads,
+  validateDownload,
+  generateDownloadToken,
+  validateDownloadToken
 }; 

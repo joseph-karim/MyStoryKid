@@ -6,7 +6,14 @@
  */
 
 import { generateDigitalPDF, createPdfDownloadLink } from './pdfService';
-import { uploadFileToSupabase } from './supabaseClient';
+import { uploadFileToSupabase, getSignedUrl } from './supabaseClient';
+import { 
+  getUserDigitalDownloads, 
+  validateDownload, 
+  generateDownloadToken, 
+  validateDownloadToken as dbValidateDownloadToken,
+  recordDownloadAttempt 
+} from './databaseService';
 
 /**
  * Generates a digital download PDF for a book and returns a download URL
@@ -74,23 +81,19 @@ export const createSecureDownloadLink = async (book, userId = null) => {
 };
 
 /**
- * Validates a download token
+ * Validates a download token and returns download info
  * @param {string} token - The download token
- * @returns {Promise<boolean>} - Whether the token is valid
+ * @returns {Promise<Object>} - Token validation result with download info
  */
 export const validateDownloadToken = async (token) => {
   try {
     console.log('[digitalDownloadService] Validating download token');
     
-    // In a production environment, this would validate the token against the database
-    // For now, we'll return a mock response
+    const result = await dbValidateDownloadToken(token);
     
-    // Mock validation logic
-    const isValid = token && token.length > 10;
+    console.log('[digitalDownloadService] Token validation result:', result.isValid);
     
-    console.log('[digitalDownloadService] Token validation result:', isValid);
-    
-    return isValid;
+    return result;
   } catch (error) {
     console.error('[digitalDownloadService] Error validating download token:', error);
     throw new Error(`Failed to validate download token: ${error.message}`);
@@ -106,26 +109,113 @@ export const getUserDownloads = async (userId) => {
   try {
     console.log('[digitalDownloadService] Getting downloads for user:', userId);
     
-    // In a production environment, this would fetch the user's downloads from the database
-    // For now, we'll return a mock response
+    const downloads = await getUserDigitalDownloads(userId);
     
-    // Mock downloads
-    const downloads = [
-      {
-        id: 'download-1',
-        bookId: 'book-1',
-        bookTitle: 'Space Adventure with John',
-        downloadUrl: 'https://example.com/download/1',
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        expiresAt: new Date(Date.now() + 23 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
+    // Transform database records to UI format
+    const transformedDownloads = downloads.map(download => ({
+      id: download.id,
+      bookId: download.book_id,
+      bookTitle: download.books?.title || 'Unknown Book',
+      downloadUrl: download.download_url,
+      createdAt: download.created_at,
+      expiresAt: download.expires_at,
+      downloadCount: download.download_count,
+      maxDownloads: download.max_downloads,
+      filename: download.filename,
+      fileSizeBytes: download.file_size_bytes
+    }));
     
-    console.log('[digitalDownloadService] User downloads:', downloads);
+    console.log('[digitalDownloadService] User downloads:', transformedDownloads.length);
     
-    return downloads;
+    return transformedDownloads;
   } catch (error) {
     console.error('[digitalDownloadService] Error getting user downloads:', error);
     throw new Error(`Failed to get user downloads: ${error.message}`);
+  }
+};
+
+/**
+ * Generate a secure download link with token for email delivery
+ * @param {string} downloadId - The download ID
+ * @param {number} tokenExpiryMinutes - Token expiry in minutes (default: 1440 = 24 hours)
+ * @returns {Promise<string>} - Secure download URL with token
+ */
+export const generateSecureDownloadUrl = async (downloadId, tokenExpiryMinutes = 1440) => {
+  try {
+    console.log('[digitalDownloadService] Generating secure download URL for:', downloadId);
+    
+    // Generate a secure token
+    const token = await generateDownloadToken(downloadId, tokenExpiryMinutes);
+    
+    // Create the secure download URL 
+    const baseUrl = window.location.origin || 'https://yourdomain.com'; // Replace with your actual domain
+    const secureUrl = `${baseUrl}/download/${downloadId}?token=${token}`;
+    
+    console.log('[digitalDownloadService] Generated secure URL, expires in', tokenExpiryMinutes, 'minutes');
+    
+    return secureUrl;
+  } catch (error) {
+    console.error('[digitalDownloadService] Error generating secure download URL:', error);
+    throw new Error(`Failed to generate secure download URL: ${error.message}`);
+  }
+};
+
+/**
+ * Process a download request with token validation and access tracking
+ * @param {string} downloadId - The download ID
+ * @param {string} token - The access token
+ * @param {string} userId - The user ID (optional)
+ * @returns {Promise<Object>} - Download result with signed URL
+ */
+export const processSecureDownload = async (downloadId, token, userId = null) => {
+  try {
+    console.log('[digitalDownloadService] Processing secure download:', downloadId);
+    
+    // Validate the token
+    const tokenValidation = await validateDownloadToken(token);
+    
+    if (!tokenValidation.isValid) {
+      return {
+        success: false,
+        error: tokenValidation.error
+      };
+    }
+    
+    const download = tokenValidation.download;
+    
+    // Additional user validation if provided
+    if (userId && download.user_id !== userId) {
+      return {
+        success: false,
+        error: 'Unauthorized access to download'
+      };
+    }
+    
+    // Record the download attempt
+    await recordDownloadAttempt(downloadId);
+    
+    // Generate a signed URL for the actual file download (short-lived, e.g., 15 minutes)
+    const signedUrl = await getSignedUrl('digital-downloads', download.download_url.split('/').pop(), 15 * 60);
+    
+    console.log('[digitalDownloadService] Secure download processed successfully');
+    
+    return {
+      success: true,
+      downloadUrl: signedUrl,
+      filename: download.filename,
+      download: {
+        id: download.id,
+        bookTitle: download.books?.title || 'Unknown Book',
+        downloadCount: download.download_count + 1, // Updated count
+        maxDownloads: download.max_downloads,
+        expiresAt: download.expires_at
+      }
+    };
+  } catch (error) {
+    console.error('[digitalDownloadService] Error processing secure download:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 };

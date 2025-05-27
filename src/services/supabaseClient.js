@@ -132,4 +132,20 @@ export const uploadFileToSupabase = async (file, filePath, bucketName = 'digital
   }
 };
 
+/**
+ * Generates a signed URL for a file in Supabase Storage
+ * @param {string} bucket - The storage bucket name
+ * @param {string} path - The file path in the bucket
+ * @param {number} expiresIn - Expiry time in seconds (default: 60)
+ * @returns {Promise<string>} - Signed URL
+ */
+export const getSignedUrl = async (bucket, path, expiresIn = 60) => {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+  if (error) {
+    console.error('Error creating signed URL:', error);
+    throw new Error(`Supabase createSignedUrl failed: ${error.message}`);
+  }
+  return data.signedUrl;
+};
+
 export default supabase;
