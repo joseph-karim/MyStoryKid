@@ -7,6 +7,7 @@ import {
   formatTrackingForUI,
   needsRefresh 
 } from '../services/orderTrackingService';
+import { useTable, useSortBy, useGlobalFilter, useFilters } from 'react-table';
 
 /**
  * Component for displaying order tracking information
@@ -122,7 +123,7 @@ const OrderTracking = ({ printJobId, showAllOrders = false, className = '' }) =>
     );
   }
 
-  // Render all orders
+  // Render all orders as a table with react-table
   if (showAllOrders) {
     if (orders.length === 0) {
       return (
@@ -134,21 +135,140 @@ const OrderTracking = ({ printJobId, showAllOrders = false, className = '' }) =>
       );
     }
 
+    // --- react-table setup ---
+    const data = React.useMemo(() => orders, [orders]);
+    const columns = React.useMemo(() => [
+      {
+        Header: 'Order ID',
+        accessor: row => row.order.id,
+        id: 'orderId',
+      },
+      {
+        Header: 'Title',
+        accessor: row => row.order.title,
+        id: 'title',
+      },
+      {
+        Header: 'Status',
+        accessor: 'status',
+        Filter: ({ column: { filterValue, setFilter } }) => (
+          <select
+            value={filterValue || ''}
+            onChange={e => setFilter(e.target.value || undefined)}
+            className="border rounded px-2 py-1 text-xs"
+          >
+            <option value="">All</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        ),
+        filter: 'includes',
+      },
+      {
+        Header: 'Placed Date',
+        accessor: row => row.order.createdAt,
+        id: 'placedDate',
+      },
+      {
+        Header: 'Delivery',
+        accessor: 'delivery',
+      },
+      {
+        Header: 'Tracking',
+        accessor: 'tracking',
+      },
+      {
+        Header: 'Last Updated',
+        accessor: 'lastUpdated',
+      },
+      {
+        Header: 'Actions',
+        id: 'actions',
+        Cell: ({ row }) => (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleRefreshOrder(row.original.printJobId)}
+              disabled={refreshingOrders.has(row.original.printJobId)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50"
+              title="Refresh tracking"
+            >
+              🔄
+            </button>
+            <button
+              onClick={() => window.alert(`View order ${row.original.order.id}`)}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+              title="View order details"
+            >
+              👁️
+            </button>
+          </div>
+        ),
+      },
+    ], [refreshingOrders]);
+
+    const {
+      getTableProps,
+      getTableBodyProps,
+      headerGroups,
+      rows,
+      prepareRow,
+      setGlobalFilter,
+      state,
+    } = useTable({ columns, data }, useFilters, useGlobalFilter, useSortBy);
+
     return (
-      <div className={`space-y-4 ${className}`}>
-        <div className="flex justify-between items-center mb-6">
+      <div className={`bg-white rounded-lg shadow-md border border-gray-200 p-4 overflow-x-auto ${className}`}>
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Order Tracking</h2>
-          <span className="text-sm text-gray-500">{orders.length} orders</span>
-        </div>
-        
-        {orders.map((order) => (
-          <OrderTrackingCard
-            key={order.printJobId}
-            order={order}
-            onRefresh={handleRefreshOrder}
-            isRefreshing={refreshingOrders.has(order.printJobId)}
+          <input
+            type="text"
+            placeholder="Search orders..."
+            value={state.globalFilter || ''}
+            onChange={e => setGlobalFilter(e.target.value)}
+            className="border rounded px-2 py-1 text-sm"
+            aria-label="Search orders"
           />
-        ))}
+        </div>
+        <table {...getTableProps()} className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            {headerGroups.map(headerGroup => (
+              <tr {...headerGroup.getHeaderGroupProps()}>
+                {headerGroup.headers.map(column => (
+                  <th
+                    {...column.getHeaderProps(column.getSortByToggleProps())}
+                    className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                  >
+                    {column.render('Header')}
+                    <span>
+                      {column.isSorted
+                        ? column.isSortedDesc
+                          ? ' 🔽'
+                          : ' 🔼'
+                        : ''}
+                    </span>
+                    {column.canFilter ? <div>{column.render('Filter')}</div> : null}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody {...getTableBodyProps()} className="bg-white divide-y divide-gray-200">
+            {rows.map(row => {
+              prepareRow(row);
+              return (
+                <tr {...row.getRowProps()}>
+                  {row.cells.map(cell => (
+                    <td {...cell.getCellProps()} className="px-4 py-2 whitespace-nowrap">
+                      {cell.render('Cell')}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     );
   }
